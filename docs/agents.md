@@ -75,13 +75,17 @@ claude mcp add filmcraft -- filmcraft-cli mcp
 
 | Tool | Modes | Purpose |
 |---|---|---|
-| `command_list` | both | every command: id, label, menu, shortcut, params, enabled now (`filter`, `enabled_only`) |
+| `workflow_list` | both | the recipes (built-in and the user's) with their params and defaults |
+| `workflow_run` | both | run a recipe `{recipe, stage?, params?, wait?}`: a whole edit in one call, one undo step, a short report (see [Token-light editing](#token-light-editing-recipes)) |
+| `transcript_text` | both | the transcript as paragraph rows `[i, fromWord, toWord, speaker, startSec, endSec, text]` (`paragraph_gap_seconds`) |
+| `qa_check` | both | the edit checked as text: gaps, flash frames, offline media, loudness and true peak, silences, black pictures, captions, length (`target_lufs`, `max_seconds`, `video`) |
+| `command_list` | both | every command: id, label, menu, shortcut, params, enabled now (`filter`, `enabled_only`; `compact` answers rows `[id, label, params, enabled]`, best matches first; `limit`) |
 | `command_run` | both | run a command `{id, params}`; edits are undoable |
 | `command_batch` | both | run several commands in order `{steps: [{id, params}], stop_on_error}` → `{completed, failed, results}` |
 | `doc_inspect` | both | the project tree and the active sequence in one call (`project_inspect` + `sequence_inspect`) |
 | `render_preview` | both | same as `render_frame` |
 | `project_inspect` | both | bins and items with ids, types, durations; active sequence |
-| `sequence_inspect` | both | the active sequence: tracks, clips (`start` / `end` and `sourceIn` / `sourceOut` in ticks, frames, `speed`, `reverse`: the clip plays its `sourceIn` to `sourceOut` stretch backward, `gainDb`), effects, transitions, markers (name and `comment`), playhead, selection |
+| `sequence_inspect` | both | the active sequence: tracks, clips (`start` / `end` and `sourceIn` / `sourceOut` in ticks, frames, `speed`, `reverse`: the clip plays its `sourceIn` to `sourceOut` stretch backward, `gainDb`), effects, transitions, markers (name and `comment`), playhead, selection. `detail: "summary"`: clip rows `[clip, item, name, startSec, endSec, notes?]` per track, a fraction of the size |
 | `media_import` | both | import files by absolute path (`paths`, an array; optional `bin`, `image_sequence`) |
 | `render_frame` | both | PNG of the program frame at `seconds` (headless renders; bridge screenshots the Program monitor). Read-only: the playhead and selection are left as they were. Parallel bridge calls take turns, so each returns its own frame |
 | `ui_inspect` | bridge | UI state: tool, workspace, panels, zoom, playback, fps |
@@ -95,6 +99,66 @@ claude mcp add filmcraft -- filmcraft-cli mcp
 
 Typical loop: `project_inspect` / `sequence_inspect` → get ids → `command_run` → `render_frame` or
 `ui_screenshot` → look at the result → `edit.undo` if it's wrong.
+
+### Token-light editing (recipes)
+
+An agent pays for every reply it reads, so the cheapest edit is the one FilmCraft does by itself.
+A **recipe** (`workflow.run`, MCP `workflow_run`) runs a whole edit through the ordinary commands
+(import, sequence, reframe, transcript cuts, captions, quality check, save, export) as **one undo
+step** and answers a report of a few hundred bytes. A failing step takes the whole edit back.
+
+```jsonc
+// 1. build and transcribe; the report carries the transcript as paragraphs
+{"recipe": "vertical-short", "stage": "prepare", "params": {"media": ["/abs/talk.mp4"]}}
+// → {"sequence": 12, "seconds": 74.2, "reframed": 1, "transcript": {"words": 212, "paragraphs": [[0, 0, 31, "Speaker 1", 0.4, 11.8, "So here's the thing…"], …]}, "warnings": []}
+// 2. keep the best paragraphs, cut filler words and pauses, caption, check, export (waits, with progress)
+{"recipe": "vertical-short", "stage": "finish", "wait": true,
+ "params": {"keep": {"paragraphs": [0, 3, 4]}, "export": {"path": "/abs/short.mp4"}, "project": "/abs/short.fcproj"}}
+// → {"seconds": 41.6, "removed": {"keptSeconds": 47.9, "fillers": 9, "pauses": 14}, "captions": {"track": 40, "count": 38},
+//    "qa": {"ok": true, "issues": [], "loudness": {"integratedLufs": -21.4, "truePeakDbtp": -6.2}}, "export": {…}, "result": {…}, "warnings": []}
+```
+
+`stage` is `prepare`, `finish` or `all` (default: both in one call, keeping everything unless
+`keep` is given). `finish` works on the open sequence, so it can be run again with another `keep`;
+it replaces the captions an earlier run made.
+
+**`vertical-short`** (9:16 for TikTok, Reels and Shorts), params and defaults (`workflow_list` shows them):
+
+| param | default | does |
+|---|---|---|
+| `media` / `items` | `[]` | absolute file paths to import / project item ids; placed back to back |
+| `name`, `fps` | `"Short"`, the first clip's rate | the 1080x1920 sequence |
+| `focusX` | `0.5` | the point of the source kept in the middle of the frame after Fill Frame (0 left, 1 right); the frame always stays covered |
+| `transcribe` | `true` | transcribe the media (needs the `whisper` build and a model, `transcript.downloadModel`); without it the transcript steps are skipped with a warning |
+| `keep` | `null` | what to keep, as `transcript.keep` takes it: `{"paragraphs": [i]}`, `{"words": [[from, to]]}` or `{"seconds": [[start, end]]}` |
+| `removeFillers`, `fillers` | `true`, the built-in list | `transcript.removeFillers` |
+| `removePauses` | `{"minSeconds": 0.4, "keepSeconds": 0.1}` | `transcript.removePauses` |
+| `captions` | `{"maxChars": 14, "lines": 1, "size": 58, "fontStyle": "Bold", "outline": 4, "background": false, "anchor": "bottom", "margin": 0.22, …}` | `transcript.createCaptions` + `captions.setStyle` (sizes are for a 1080-line frame); burned in on export |
+| `targetLufs` | `-14` | export loudness normalization |
+| `maxSeconds` | `60` | the quality check reports a longer sequence |
+| `project` | `null` | `.fcproj` to save |
+| `export` | `null` | `{"path", "crf"?, "scale"?, "width"?, "height"?, "fps"?, "format"?, "bitrateKbps"?, "captionSidecar"?}`: H.264 unless `format` says otherwise |
+
+An object param is merged one level deep with the defaults (`{"captions": {"size": 70}}` keeps
+the rest), and `false` turns a step off (`"captions": false`). Without `wait` the export runs as a
+job whose `job` and `path` the report carries (poll `jobs.list`); `filmcraft-cli exec workflow.run`
+waits unless given `wait=false`.
+
+**User recipes** are JSON files in `<data dir>/recipes/<name>.json` (the CLI's `--data-dir`, else
+the app's data directory) that change a built-in recipe's defaults and hold no code:
+
+```json
+{"base": "vertical-short", "description": "My channel's shorts", "params": {"captions": {"size": 64, "color": "#ffe600"}, "focusX": 0.4, "maxSeconds": 45}}
+```
+
+Names are letters, digits, `-` and `_`; a file over 64 KiB, malformed JSON or an unknown `base` is
+an error naming the file.
+
+**Read and check cheaply.** `transcript_text` (`transcript.inspect {words: false}`) is the
+transcript as paragraph rows; `transcript.keep` keeps paragraphs, word spans or times and
+ripple-deletes the rest. `sequence_inspect {detail: "summary"}` is the timeline as clip rows.
+`qa_check` (`sequence.qa`) reports problems as text, so an agent needs no screenshot to know the
+cut is clean; `render_frame {max_side: 320}` is for the occasional look. Replies are compact JSON.
 
 ### Conventions
 

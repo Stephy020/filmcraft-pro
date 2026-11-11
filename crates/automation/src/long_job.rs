@@ -15,15 +15,24 @@ use serde_json::{Value, json};
 
 use crate::server::FilmcraftMcp;
 
-/// Engine commands that block until a render is written when called with `wait: true`.
-pub const LONG_COMMANDS: &[&str] = &["file.exportMedia"];
+/// Engine commands that block until a render is written when called with `wait: true`
+/// (`workflow.run` when the recipe ends with an export).
+pub const LONG_COMMANDS: &[&str] = &["file.exportMedia", "workflow.run"];
 
 /// How often the job is polled (and at most how often progress is reported).
 const POLL: Duration = Duration::from_millis(100);
 
 /// Whether `command_run {id, params}` is a long call this module runs.
 pub fn is_long(id: &str, params: &Value) -> bool {
-    LONG_COMMANDS.contains(&id) && params.get("wait").and_then(Value::as_bool) == Some(true)
+    let wait = params.get("wait").and_then(Value::as_bool) == Some(true);
+    match id {
+        // a recipe waits only for the export it ends with
+        "workflow.run" => {
+            wait && params.get("stage").and_then(Value::as_str) != Some("prepare")
+                && params.get("export").and_then(|e| e.get("path")).is_some_and(Value::is_string)
+        }
+        _ => wait && LONG_COMMANDS.contains(&id),
+    }
 }
 
 /// Sends `notifications/progress` for one request; progress only ever increases.
@@ -61,6 +70,10 @@ impl FilmcraftMcp {
             Err(e) => return CallToolResult::error(vec![Content::text(e.to_string())]),
         };
         let Some(job) = start.get("job").and_then(Value::as_u64) else {
+            // a recipe whose export could not start still made its edit; its report says why
+            if id == "workflow.run" {
+                return CallToolResult::success(vec![Content::text(start.to_string())]);
+            }
             return CallToolResult::error(vec![Content::text(format!("{id} started no job: {start}"))]);
         };
         let out = partial_output(&start);
@@ -85,7 +98,7 @@ impl FilmcraftMcp {
                         o.insert("offlineMedia".into(), off);
                     }
                 }
-                return CallToolResult::success(vec![Content::text(serde_json::to_string_pretty(&out).unwrap_or_default())]);
+                return CallToolResult::success(vec![Content::text(out.to_string())]);
             }
             tokio::select! {
                 _ = context.ct.cancelled() => break,
@@ -203,6 +216,20 @@ mod tests {
     /// The output of an export to `name` in `dir`.
     fn output(dir: &Path, name: &str, stills: Option<(usize, u64)>) -> Output {
         Output { path: dir.join(name).to_string_lossy().to_string(), stills }
+    }
+
+    /// An export waits when asked; a recipe only when it ends with an export it is asked to wait for.
+    #[test]
+    fn long_calls() {
+        assert!(is_long("file.exportMedia", &json!({"path": "a.mp4", "wait": true})));
+        assert!(!is_long("file.exportMedia", &json!({"path": "a.mp4"})));
+        assert!(!is_long("timeline.razor", &json!({"wait": true})));
+        let recipe = json!({"recipe": "vertical-short", "export": {"path": "a.mp4"}, "wait": true});
+        assert!(is_long("workflow.run", &recipe));
+        assert!(!is_long("workflow.run", &json!({"recipe": "vertical-short", "export": {"path": "a.mp4"}})));
+        assert!(!is_long("workflow.run", &json!({"recipe": "vertical-short", "wait": true})), "no export");
+        assert!(!is_long("workflow.run", &json!({"recipe": "vertical-short", "export": {"crf": 20}, "wait": true})), "no export path");
+        assert!(!is_long("workflow.run", &json!({"recipe": "vertical-short", "stage": "prepare", "export": {"path": "a.mp4"}, "wait": true})));
     }
 
     #[test]

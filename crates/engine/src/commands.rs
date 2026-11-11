@@ -4001,22 +4001,16 @@ fn build() -> Vec<CommandSpec> {
             Ok(Value::Null)
         }),
         // ================= Queries =================
-        query!("command.list", "List Commands", "{}", |s, _| {
-            Ok(Value::Array(
-                command_specs()
-                    .iter()
-                    .map(|c| {
-                        let all: Vec<&str> = s.shortcuts.for_command(c.id).iter().map(|b| b.keys.as_str()).collect();
-                        json!({"id": c.id, "label": c.label, "menu": c.menu, "shortcut": s.shortcuts.primary(c.id), "shortcuts": all, "defaultShortcut": c.shortcut, "params": c.params, "enabled": (c.enabled)(s).is_ok()})
-                    })
-                    .collect(),
-            ))
-        }),
+        query!("command.list", "List Commands", r#"{"filter":str?,"enabledOnly":bool?,"compact":bool?,"limit":n?}"#, |s, p| Ok(list_commands(s, p))),
         query!("project.inspect", "Inspect Project", "{}", |s, _| Ok(crate::commands::inspect_project(s))),
-        query!("sequence.inspect", "Inspect Sequence", r#"{"item":id?}"#, |s, p| {
+        query!("sequence.inspect", "Inspect Sequence", r#"{"item":id?,"detail":"full|summary"?}"#, |s, p| {
             let id = item_p(p, "item").or(s.state.active_sequence).ok_or(EngineError::NoSequence)?;
             let q = s.project.sequence(id).ok_or(EngineError::NoSequence)?;
-            Ok(inspect_sequence(s, id, q))
+            match str_p(p, "detail") {
+                None | Some("full") => Ok(inspect_sequence(s, id, q)),
+                Some("summary") => Ok(sequence_summary(s, id, q)),
+                Some(o) => Err(bad("sequence.inspect", format!("unknown detail `{o}` (full or summary)"))),
+            }
         }),
         query!("state.inspect", "Inspect Editor State", "{}", |s, _| Ok(serde_json::to_value(&s.state).unwrap_or_default())),
         query!(
@@ -4046,6 +4040,8 @@ fn build() -> Vec<CommandSpec> {
     v.extend(crate::presets::commands());
     v.extend(crate::export_tools::commands());
     v.extend(crate::transcript::commands());
+    v.extend(crate::qa::commands());
+    v.extend(crate::workflow::commands());
     v.extend(crate::panels::commands());
     v.extend(crate::scopes::commands());
     v.extend(crate::remix::commands());
@@ -5125,6 +5121,125 @@ pub fn inspect_sequence(s: &Session, id: ItemId, q: &filmcraft_project::Sequence
         "transitionSelection": s.state.transition_selection.iter().map(|t| t.0).collect::<Vec<_>>(),
         "gapSelection": s.state.gap_selection.map(|g| json!({"track": g.track.0, "start": g.range.start.0, "end": g.range.end().0})),
     })
+}
+
+/// Seconds of `t`, rounded to the millisecond, for the compact replies agents read.
+pub fn secs_ms(t: Tick) -> f64 {
+    (t.seconds() * 1000.0).round() / 1000.0
+}
+
+/// `sequence.inspect {detail:"summary"}`: the sequence in a few hundred tokens, for agents. Each
+/// track lists its clips as rows `[clip, item, name, startSeconds, endSeconds]`, with a sixth
+/// element of notes (`off`, `speed 2`, `reverse`, `fx 3`) when a clip has any; tracks without clips
+/// are left out. The ids are the ones every command takes.
+pub fn sequence_summary(s: &Session, id: ItemId, q: &filmcraft_project::Sequence) -> Value {
+    let rate = q.settings.frame_rate.sane();
+    let (f0, f1) = filmcraft_export::frame_span(rate, TimeRange::new(Tick::ZERO, q.duration()));
+    json!({
+        "id": id.0,
+        "name": s.project.item(id).map(|i| i.name.clone()),
+        "width": q.settings.width,
+        "height": q.settings.height,
+        "fps": (rate.as_f64() * 1000.0).round() / 1000.0,
+        "seconds": secs_ms(q.duration()),
+        "frames": f1 - f0,
+        "playhead": s.state.playheads.get(&id).map(|t| secs_ms(*t)),
+        "in": q.mark_in.map(secs_ms),
+        "out": q.mark_out.map(secs_ms),
+        "video": q.video_tracks.iter().filter_map(track_summary).collect::<Vec<_>>(),
+        "audio": q.audio_tracks.iter().filter_map(track_summary).collect::<Vec<_>>(),
+        "captions": q.caption_tracks.iter().map(|c| json!({"id": c.id.0, "name": c.name, "count": c.captions.len(), "enabled": c.enabled})).collect::<Vec<_>>(),
+        "markers": q.markers.len(),
+        "selected": s.state.selection.len(),
+    })
+}
+
+/// One track of [`sequence_summary`]; `None` when it has no clips.
+fn track_summary(t: &filmcraft_project::Track) -> Option<Value> {
+    if t.items.is_empty() {
+        return None;
+    }
+    let clips: Vec<Value> = t
+        .items
+        .iter()
+        .map(|i| {
+            let mut notes = Vec::new();
+            if !i.enabled {
+                notes.push("off".to_string());
+            }
+            if (i.speed - 1.0).abs() > f64::EPSILON {
+                notes.push(format!("speed {}", i.speed));
+            }
+            if i.reverse {
+                notes.push("reverse".to_string());
+            }
+            if !i.effects.is_empty() {
+                notes.push(format!("fx {}", i.effects.len()));
+            }
+            let mut row = vec![json!(i.id.0), json!(i.item.0), json!(i.name), json!(secs_ms(i.start)), json!(secs_ms(i.end()))];
+            if !notes.is_empty() {
+                row.push(json!(notes.join(", ")));
+            }
+            Value::Array(row)
+        })
+        .collect();
+    let mut v = json!({"id": t.id.0, "name": t.name, "clips": clips});
+    if t.locked {
+        v["locked"] = json!(true);
+    }
+    if t.muted {
+        v["muted"] = json!(true);
+    }
+    if !t.enabled {
+        v["hidden"] = json!(true);
+    }
+    if !t.transitions.is_empty() {
+        v["transitions"] = json!(t.transitions.len());
+    }
+    Some(v)
+}
+
+/// `command.list`. Without params: every command in registry order, as menus and the CLI expect.
+/// `filter` keeps the commands whose id or label contains it (case-insensitive) and `enabledOnly`
+/// those that can run now. `compact` answers rows `[id, label, params, enabled]`, best matches first
+/// (id prefix, then id, then label; enabled before disabled), and `limit` keeps the first n.
+fn list_commands(s: &Session, p: &Value) -> Value {
+    let filter = str_p(p, "filter").unwrap_or_default().to_ascii_lowercase();
+    let only = bool_p(p, "enabledOnly").unwrap_or(false);
+    let limit = u64_p(p, "limit").map_or(usize::MAX, |n| usize::try_from(n).unwrap_or(usize::MAX));
+    // 0: id starts with the filter, 1: id contains it, 2: label contains it
+    let rank = |c: &CommandSpec| -> Option<u8> {
+        let id = c.id.to_ascii_lowercase();
+        if filter.is_empty() || id.starts_with(&filter) {
+            Some(0)
+        } else if id.contains(&filter) {
+            Some(1)
+        } else {
+            c.label.to_ascii_lowercase().contains(&filter).then_some(2)
+        }
+    };
+    let mut hits: Vec<(u8, bool, &CommandSpec)> = command_specs()
+        .iter()
+        .filter_map(|c| {
+            let r = rank(c)?;
+            let enabled = (c.enabled)(s).is_ok();
+            (!only || enabled).then_some((r, enabled, c))
+        })
+        .collect();
+    if bool_p(p, "compact").unwrap_or(false) {
+        // a stable sort keeps registry order within a rank
+        hits.sort_by_key(|(r, enabled, _)| (*r, !*enabled));
+        return Value::Array(hits.into_iter().take(limit).map(|(_, enabled, c)| json!([c.id, c.label, c.params, enabled])).collect());
+    }
+    Value::Array(
+        hits.into_iter()
+            .take(limit)
+            .map(|(_, enabled, c)| {
+                let all: Vec<&str> = s.shortcuts.for_command(c.id).iter().map(|b| b.keys.as_str()).collect();
+                json!({"id": c.id, "label": c.label, "menu": c.menu, "shortcut": s.shortcuts.primary(c.id), "shortcuts": all, "defaultShortcut": c.shortcut, "params": c.params, "enabled": enabled})
+            })
+            .collect(),
+    )
 }
 
 /// Seconds → ticks helper for callers.

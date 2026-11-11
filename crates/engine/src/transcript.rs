@@ -18,7 +18,7 @@ use filmcraft_edit as edit;
 use filmcraft_edit::transcript::{self as tx, CaptionRules, SeqWord};
 use filmcraft_project::{CaptionFormat, CaptionTrack, ClipId, ItemId, ItemKind, Project, TrackId, Transcript};
 use filmcraft_speech::{Options, SpeechError, Transcriber};
-use filmcraft_time::{TICKS_PER_SECOND, Tick, TimeRange};
+use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
 
 use crate::commands::{CommandSpec, always, bad, bool_p, f64_p, has_seq, str_p, u64_p};
 use crate::{EngineError, Result, Session};
@@ -258,9 +258,51 @@ fn word_json(i: usize, w: &SeqWord) -> Value {
     json!({"i": i, "text": w.text, "start": w.start.0, "end": w.end.0, "speaker": w.speaker, "clip": w.clip.0, "item": w.item.0, "confidence": w.confidence})
 }
 
+/// Speaker names in order of first appearance.
+fn speaker_names(words: &[SeqWord]) -> Vec<String> {
+    let mut v: Vec<String> = Vec::new();
+    for w in words {
+        if let Some(n) = &w.speaker
+            && !v.contains(n)
+        {
+            v.push(n.clone());
+        }
+    }
+    v
+}
+
+/// The paragraph break `transcript.inspect` and `transcript.keep` share: a pause of at least
+/// `paragraphGapSeconds` (default 1.5 s; NaN, negative or absurd values fall back to it).
+fn paragraph_gap(p: &Value) -> Tick {
+    let secs = f64_p(p, "paragraphGapSeconds").filter(|v| v.is_finite() && (0.0..=3600.0).contains(v)).unwrap_or(1.5);
+    Tick::from_seconds_f64(secs)
+}
+
+/// `transcript.inspect {words:false}`: paragraphs as rows `[i, fromWord, toWord, speaker,
+/// startSeconds, endSeconds, text]` without the word list, so an agent can read a whole talk in a
+/// few tokens and pass `i` to `transcript.keep`.
+fn inspect_compact(s: &Session, words: &[SeqWord], gap: Tick, speakers: Vec<String>) -> Value {
+    let rows: Vec<Value> = tx::paragraphs(words, gap)
+        .into_iter()
+        .enumerate()
+        .filter_map(|(n, r)| {
+            let ws = words.get(r.clone())?;
+            let (first, last) = (ws.first()?, ws.last()?);
+            let text = ws.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" ");
+            Some(json!([n, r.start, r.end.saturating_sub(1), first.speaker, crate::commands::secs_ms(first.start), crate::commands::secs_ms(last.end), text]))
+        })
+        .collect();
+    let seconds = s.active_sequence().map(|q| crate::commands::secs_ms(q.duration()));
+    json!({"paragraphs": rows, "speakers": speakers, "words": words.len(), "seconds": seconds})
+}
+
 fn inspect(s: &mut Session, p: &Value) -> Result<Value> {
     let words = sequence_words(s);
-    let gap = Tick::from_seconds_f64(f64_p(p, "paragraphGapSeconds").unwrap_or(1.5));
+    let gap = paragraph_gap(p);
+    if bool_p(p, "words") == Some(false) {
+        let speakers = speaker_names(&words);
+        return Ok(inspect_compact(s, &words, gap, speakers));
+    }
     let paras: Vec<Value> = tx::paragraphs(&words, gap)
         .into_iter()
         .map(|r| {
@@ -268,17 +310,7 @@ fn inspect(s: &mut Session, p: &Value) -> Result<Value> {
             json!({"from": r.start, "to": r.end - 1, "speaker": words[r.start].speaker, "start": words[r.start].start.0, "end": words[r.end - 1].end.0, "text": text})
         })
         .collect();
-    let speakers: Vec<String> = {
-        let mut v: Vec<String> = Vec::new();
-        for w in &words {
-            if let Some(n) = &w.speaker
-                && !v.contains(n)
-            {
-                v.push(n.clone());
-            }
-        }
-        v
-    };
+    let speakers = speaker_names(&words);
     let current = tx::word_at(&words, s.playhead());
     Ok(json!({
         "words": words.iter().enumerate().map(|(i, w)| word_json(i, w)).collect::<Vec<_>>(),
@@ -386,6 +418,119 @@ fn remove_ranges(s: &mut Session, label: &str, ranges: Vec<TimeRange>) -> Result
     Ok(json!({"removed": n, "ticks": total.0, "seconds": total.0 as f64 / TICKS_PER_SECOND as f64}))
 }
 
+const KEEP: &str = "transcript.keep";
+/// Most entries one `transcript.keep` list takes.
+const MAX_KEEP: usize = 10_000;
+
+/// The entries of keep list `k` (none when absent); a non-list or more than [`MAX_KEEP`] entries is an error.
+fn keep_list<'a>(p: &'a Value, k: &str) -> Result<&'a [Value]> {
+    match p.get(k) {
+        None | Some(Value::Null) => Ok(&[][..]),
+        Some(Value::Array(a)) if a.len() <= MAX_KEEP => Ok(a.as_slice()),
+        Some(Value::Array(a)) => Err(bad(KEEP, format!("`{k}` has {} entries; at most {MAX_KEEP}", a.len()))),
+        Some(_) => Err(bad(KEEP, format!("`{k}` must be a list"))),
+    }
+}
+
+/// A `[a, b]` entry of a keep list.
+fn pair(v: &Value) -> Option<(&Value, &Value)> {
+    match v.as_array()?.as_slice() {
+        [a, b] => Some((a, b)),
+        _ => None,
+    }
+}
+
+fn index(v: &Value) -> Option<usize> {
+    v.as_u64().and_then(|n| usize::try_from(n).ok())
+}
+
+/// `t` rounded up to a frame boundary.
+fn snap_up(rate: FrameRate, t: Tick) -> Tick {
+    let s = rate.snap(t);
+    if s < t { s + rate.frame_duration() } else { s }
+}
+
+/// The timeline ranges `transcript.keep` keeps, before padding: paragraphs, word spans and times.
+fn keep_ranges(s: &Session, p: &Value, words: &[SeqWord], total: Tick) -> Result<Vec<TimeRange>> {
+    let rate = s.sequence_rate();
+    let mut out = Vec::new();
+    let paras = tx::paragraphs(words, paragraph_gap(p));
+    for v in keep_list(p, "paragraphs")? {
+        let r = index(v)
+            .and_then(|i| paras.get(i))
+            .ok_or_else(|| bad(KEEP, format!("paragraph {v} does not exist (the transcript has {} paragraphs)", paras.len())))?;
+        out.extend(tx::word_range(words, r.start, r.end.saturating_sub(1), rate));
+    }
+    for v in keep_list(p, "words")? {
+        let r = pair(v)
+            .and_then(|(a, b)| tx::word_range(words, index(a)?, index(b)?, rate))
+            .ok_or_else(|| bad(KEEP, format!("word span {v} is not [from, to] within the transcript's {} words", words.len())))?;
+        out.push(r);
+    }
+    for v in keep_list(p, "seconds")? {
+        let (a, b) = pair(v)
+            .and_then(|(a, b)| Some((a.as_f64()?, b.as_f64()?)))
+            .filter(|(a, b)| a.is_finite() && b.is_finite() && *a >= 0.0 && b > a)
+            .ok_or_else(|| bad(KEEP, format!("time span {v} is not [start, end] seconds with 0 <= start < end")))?;
+        let (a, b) = (Tick::from_seconds_f64(a), Tick::from_seconds_f64(b).min(total));
+        if a >= total {
+            return Err(bad(KEEP, format!("time span {v} starts after the sequence ends ({} s)", crate::commands::secs_ms(total))));
+        }
+        out.push(TimeRange::from_bounds(a, b));
+    }
+    Ok(out)
+}
+
+/// `[0, total)` minus `kept`: what `transcript.keep` removes, and the gaps `sequence.qa` reports.
+pub(crate) fn complement(kept: Vec<TimeRange>, total: Tick) -> Vec<TimeRange> {
+    let mut out = Vec::new();
+    let mut at = Tick::ZERO;
+    for r in tx::merge_ranges(kept) {
+        if r.start > at {
+            out.push(TimeRange::from_bounds(at, r.start.min(total)));
+        }
+        at = at.max(r.end());
+    }
+    if at < total {
+        out.push(TimeRange::from_bounds(at, total));
+    }
+    out.retain(|r| !r.is_empty());
+    out
+}
+
+/// `transcript.keep`: keep only the listed paragraphs (`paragraphs`, numbered as
+/// `transcript.inspect {words:false}` lists them), word spans (`words`: `[[from, to]]`) and times
+/// (`seconds`: `[[start, end]]`), each padded by `padSeconds` (default 0.1, at most 5) and
+/// frame-aligned. Everything else on the unlocked tracks is ripple-deleted, in one undo step.
+fn keep(s: &mut Session, p: &Value) -> Result<Value> {
+    let total = s.active_sequence().map(|q| q.duration()).ok_or(EngineError::NoSequence)?;
+    let pad = match f64_p(p, "padSeconds") {
+        None => 0.1,
+        Some(v) if v.is_finite() && (0.0..=5.0).contains(&v) => v,
+        Some(v) => return Err(bad(KEEP, format!("`padSeconds` must be between 0 and 5, got {v}"))),
+    };
+    let pad = Tick::from_seconds_f64(pad);
+    let rate = s.sequence_rate();
+    let words = sequence_words(s);
+    let ranges = keep_ranges(s, p, &words, total)?;
+    if ranges.is_empty() {
+        return Err(bad(KEEP, "name what to keep: `paragraphs`, `words` or `seconds`"));
+    }
+    let kept = ranges.len();
+    let padded: Vec<TimeRange> = ranges
+        .into_iter()
+        .filter_map(|r| {
+            let a = rate.snap((r.start - pad).max(Tick::ZERO));
+            let b = snap_up(rate, r.end() + pad).min(total);
+            (b > a).then(|| TimeRange::from_bounds(a, b))
+        })
+        .collect();
+    let removed = remove_ranges(s, "Keep Text", complement(padded, total))?;
+    let removed_ticks = Tick(removed["ticks"].as_i64().unwrap_or(0));
+    let seconds = s.active_sequence().map(|q| crate::commands::secs_ms(q.duration()));
+    Ok(json!({"kept": kept, "removed": removed["removed"], "removedSeconds": crate::commands::secs_ms(removed_ticks), "seconds": seconds}))
+}
+
 fn remove_pauses(s: &mut Session, p: &Value) -> Result<Value> {
     let words = sequence_words(s);
     let min = Tick::from_seconds_f64(f64_p(p, "minSeconds").unwrap_or(1.0));
@@ -416,7 +561,15 @@ fn create_captions(s: &mut Session, p: &Value) -> Result<Value> {
         gap_frames: p.get("gapFrames").and_then(Value::as_i64).unwrap_or(d.gap_frames),
         break_pause: d.break_pause,
     };
-    let blocks = tx::caption_blocks(&words, &rules, s.sequence_rate());
+    let rate = s.sequence_rate();
+    let mut blocks = tx::caption_blocks(&words, &rules, rate);
+    // The minimum duration extends a caption into the silence after it; past the last clip that
+    // would lengthen the sequence, and an export would end on black.
+    if let Some(end) = s.active_sequence().and_then(|q| q.video_tracks.iter().chain(&q.audio_tracks).flat_map(|t| t.items.iter()).map(|i| i.end()).max()) {
+        for b in &mut blocks {
+            b.end = b.end.min(end).max(b.start + rate.frame_duration());
+        }
+    }
     let format = str_p(p, "format").and_then(CaptionFormat::from_name).unwrap_or_default();
     let name = str_p(p, "name").unwrap_or("Transcript").to_string();
     let n = blocks.len();
@@ -484,7 +637,7 @@ pub fn commands() -> Vec<CommandSpec> {
             true,
         ),
         spec("transcript.delete", "Delete Transcript", &["Sequence", "Transcript"], r#"{"items":[id]?}"#, has_transcripts, delete, true),
-        spec("transcript.inspect", "Inspect Transcript", &[], r#"{"paragraphGapSeconds":f?}"#, always, inspect, false),
+        spec("transcript.inspect", "Inspect Transcript", &[], r#"{"paragraphGapSeconds":f?,"words":bool=true}"#, always, inspect, false),
         spec("transcript.search", "Search Transcript", &[], r#"{"query":str}"#, always, search, false),
         spec("transcript.models", "List Speech Models", &[], "{}", always, models, false),
         spec("transcript.downloadModel", "Download Speech Model", &[], r#"{"model":"whisper-base"?}"#, can_download, download_model, true),
@@ -510,6 +663,15 @@ pub fn commands() -> Vec<CommandSpec> {
             true,
         ),
         spec("transcript.removeFillers", "Remove Filler Words", &["Sequence", "Transcript"], r#"{"fillers":[str]?}"#, has_transcript, remove_fillers, true),
+        spec(
+            "transcript.keep",
+            "Keep Only Selected Text",
+            &[],
+            r#"{"paragraphs":[n]?,"words":[[from,to]]?,"seconds":[[start,end]]?,"paragraphGapSeconds":f=1.5,"padSeconds":0..5=0.1}"#,
+            has_seq,
+            keep,
+            true,
+        ),
         spec(
             "transcript.createCaptions",
             "Create Captions from Transcript…",

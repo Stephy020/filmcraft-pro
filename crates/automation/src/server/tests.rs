@@ -153,6 +153,61 @@ async fn strict_arguments_and_parse_errors() {
     assert_eq!(r["result"]["content"][0]["type"], "image", "{r}");
 }
 
+/// Replies are single-line JSON; `command_list` takes `compact` / `limit` and `sequence_inspect`
+/// takes `detail`, strictly.
+#[tokio::test(flavor = "multi_thread")]
+async fn compact_replies_and_options() {
+    let mut c = Client::start(demo());
+    c.init().await;
+    let text = |r: &Value| r["result"]["content"][0]["text"].as_str().unwrap().to_string();
+    let r = c.call(1, "command_list", json!({"filter": "razor", "compact": true, "limit": 2})).await;
+    let t = text(&r);
+    assert!(!t.contains('\n'), "{t}");
+    let rows: Value = serde_json::from_str(&t).unwrap();
+    assert!(rows.as_array().is_some_and(|a| !a.is_empty() && a.len() <= 2 && a[0].is_array()), "{rows}");
+    let r = c.call(2, "sequence_inspect", json!({"detail": "summary"})).await;
+    let v: Value = serde_json::from_str(&text(&r)).unwrap();
+    assert!(v["video"].is_array() && v["seconds"].is_number(), "{v}");
+    let r = c.call(3, "sequence_inspect", json!({})).await;
+    let v: Value = serde_json::from_str(&text(&r)).unwrap();
+    assert!(v["settings"].is_object(), "{v}");
+    let r = c.call(4, "sequence_inspect", json!({"detial": "summary"})).await;
+    assert_eq!(r["error"]["code"], -32602, "{r}");
+}
+
+/// The recipe tools: read-only where they only read; `workflow_run` runs a recipe on demo media,
+/// `qa_check` and `transcript_text` answer compact text, and bad params are errors.
+#[tokio::test(flavor = "multi_thread")]
+async fn recipe_tools() {
+    let mut c = Client::start(demo());
+    c.init().await;
+    let tools = c.ask(json!({"jsonrpc":"2.0","id":1,"method":"tools/list"})).await["result"]["tools"].as_array().cloned().unwrap();
+    let ro = |n: &str| tools.iter().find(|t| t["name"] == n).map(|t| t["annotations"]["readOnlyHint"].clone());
+    for (name, read_only) in [("workflow_list", true), ("workflow_run", false), ("transcript_text", true), ("qa_check", true)] {
+        assert_eq!(ro(name), Some(json!(read_only)), "{name}");
+    }
+    let text = |r: &Value| -> Value { serde_json::from_str(r["result"]["content"][0]["text"].as_str().unwrap()).unwrap() };
+    let l = text(&c.call(2, "workflow_list", json!({})).await);
+    assert_eq!(l["recipes"][0]["name"], "vertical-short", "{l}");
+    let sum = text(&c.call(3, "sequence_inspect", json!({"detail": "summary"})).await);
+    let item = sum["video"][0]["clips"][0][1].as_u64().unwrap();
+    let r = c.call(4, "workflow_run", json!({"recipe": "vertical-short", "params": {"items": [item], "transcribe": false}})).await;
+    assert_eq!(r["result"]["isError"], false, "{r}");
+    let v = text(&r);
+    assert!(v["qa"].is_object() && v["reframed"] == 1, "{v}");
+    let v = text(&c.call(5, "qa_check", json!({"video": false, "max_seconds": 0.5})).await);
+    assert!(v["issues"].as_array().unwrap().iter().any(|i| i["kind"] == "length"), "{v}");
+    let v = text(&c.call(6, "transcript_text", json!({})).await);
+    assert!(v["paragraphs"].is_array(), "{v}");
+
+    let r = c.call(7, "workflow_run", json!({"recipe": "nope"})).await;
+    assert_eq!(r["result"]["isError"], true, "{r}");
+    let r = c.call(8, "workflow_run", json!({"recipe": "vertical-short", "params": [1]})).await;
+    assert_eq!(r["result"]["isError"], true, "{r}");
+    let r = c.call(9, "workflow_run", json!({"recipe": "vertical-short", "parms": {}})).await;
+    assert_eq!(r["error"]["code"], -32602, "{r}");
+}
+
 /// `filmcraft://document` and `filmcraft://commands` are listed and readable as JSON.
 #[tokio::test(flavor = "multi_thread")]
 async fn resources_document_and_commands() {

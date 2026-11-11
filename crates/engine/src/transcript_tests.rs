@@ -72,6 +72,108 @@ fn generate_inspect_search_and_rename() {
     assert!(s.project.transcripts.is_empty());
 }
 
+/// `transcript.inspect {words:false}`: paragraph rows without the word list, so an agent reads a
+/// talk in a few tokens; the default reply is unchanged.
+#[test]
+fn compact_inspect_lists_paragraph_rows() {
+    let (mut s, item, start) = session();
+    s.execute("transcript.generate", json!({"items": [item.0]})).unwrap();
+    let full = s.execute("transcript.inspect", json!({})).unwrap();
+    assert_eq!(full["words"].as_array().map(Vec::len), Some(6));
+    let r = s.execute("transcript.inspect", json!({"words": false})).unwrap();
+    assert_eq!(r["words"], 6, "{r}");
+    let rows = r["paragraphs"].as_array().unwrap();
+    assert_eq!(rows.len(), 2, "{r}");
+    assert_eq!((rows[0][0].as_u64(), rows[0][1].as_u64(), rows[0][2].as_u64()), (Some(0), Some(0), Some(2)), "{r}");
+    assert_eq!(rows[0][3], "Speaker 1");
+    assert_eq!(rows[0][6], "Hello um world.");
+    assert_eq!((rows[1][0].as_u64(), rows[1][6].as_str()), (Some(1), Some("Second speaker here.")));
+    let t0 = rows[0][4].as_f64().unwrap();
+    assert!((t0 - (start + Tick::from_seconds_f64(0.2)).seconds()).abs() < 0.002, "{t0}");
+    assert_eq!(r["speakers"], json!(["Speaker 1", "Speaker 2"]));
+    assert!(r.to_string().len() * 2 < full.to_string().len(), "compact {r}");
+    // hostile paragraph gaps fall back to the default
+    for gap in [json!(-5.0), json!(1e300), json!("x")] {
+        let r = s.execute("transcript.inspect", json!({"words": false, "paragraphGapSeconds": gap})).unwrap();
+        assert_eq!(r["paragraphs"].as_array().unwrap().len(), 2, "{gap}");
+    }
+}
+
+/// `transcript.keep`: keep paragraphs, word spans or times; everything else is ripple-deleted in
+/// one undo step, and a bad list is an error that changes nothing.
+#[test]
+fn keep_only_selected_text() {
+    let (mut s, item, _) = session();
+    // paragraphs need a transcript
+    assert!(s.execute("transcript.keep", json!({"paragraphs": [0]})).is_err());
+    s.execute("transcript.generate", json!({"items": [item.0]})).unwrap();
+    let before = s.active_sequence().unwrap().duration();
+
+    let r = s.execute("transcript.keep", json!({"paragraphs": [1], "padSeconds": 0})).unwrap();
+    assert_eq!(r["kept"], 1, "{r}");
+    assert_eq!(words(&mut s), ["Second", "speaker", "here."], "only paragraph 1 is left");
+    let after = s.active_sequence().unwrap().duration();
+    assert!(after <= Tick::from_seconds_f64(1.5), "1.4 s of speech, frame-aligned: {after:?} of {before:?}");
+    assert!((r["seconds"].as_f64().unwrap() - after.seconds()).abs() < 0.001, "{r}");
+    s.execute("edit.undo", json!({})).unwrap();
+    assert_eq!(s.active_sequence().unwrap().duration(), before, "one undo step");
+    assert_eq!(words(&mut s).len(), 6);
+
+    // overlapping word spans merge
+    s.execute("transcript.keep", json!({"words": [[0, 1], [1, 2]]})).unwrap();
+    assert_eq!(words(&mut s), ["Hello", "um", "world."]);
+    s.execute("edit.undo", json!({})).unwrap();
+
+    // times, as transcript.inspect {words:false} reports them
+    let rows = s.execute("transcript.inspect", json!({"words": false})).unwrap()["paragraphs"].clone();
+    let (a, b) = (rows[1][4].as_f64().unwrap(), rows[1][5].as_f64().unwrap());
+    s.execute("transcript.keep", json!({"seconds": [[a, b]]})).unwrap();
+    assert_eq!(words(&mut s), ["Second", "speaker", "here."]);
+    s.execute("edit.undo", json!({})).unwrap();
+
+    // keeping everything removes nothing
+    let total = before.seconds();
+    let r = s.execute("transcript.keep", json!({"seconds": [[0, total + 10.0]]})).unwrap();
+    assert_eq!(r["removed"], 0, "{r}");
+    assert_eq!(s.active_sequence().unwrap().duration(), before);
+
+    for bad in [
+        json!({}),
+        json!({"paragraphs": [2]}),
+        json!({"paragraphs": "0"}),
+        json!({"paragraphs": [-1]}),
+        json!({"words": [[0]]}),
+        json!({"words": [[0, 99]]}),
+        json!({"seconds": [[2.0, 1.0]]}),
+        json!({"seconds": [[-1.0, 1.0]]}),
+        json!({"seconds": [[1e9, 2e9]]}),
+        json!({"seconds": [["a", 1.0]]}),
+        json!({"paragraphs": [0], "padSeconds": -1}),
+        json!({"paragraphs": [0], "padSeconds": 99}),
+        json!({"paragraphs": vec![0; 10_001]}),
+    ] {
+        assert!(s.execute("transcript.keep", bad.clone()).is_err(), "{bad}");
+        assert_eq!(s.active_sequence().unwrap().duration(), before, "{bad} changed nothing");
+    }
+}
+
+/// A caption's minimum duration never carries it past the last clip: that would lengthen the
+/// sequence, and an export would end on black (found by the vertical-short recipe's check).
+#[test]
+fn captions_stop_at_the_end_of_the_clips() {
+    let (mut s, item, _) = session();
+    s.execute("transcript.generate", json!({"items": [item.0]})).unwrap();
+    let r = s.execute("transcript.inspect", json!({"words": false})).unwrap();
+    let last_word_end = r["paragraphs"][1][5].as_f64().unwrap();
+    // keep only the speech, so the last word ends with the clips
+    s.execute("transcript.keep", json!({"seconds": [[0, last_word_end]], "padSeconds": 0})).unwrap();
+    let before = s.active_sequence().unwrap().duration();
+    s.execute("transcript.createCaptions", json!({"minSeconds": 600})).unwrap();
+    let q = s.active_sequence().unwrap();
+    assert_eq!(q.duration(), before, "captions do not lengthen the sequence");
+    assert!(q.caption_tracks[0].captions.iter().all(|c| c.start + c.duration <= before), "every caption ends with the clips");
+}
+
 #[test]
 fn select_extract_and_lift_by_words() {
     let (mut s, item, _) = session();

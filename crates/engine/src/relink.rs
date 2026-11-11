@@ -603,7 +603,7 @@ pub fn make_offline(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"offline": files.iter().map(|f| f.0.0).collect::<Vec<_>>(), "deleted": deleted}))
 }
 
-fn status_json(s: &Session, id: ItemId) -> Option<Value> {
+pub(crate) fn status_json(s: &Session, id: ItemId) -> Option<Value> {
     let it = s.project.item(id)?;
     let m = it.as_media()?;
     let path = match &m.media {

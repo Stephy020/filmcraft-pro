@@ -311,6 +311,38 @@ fn phone_vfr_clip_extract_gain_title_to_h264_mp4() {
     verify_phone_export(&ffmpeg, &ffprobe, &src, &out);
 }
 
+/// A recipe end to end through MCP: one `workflow_run` call turns the landscape phone clip into a
+/// 9:16 short, saves the project and waits for the H.264 export (through the long-call path that
+/// reports progress), which ffprobe checks; `qa_check` then measures the mix.
+#[test]
+fn phone_clip_to_vertical_short_in_one_recipe_call() {
+    let (ffmpeg, ffprobe) = filmcraft_testkit::require_oracles!();
+    let Some(src) = phone_vfr_mp4(&ffmpeg) else {
+        return filmcraft_testkit::skip("vertical short recipe", "ffmpeg could not make the VFR H.264/AAC fixture (libx264?)");
+    };
+    let src = src.to_string_lossy().into_owned();
+    let dir = Scratch::new("short");
+    let mut m = Mcp::start(&dir.path("data"));
+    let recipes = m.tool("workflow_list", json!({}));
+    assert_eq!(recipes["recipes"][0]["name"], "vertical-short", "{recipes}");
+
+    let (out, project) = (dir.path("short.mp4"), dir.path("short.fcproj"));
+    let params = json!({"media": [src], "transcribe": false, "project": project, "export": {"path": out, "scale": 0.25}});
+    let r = m.tool("workflow_run", json!({"recipe": "vertical-short", "params": params, "wait": true}));
+    assert_eq!((r["reframed"].as_u64(), r["warnings"].as_array().map(Vec::len)), (Some(1), Some(0)), "{r}");
+    assert_eq!(r["result"]["frames"], 120, "4 s at 30 fps: {r}");
+    assert!(Path::new(&project).exists(), "{r}");
+
+    let j = probe(&ffprobe, &out);
+    let v = streams(&j, "video");
+    assert_eq!((v[0]["codec_name"].as_str(), v[0]["width"].as_u64(), v[0]["height"].as_u64()), (Some("h264"), Some(270), Some(480)), "{j}");
+    assert!((num(&j["format"]["duration"]) - 4.0).abs() < 0.1, "{j}");
+    assert_eq!(streams(&j, "audio").len(), 1, "{j}");
+
+    let qa = m.tool("qa_check", json!({"video": false}));
+    assert!(qa["loudness"]["truePeakDbtp"].is_number() && qa["issues"].is_array(), "{qa}");
+}
+
 fn verify_phone_export(ffmpeg: &Path, ffprobe: &Path, src: &str, out: &str) {
     // container and streams
     let j = probe(ffprobe, out);

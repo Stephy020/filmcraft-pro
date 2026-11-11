@@ -46,6 +46,7 @@ pub mod project_manager;
 pub mod project_panel;
 pub mod project_tools;
 pub mod proxies;
+pub mod qa;
 pub mod relink;
 pub mod remix;
 pub mod scene_detect;
@@ -60,6 +61,7 @@ pub mod sync;
 pub mod transcript;
 pub mod trim;
 pub mod voiceover;
+pub mod workflow;
 
 use std::sync::Arc;
 
@@ -499,6 +501,9 @@ pub struct Session {
     pub presets: presets::PresetLibrary,
     /// Export presets (built-in + the user's, persisted in the data directory) and favourites.
     pub export_presets: export_tools::ExportPresetLibrary,
+    /// Where the user's recipe files are (`<data dir>/recipes`, [`workflow`]); None = built-in
+    /// recipes only.
+    pub recipe_dir: Option<std::path::PathBuf>,
     /// The export queue (session state, not saved with the project).
     pub export_queue: export_tools::ExportQueue,
     /// Exports run a batch at a time by [`Session::pump_jobs`] (hosts without threads: web).
@@ -606,6 +611,7 @@ impl Session {
             scene_jobs: Vec::new(),
             presets: Default::default(),
             export_presets: Default::default(),
+            recipe_dir: None,
             export_queue: Default::default(),
             stepped: Vec::new(),
             transcriber: None,
@@ -659,6 +665,7 @@ impl Session {
         self.shortcuts.set_dir(&cfg.data_dir);
         self.presets.set_dir(&cfg.data_dir);
         self.export_presets.set_dir(&cfg.data_dir);
+        self.recipe_dir = Some(cfg.data_dir.join("recipes"));
         self.prefs_path = Some(prefs_path);
         self.apply_media_cache();
         self.persistence = Some(autosave::Persistence::start(&cfg, self.prefs.auto_save.clone())?);
@@ -1338,6 +1345,8 @@ const MAX_SUBCLIP_CHAIN: usize = 16;
 #[cfg(test)]
 mod aaf_omf_tests;
 #[cfg(test)]
+mod agent_tests;
+#[cfg(test)]
 mod animated_image_tests;
 #[cfg(test)]
 mod audio_effects_tests;
@@ -1420,6 +1429,8 @@ mod project_panel_tests;
 #[cfg(test)]
 mod proxies_tests;
 #[cfg(test)]
+mod qa_tests;
+#[cfg(test)]
 mod relink_tests;
 #[cfg(test)]
 mod remix_tests;
@@ -1461,6 +1472,8 @@ mod vfx_tests;
 mod voiceover_tests;
 #[cfg(test)]
 mod work_area_tests;
+#[cfg(test)]
+mod workflow_tests;
 
 #[cfg(test)]
 mod source_placement_tests;

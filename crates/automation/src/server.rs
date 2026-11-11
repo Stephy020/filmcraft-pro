@@ -49,6 +49,92 @@ pub struct ListParams {
     /// Only commands that can run right now.
     #[serde(default)]
     pub enabled_only: Option<bool>,
+    /// Rows `[id, label, params, enabled]`, best matches first: a fraction of the full listing's size.
+    #[serde(default)]
+    pub compact: Option<bool>,
+    /// At most this many commands.
+    #[serde(default)]
+    pub limit: Option<u64>,
+}
+
+/// `command.list` params for a `command_list` call (only the options given).
+fn list_params(p: ListParams) -> Value {
+    let mut v = json!({});
+    if let Some(f) = p.filter {
+        v["filter"] = json!(f);
+    }
+    if let Some(e) = p.enabled_only {
+        v["enabledOnly"] = json!(e);
+    }
+    if let Some(c) = p.compact {
+        v["compact"] = json!(c);
+    }
+    if let Some(l) = p.limit {
+        v["limit"] = json!(l);
+    }
+    v
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct WorkflowParams {
+    /// Recipe name from `workflow_list`, e.g. `vertical-short`.
+    pub recipe: String,
+    /// `prepare` (build and transcribe, answer the transcript), `finish` (cut, caption, check,
+    /// export the open sequence) or `all` (default).
+    #[serde(default)]
+    pub stage: Option<String>,
+    /// Recipe params overriding its defaults (see `workflow_list`), e.g.
+    /// {"media": ["/abs/clip.mp4"], "keep": {"paragraphs": [0, 2]}, "export": {"path": "/abs/out.mp4"}}.
+    #[serde(default)]
+    pub params: Option<Value>,
+    /// Wait for the export the recipe ends with (progress is reported; cancelling stops it).
+    #[serde(default)]
+    pub wait: Option<bool>,
+}
+
+/// `workflow.run` params for a `workflow_run` call: the recipe params with `recipe`, `stage` and `wait`.
+fn workflow_params(p: WorkflowParams) -> Result<Value, String> {
+    let mut v = match p.params {
+        None | Some(Value::Null) => json!({}),
+        Some(o @ Value::Object(_)) => o,
+        Some(_) => return Err("`params` must be an object of recipe params".into()),
+    };
+    v["recipe"] = json!(p.recipe);
+    if let Some(s) = p.stage {
+        v["stage"] = json!(s);
+    }
+    if let Some(w) = p.wait {
+        v["wait"] = json!(w);
+    }
+    Ok(v)
+}
+
+#[derive(Debug, Default, Deserialize, JsonSchema)]
+pub struct TranscriptParams {
+    /// A pause at least this long starts a new paragraph (default 1.5 s).
+    #[serde(default)]
+    pub paragraph_gap_seconds: Option<f64>,
+}
+
+#[derive(Debug, Default, Deserialize, JsonSchema)]
+pub struct QaParams {
+    /// Report when the mix's integrated loudness is more than 1 LU from this (LUFS, e.g. -14).
+    #[serde(default)]
+    pub target_lufs: Option<f64>,
+    /// Report when the sequence is longer than this.
+    #[serde(default)]
+    pub max_seconds: Option<f64>,
+    /// Sample the picture for black frames (default true; false is faster).
+    #[serde(default)]
+    pub video: Option<bool>,
+}
+
+#[derive(Debug, Default, Deserialize, JsonSchema)]
+pub struct InspectParams {
+    /// `summary`: clips as rows `[clip, item, name, startSeconds, endSeconds]` and no effect params,
+    /// a fraction of the size; `full` (default): everything.
+    #[serde(default)]
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -182,8 +268,9 @@ pub struct ControlParams {
     pub params: Option<Value>,
 }
 
+/// Replies are compact JSON: agents parse it as well as pretty JSON, for about a third fewer tokens.
 fn ok_json(v: &Value) -> CallToolResult {
-    CallToolResult::success(vec![Content::text(serde_json::to_string_pretty(v).unwrap_or_default())])
+    CallToolResult::success(vec![Content::text(v.to_string())])
 }
 fn fail(e: impl std::fmt::Display) -> CallToolResult {
     CallToolResult::error(vec![Content::text(e.to_string())])
@@ -339,23 +426,7 @@ impl FilmcraftMcp {
         annotations(read_only_hint = true, destructive_hint = false, idempotent_hint = true, open_world_hint = false)
     )]
     async fn command_list(&self, Parameters(p): Parameters<ListParams>) -> Result<CallToolResult, McpError> {
-        let r = self.run("command.list", json!({})).await.map(|v| {
-            let f = p.filter.unwrap_or_default().to_ascii_lowercase();
-            let only = p.enabled_only.unwrap_or(false);
-            Value::Array(
-                v.as_array()
-                    .cloned()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter(|c| {
-                        let id = c["id"].as_str().unwrap_or("").to_ascii_lowercase();
-                        let label = c["label"].as_str().unwrap_or("").to_ascii_lowercase();
-                        (f.is_empty() || id.contains(&f) || label.contains(&f)) && (!only || c["enabled"].as_bool() == Some(true))
-                    })
-                    .collect(),
-            )
-        });
-        wrap(r)
+        wrap(self.run("command.list", list_params(p)).await)
     }
 
     #[tool(
@@ -395,6 +466,59 @@ impl FilmcraftMcp {
     }
 
     #[tool(
+        title = "List recipes",
+        description = "Recipes: one workflow_run call does a whole edit (import, sequence, reframe, transcript cuts, captions, quality check, export) as one undo step. Lists each recipe with its params and defaults, built-in and the user's.",
+        annotations(read_only_hint = true, destructive_hint = false, idempotent_hint = true, open_world_hint = false)
+    )]
+    async fn workflow_list(&self) -> Result<CallToolResult, McpError> {
+        wrap(self.run("workflow.list", json!({})).await)
+    }
+
+    #[tool(
+        title = "Run a recipe",
+        description = "Run a recipe (see workflow_list) and get a short report. Typical: stage=prepare with params.media → read the transcript paragraphs in the report → stage=finish with params.keep {paragraphs:[…]} and params.export {path} (wait=true to block until the file is written). One undo step (edit.undo takes it back).",
+        annotations(read_only_hint = false, destructive_hint = true, idempotent_hint = false, open_world_hint = false)
+    )]
+    async fn workflow_run(&self, Parameters(p): Parameters<WorkflowParams>) -> Result<CallToolResult, McpError> {
+        match workflow_params(p) {
+            Ok(v) => wrap(self.run("workflow.run", v).await),
+            Err(e) => Ok(fail(e)),
+        }
+    }
+
+    #[tool(
+        title = "Read the transcript",
+        description = "The active sequence's transcript as paragraphs [index, fromWord, toWord, speaker, startSeconds, endSeconds, text]: a whole talk in a few tokens. Pass paragraph indices to workflow_run's keep (or transcript.keep).",
+        annotations(read_only_hint = true, destructive_hint = false, idempotent_hint = true, open_world_hint = false)
+    )]
+    async fn transcript_text(&self, Parameters(p): Parameters<TranscriptParams>) -> Result<CallToolResult, McpError> {
+        let mut v = json!({"words": false});
+        if let Some(g) = p.paragraph_gap_seconds {
+            v["paragraphGapSeconds"] = json!(g);
+        }
+        wrap(self.run("transcript.inspect", v).await)
+    }
+
+    #[tool(
+        title = "Check the edit",
+        description = "Quality check of the active sequence as text: gaps with no picture, flash frames, offline media, loudness and true peak, long silences, black pictures, caption overlaps and reading speed, length. Use it instead of screenshots to verify an edit.",
+        annotations(read_only_hint = true, destructive_hint = false, idempotent_hint = true, open_world_hint = false)
+    )]
+    async fn qa_check(&self, Parameters(p): Parameters<QaParams>) -> Result<CallToolResult, McpError> {
+        let mut v = json!({});
+        if let Some(t) = p.target_lufs {
+            v["targetLufs"] = json!(t);
+        }
+        if let Some(m) = p.max_seconds {
+            v["maxSeconds"] = json!(m);
+        }
+        if let Some(b) = p.video {
+            v["video"] = json!(b);
+        }
+        wrap(self.run("sequence.qa", v).await)
+    }
+
+    #[tool(
         title = "Inspect the document",
         description = "The project as JSON: the tree (as project_inspect) plus the active sequence (as sequence_inspect; null when there is none).",
         annotations(read_only_hint = true, destructive_hint = false, idempotent_hint = true, open_world_hint = false)
@@ -423,11 +547,15 @@ impl FilmcraftMcp {
 
     #[tool(
         title = "Inspect the active sequence",
-        description = "The active sequence as JSON: settings, tracks, clips (ids, start/duration in ticks and frames, effects), transitions, markers, in/out, playhead, selection. 254016000000 ticks = 1 second.",
+        description = "The active sequence as JSON: settings, tracks, clips (ids, start/duration in ticks and frames, effects), transitions, markers, in/out, playhead, selection. 254016000000 ticks = 1 second. Pass detail=\"summary\" for a compact view (clip rows in seconds), enough for most decisions.",
         annotations(read_only_hint = true, destructive_hint = false, idempotent_hint = true, open_world_hint = false)
     )]
-    async fn sequence_inspect(&self) -> Result<CallToolResult, McpError> {
-        wrap(self.run("sequence.inspect", json!({})).await)
+    async fn sequence_inspect(&self, Parameters(p): Parameters<InspectParams>) -> Result<CallToolResult, McpError> {
+        let params = match p.detail {
+            Some(d) => json!({"detail": d}),
+            None => json!({}),
+        };
+        wrap(self.run("sequence.inspect", params).await)
     }
 
     #[tool(
@@ -624,7 +752,14 @@ impl FilmcraftMcp {
     }
 }
 
-const INSTRUCTIONS: &str = "FilmCraft video editor (Premiere Pro-class). Every edit is an engine command: `command_list` to discover ids/params, `command_run` to execute (undoable; `command_batch` runs several). `doc_inspect` (or `project_inspect`/`sequence_inspect`) returns ids you can pass to commands; `render_preview` shows the result. In bridge mode the `ui_*` tools drive the live app: `ui_elements` lists clickable ids, `ui_click`/`ui_drag`/`ui_key` operate it, `ui_screenshot` shows it. Time is in ticks: 254016000000 per second (commands also accept `seconds`, `frame` or `timecode`).";
+const INSTRUCTIONS: &str = "FilmCraft video editor (Premiere Pro-class). Spend few tokens: let FilmCraft do the work. \
+1) `workflow_list`, then `workflow_run` a recipe: stage `prepare` with params.media (absolute paths) builds the sequence and answers the transcript as paragraphs; \
+pick what to keep; stage `finish` with params.keep {paragraphs:[…]} and params.export {path} (wait=true) cuts, captions, checks and exports. One undo step. \
+2) `transcript_text` reads the transcript as paragraphs; `qa_check` verifies an edit as text (use it instead of screenshots); `sequence_inspect` with detail=\"summary\" is the compact timeline. \
+3) For anything else every feature is an engine command: `command_list` with a `filter` and compact=true finds ids/params, `command_run` executes (undoable; `command_batch` runs several). \
+`doc_inspect` (or `project_inspect`/`sequence_inspect`) returns ids you can pass to commands; `render_preview` with a small max_side (e.g. 320) is for an occasional visual check. \
+In bridge mode the `ui_*` tools drive the live app: `ui_elements` lists clickable ids, `ui_click`/`ui_drag`/`ui_key` operate it, `ui_screenshot` shows it. \
+Time is in ticks: 254016000000 per second (commands also accept `seconds`, `frame` or `timecode`).";
 
 /// Resources: the project (as `doc_inspect`) and the command catalog (as `command_list`).
 const DOCUMENT_URI: &str = "filmcraft://document";
@@ -665,6 +800,15 @@ impl ServerHandler for FilmcraftMcp {
                 return Ok(self.run_long(id, params, &context).await.into());
             }
         }
+        // a recipe that ends with an export it waits for: progress and cancellation as above
+        if request.name == "workflow_run"
+            && let Some(a) = &request.arguments
+            && let Ok(p) = serde_json::from_value::<WorkflowParams>(Value::Object(a.clone()))
+            && let Ok(params) = workflow_params(p)
+            && crate::long_job::is_long("workflow.run", &params)
+        {
+            return Ok(self.run_long("workflow.run", params, &context).await.into());
+        }
         let tcc = rmcp::handler::server::tool::ToolCallContext::new(self, request, context);
         self.tool_router.call(tcc).await
     }
@@ -702,7 +846,7 @@ impl ServerHandler for FilmcraftMcp {
             other => return Err(McpError::resource_not_found(format!("resource not found: {other}"), None)),
         }
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        let text = serde_json::to_string_pretty(&v).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        let text = v.to_string();
         let mut r = rmcp::model::ReadResourceResult::new(vec![rmcp::model::ResourceContents::text(text, request.uri).with_mime_type("application/json")]);
         if let Some((ttl, scope)) = cache_hints(&context, 0) {
             r = r.with_ttl_ms(ttl).with_cache_scope(scope);
