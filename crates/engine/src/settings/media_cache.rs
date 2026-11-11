@@ -3,8 +3,8 @@ use super::{Path, PathBuf, Session};
 
 // ------------------------------------------------------------------ media cache
 
-/// The folder FilmCraft makes inside a custom media cache location.
-pub const CUSTOM_CACHE_FOLDER: &str = "FilmCraft Media Cache";
+/// The folder EpsiCut makes inside a custom media cache location.
+pub const CUSTOM_CACHE_FOLDER: &str = "EpsiCut Media Cache";
 
 /// The media cache folder: a folder of its own inside the configured location (as Premiere keeps
 /// its cache in a dedicated subfolder), else `<data dir>/Media Cache`. The cache policy and

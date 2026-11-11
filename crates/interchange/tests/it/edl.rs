@@ -2,9 +2,9 @@
 
 use crate::support;
 
-use filmcraft_interchange::{ExportOptions, Format, ImportOptions, ReelMode, detect, export, export_edl_per_track, import, import_with};
-use filmcraft_project::{ItemKind, MediaRef, Project, Sequence, TrackKind, TransitionAlign};
-use filmcraft_time::{FrameRate, Tick, fields_to_frames};
+use epsicut_interchange::{ExportOptions, Format, ImportOptions, ReelMode, detect, export, export_edl_per_track, import, import_with};
+use epsicut_project::{ItemKind, MediaRef, Project, Sequence, TrackKind, TransitionAlign};
+use epsicut_time::{FrameRate, Tick, fields_to_frames};
 use proptest::prelude::*;
 use support::*;
 
@@ -106,7 +106,7 @@ fn assert_drop_frame_audio_and_markers(s: &Sequence, r: FrameRate) {
     assert_eq!(s.markers.len(), 1);
     assert_eq!(s.markers[0].name, "gull lands");
     assert_eq!(s.markers[0].start, f(r, 285));
-    assert_eq!(s.markers[0].color, filmcraft_project::Label::Rose);
+    assert_eq!(s.markers[0].color, epsicut_project::Label::Rose);
 }
 
 #[test]
@@ -182,8 +182,8 @@ FCM: NON-DROP FRAME
     assert!(rep.mentions("key"), "{rep}");
 }
 
-fn demo_project(rate: FrameRate, df: bool) -> (filmcraft_project::Project, filmcraft_project::ItemId) {
-    let mut p = filmcraft_project::Project::new("P");
+fn demo_project(rate: FrameRate, df: bool) -> (epsicut_project::Project, epsicut_project::ItemId) {
+    let mut p = epsicut_project::Project::new("P");
     let a = media(&mut p, "/media/Beach Day.mov", true, true, rate);
     let b = media(&mut p, "/media/city.mp4", true, true, rate);
     let m = media(&mut p, "/media/score.wav", false, true, rate);
@@ -262,7 +262,7 @@ fn reel_modes_and_per_track() {
     assert!(!v2.contains("SCORE"), "audio only in the first list");
     let _ = rep;
     // long file names are cut to 8 characters, distinct media keep distinct reels
-    let mut q = filmcraft_project::Project::new("q");
+    let mut q = epsicut_project::Project::new("q");
     let m1 = media(&mut q, "/x/interview_cam_a.mov", true, false, FrameRate::FPS_24);
     let m2 = media(&mut q, "/x/interview_cam_b.mov", true, false, FrameRate::FPS_24);
     let sq = sequence(&mut q, "S", FrameRate::FPS_24, false);
@@ -291,7 +291,7 @@ fn report_names_the_video_tracks_an_edl_leaves_out() {
 #[test]
 fn drop_frame_roundtrip_59_94() {
     let r = FrameRate::FPS_59_94;
-    let mut p = filmcraft_project::Project::new("P");
+    let mut p = epsicut_project::Project::new("P");
     let a = media(&mut p, "/m/a.mov", true, false, r);
     let s = sequence(&mut p, "S", r, true);
     p.sequence_mut(s).unwrap().start_timecode = fields_to_frames(1, 0, 0, 0, r, true);
@@ -313,7 +313,7 @@ fn drop_frame_roundtrip_59_94() {
 #[test]
 fn freeze_reverse_and_fade_out() {
     let r = FrameRate::FPS_24;
-    let mut p = filmcraft_project::Project::new("P");
+    let mut p = epsicut_project::Project::new("P");
     let a = media(&mut p, "/m/a.mov", true, false, r);
     let s = sequence(&mut p, "S", r, false);
     let c1 = clip(&mut p, s, TrackKind::Video, 0, a, 0..48, 100);
@@ -388,11 +388,11 @@ proptest! {
     fn edl_roundtrip(clips in prop::collection::vec(gen_clip(), 1..14), ri in 0usize..4) {
         let rate = [FrameRate::FPS_24, FrameRate::FPS_25, FrameRate::FPS_29_97, FrameRate::FPS_23_976][ri];
         let df = rate == FrameRate::FPS_29_97;
-        let mut p = filmcraft_project::Project::new("P");
+        let mut p = epsicut_project::Project::new("P");
         let ms = [media(&mut p, "/a/one.mov", true, true, rate), media(&mut p, "/a/two.mov", true, true, rate), media(&mut p, "/b/three.mxf", true, true, rate)];
         let s = sequence(&mut p, "Seq", rate, df);
         let mut t = 0i64;
-        let mut prev: Option<(filmcraft_project::ClipId, i64)> = None;
+        let mut prev: Option<(epsicut_project::ClipId, i64)> = None;
         for g in &clips {
             t += g.gap;
             let v = clip(&mut p, s, TrackKind::Video, 0, ms[g.media], t..t + (g.dur), g.src);
@@ -436,7 +436,7 @@ proptest! {
 #[test]
 fn a_nested_sequence_is_one_event_from_reel_ax() {
     let rate = FrameRate::FPS_24;
-    let mut p = filmcraft_project::Project::new("n");
+    let mut p = epsicut_project::Project::new("n");
     let a = media(&mut p, "/media/a.mov", true, true, rate);
     let inner = sequence(&mut p, "Nested Sequence 02", rate, false);
     clip(&mut p, inner, TrackKind::Video, 0, a, 0..144, 0);

@@ -5,14 +5,14 @@
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_engine::project::{ItemKind, Label};
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_engine::project::{ItemKind, Label};
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
 }
 
@@ -21,7 +21,7 @@ impl Driver {
         let mut s = Session::default();
         s.execute("file.openDemoProject", json!({})).unwrap();
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(s).with_control(rx);
+        let app = EpsicutApp::new(s).with_control(rx);
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000).build_eframe(move |_cc| app);
         let mut d = Driver { harness, tx };
         d.frames(4);
@@ -77,11 +77,11 @@ impl Driver {
         v.as_array().unwrap().iter().any(|e| e["id"] == json!(id))
     }
 
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
 
-    fn v1(&mut self, i: usize) -> filmcraft_engine::project::TrackItem {
+    fn v1(&mut self, i: usize) -> epsicut_engine::project::TrackItem {
         self.app().session.active_sequence().unwrap().video_tracks[0].items[i].clone()
     }
 
@@ -205,7 +205,7 @@ fn make_subclip_frame_hold_and_audio_channel_dialogs() {
     let mut d = Driver::new();
     let ocean = d.item_named("Ocean_Sunset.mp4");
     d.exec("source.open", json!({"item": ocean}));
-    d.exec("project.setMarks", json!({"item": ocean, "in": filmcraft_time::FrameRate::FPS_23_976.tick_of(24).0}));
+    d.exec("project.setMarks", json!({"item": ocean, "in": epsicut_time::FrameRate::FPS_23_976.tick_of(24).0}));
     d.menu("clip.makeSubclip");
     assert_eq!(d.app().ui.clip_dialog.as_ref().unwrap().params["startFrame"], 24);
     for id in ["makeSubclip.name", "makeSubclip.startFrame", "makeSubclip.endFrame", "makeSubclip.restrictTrims", "makeSubclip.ok"] {
@@ -215,12 +215,12 @@ fn make_subclip_frame_hold_and_audio_channel_dialogs() {
     d.click("makeSubclip.ok");
     let sub = d.app().session.project.items.values().find(|i| i.name == "Waves").cloned().expect("subclip made");
     let ItemKind::Subclip { range, .. } = sub.kind else { panic!() };
-    assert_eq!(range.duration, filmcraft_time::FrameRate::FPS_23_976.tick_of(24));
+    assert_eq!(range.duration, epsicut_time::FrameRate::FPS_23_976.tick_of(24));
 
     // Frame Hold Options on the selected clip: Hold On ▸ Playhead
     let c = d.v1(1);
     d.exec("timeline.select", json!({"clips": [c.id.0]}));
-    d.exec("playhead.set", json!({"time": (c.start + filmcraft_time::FrameRate::FPS_23_976.tick_of(5)).0}));
+    d.exec("playhead.set", json!({"time": (c.start + epsicut_time::FrameRate::FPS_23_976.tick_of(5)).0}));
     d.menu("clip.frameHoldOptions");
     assert_eq!(d.app().ui.clip_dialog.as_ref().unwrap().params["enabled"], false, "Hold On starts unticked for a clip without a hold");
     d.click("frameHold.enabled");
@@ -228,7 +228,7 @@ fn make_subclip_frame_hold_and_audio_channel_dialogs() {
     d.click("frameHold.holdFilters");
     d.click("frameHold.ok");
     let got = d.v1(1);
-    assert_eq!(got.frame_hold, Some(c.source_in + filmcraft_time::FrameRate::FPS_23_976.tick_of(5)));
+    assert_eq!(got.frame_hold, Some(c.source_in + epsicut_time::FrameRate::FPS_23_976.tick_of(5)));
     assert!(got.hold_filters);
 
     // Modify ▸ Audio Channels (Shift+G) on a project item: Mono makes one clip per channel
@@ -238,7 +238,7 @@ fn make_subclip_frame_hold_and_audio_channel_dialogs() {
     d.click("audioChannels.format.mono");
     assert_eq!(d.app().ui.clip_dialog.as_ref().unwrap().params["clips"], json!([[0], [1]]));
     d.click("audioChannels.ok");
-    let m = d.app().session.project.item(filmcraft_engine::project::ItemId(ocean)).unwrap().as_media().unwrap().interpret.audio_channels.clone().unwrap();
+    let m = d.app().session.project.item(epsicut_engine::project::ItemId(ocean)).unwrap().as_media().unwrap().interpret.audio_channels.clone().unwrap();
     assert_eq!(m.clips, vec![vec![0], vec![1]]);
 }
 
@@ -271,7 +271,7 @@ fn close_project_prompt_and_nested_menus() {
 #[test]
 fn subclip_in_the_source_monitor_and_project_menu() {
     let mut d = Driver::new();
-    let r24 = filmcraft_time::FrameRate::FPS_23_976;
+    let r24 = epsicut_time::FrameRate::FPS_23_976;
     let ocean = d.item_named("Ocean_Sunset.mp4");
     d.exec("project.setMarks", json!({"item": ocean, "in": r24.tick_of(24).0, "out": r24.tick_of(71).0}));
     d.exec("project.select", json!({"items": [ocean]}));
@@ -294,7 +294,7 @@ fn subclip_in_the_source_monitor_and_project_menu() {
     d.exec("project.select", json!({"items": [sub]}));
     d.frames(4);
     // the subclip is made in its master clip's bin: expand it
-    let bin = d.app().session.project.root.parent_of(filmcraft_engine::project::ItemId(sub));
+    let bin = d.app().session.project.root.parent_of(epsicut_engine::project::ItemId(sub));
     if let Some(b) = bin.filter(|b| *b != d.app().session.project.root.id) {
         d.click(&format!("project.bin.{}.toggle", b.0));
         d.frames(3);
@@ -310,7 +310,7 @@ fn subclip_in_the_source_monitor_and_project_menu() {
         d.ok("ui.click", json!({"id": row, "button": "right"}));
         d.frames(3);
         d.click("project.itemMenu.convertToMaster");
-        assert!(d.app().session.project.item(filmcraft_engine::project::ItemId(sub)).unwrap().as_media().is_some(), "converted");
+        assert!(d.app().session.project.item(epsicut_engine::project::ItemId(sub)).unwrap().as_media().is_some(), "converted");
     } else {
         panic!("subclip row not shown: {:?}", d.ok("ui.elements", json!({"prefix": "project.item."})));
     }
@@ -343,7 +343,7 @@ fn speed_duration_from_the_clip_menu_opens_the_dialog() {
     d.click("speedDuration.ok");
     let got = d.v1(0);
     assert_eq!(got.speed, 2.0);
-    assert_eq!(got.time_interpolation, filmcraft_project::TimeInterpolation::FrameBlending);
+    assert_eq!(got.time_interpolation, epsicut_project::TimeInterpolation::FrameBlending);
 }
 
 /// The Properties panel's speed footer opens Clip ▸ Speed/Duration… on click instead of doing
@@ -398,7 +398,7 @@ fn speed_duration_reopens_with_the_clips_reverse_state() {
 #[test]
 fn the_clip_menu_label_choices_use_the_user_names() {
     let mut d = Driver::new();
-    let key = filmcraft_engine::settings::label_id(Label::Iris);
+    let key = epsicut_engine::settings::label_id(Label::Iris);
     d.app().session.prefs.labels.colors.get_mut(&key).unwrap().name = "Interviews".into();
     let c = d.v1(0);
     d.exec("timeline.select", json!({"clips": [c.id.0]}));
@@ -638,10 +638,10 @@ fn clip_context_menu_adds_a_marker_at_the_playhead_with_one_undo() {
 #[test]
 fn create_proxies_from_the_item_menu_takes_the_whole_selection() {
     let mut d = Driver::new();
-    let wav: std::sync::Arc<[u8]> = filmcraft_engine::previews::write_wav_f32(&[0.0; 9_600], 48_000).into();
+    let wav: std::sync::Arc<[u8]> = epsicut_engine::previews::write_wav_f32(&[0.0; 9_600], 48_000).into();
     let mut items = Vec::new();
     for name in ["/takes/a.wav", "/takes/b.wav", "/takes/c.wav"] {
-        items.push(filmcraft_engine::commands::import_bytes(&mut d.app().session, name, wav.clone(), None).unwrap().0);
+        items.push(epsicut_engine::commands::import_bytes(&mut d.app().session, name, wav.clone(), None).unwrap().0);
     }
     d.ok("ui.panel.show", json!({"panel": "Project"}));
     d.exec("project.view.set", json!({"view": "list"}));
@@ -698,7 +698,7 @@ fn clip_rename_menu_opens_a_rename_dialog() {
         let a = q.audio_tracks.iter().flat_map(|t| &t.items).find(|a| a.link.is_some() && a.link == v.link).unwrap().clone();
         (v, a)
     };
-    let name = |d: &mut Driver, c: filmcraft_engine::project::ClipId| d.app().session.active_sequence().unwrap().find_item(c).unwrap().1.name.clone();
+    let name = |d: &mut Driver, c: epsicut_engine::project::ClipId| d.app().session.active_sequence().unwrap().find_item(c).unwrap().1.name.clone();
     // nothing selected: an explanation, no dialog
     d.exec("edit.deselectAll", json!({}));
     d.ok("ui.set", json!({"focused": "Timeline"}));
@@ -749,7 +749,7 @@ fn duration_text_edits_speed_and_rejects_invalid_input() {
         assert!(d.app().ui.clip_dialog.is_some(), "invalid duration must not apply");
         assert_eq!(d.v1(0).duration, original.duration);
     }
-    type_duration(&mut d, &filmcraft_time::format_timecode_frames(rate.frame_at(target), rate, false));
+    type_duration(&mut d, &epsicut_time::format_timecode_frames(rate.frame_at(target), rate, false));
     let speed = d.app().ui.clip_dialog.as_ref().unwrap().params["speed"].as_f64().unwrap();
     assert!((speed - original.duration.0 as f64 * 100.0 / target.0 as f64).abs() < 1e-8);
     assert_eq!(d.v1(0).duration, original.duration, "typing only edits the draft");
@@ -770,7 +770,7 @@ fn duration_text_edits_speed_and_rejects_invalid_input() {
     d.app().ui.clip_dialog.as_mut().unwrap().params["duration"] = json!("00:00:01:00");
     d.frames(3);
     d.click("speedDuration.ok");
-    assert!((d.v1(0).duration.0 - rate.tick_of(filmcraft_time::parse_timecode("00:00:01:00", rate, false, 0).unwrap()).0).abs() <= 1);
+    assert!((d.v1(0).duration.0 - rate.tick_of(epsicut_time::parse_timecode("00:00:01:00", rate, false, 0).unwrap()).0).abs() <= 1);
 }
 
 /// Speed edits retain the command's one-frame minimum without changing the requested speed.

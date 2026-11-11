@@ -2,20 +2,20 @@
 //! (search, favourites, save, apply), the export queue panel (send, reorder, cancel, start, retry),
 //! the Export button and the header's Quick Export popup.
 //!
-//! Set `FILMCRAFT_UI_SNAPSHOT_DIR=<dir>` to also render the window offscreen with wgpu and write
+//! Set `EPSICUT_UI_SNAPSHOT_DIR=<dir>` to also render the window offscreen with wgpu and write
 //! `export-*.png` there; without it no GPU is needed.
 
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     snapshots: Option<PathBuf>,
     dir: PathBuf,
@@ -30,8 +30,8 @@ impl Driver {
         s.execute("file.openDemoProject", json!({})).unwrap();
         s.export_presets.set_dir(&dir.join("data"));
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(s).with_control(rx);
-        let snapshots = std::env::var_os("FILMCRAFT_UI_SNAPSHOT_DIR").map(PathBuf::from);
+        let app = EpsicutApp::new(s).with_control(rx);
+        let snapshots = std::env::var_os("EPSICUT_UI_SNAPSHOT_DIR").map(PathBuf::from);
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000);
         if snapshots.is_some() {
             b = b.wgpu();
@@ -88,7 +88,7 @@ impl Driver {
         v.as_array().unwrap().iter().any(|e| e["id"] == json!(id))
     }
 
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
 
@@ -180,7 +180,7 @@ fn export_mode_settings_and_summary() {
     }
     // the default preset and the file name from the sequence
     let st = d.ok("ui.inspect", json!({}))["ui"]["export"].clone();
-    assert_eq!(st["preset"], filmcraft_engine::export::presets::DEFAULT_PRESET);
+    assert_eq!(st["preset"], epsicut_engine::export::presets::DEFAULT_PRESET);
     assert!(!st["fileName"].as_str().unwrap().is_empty());
     // a 4K preset shows in the summary
     d.ok("ui.set", json!({"export": {"preset": "YouTube 2160p 4K Ultra HD"}}));
@@ -205,7 +205,7 @@ fn export_mode_settings_and_summary() {
 
 #[test]
 fn gif_export_exposes_binary_alpha_option() {
-    use filmcraft_engine::export::Format;
+    use epsicut_engine::export::Format;
     let mut d = Driver::new("gif-alpha");
     d.ok("ui.set", json!({"mode": "export", "export": {"settings": {"format": "gif"}}}));
     d.frames(4);
@@ -226,8 +226,8 @@ fn the_status_bar_and_the_queue_show_the_time_left() {
     use std::sync::atomic::Ordering;
     use std::time::Duration;
 
-    use filmcraft_engine::Job;
-    use filmcraft_engine::export_tools::QueueStatus;
+    use epsicut_engine::Job;
+    use epsicut_engine::export_tools::QueueStatus;
     let mut d = Driver::new("eta");
     d.ok("ui.set", json!({"mode": "export"}));
     d.frames(3);
@@ -263,7 +263,7 @@ fn the_status_bar_and_the_queue_show_the_time_left() {
 
 #[test]
 fn h265_shows_the_h264_family_controls_without_the_h264_only_ones() {
-    use filmcraft_engine::export::{ExportSettings, Format};
+    use epsicut_engine::export::{ExportSettings, Format};
     let mut d = Driver::new("h265");
     d.ok("ui.set", json!({"mode": "export"}));
     d.frames(4);
@@ -292,7 +292,7 @@ fn h265_shows_the_h264_family_controls_without_the_h264_only_ones() {
     assert!(sum.contains("HEVC Main") && sum.contains("Target 20.00 Mbps"), "{sum}");
     // headless there is no hardware encoder: H.265 says so where the format is chosen (a preset
     // can still name it), and its entry in the Format list is greyed out with the same reason
-    assert!(!filmcraft_engine::export::available(Format::Hevc), "no NVENC / VideoToolbox probe is registered here");
+    assert!(!epsicut_engine::export::available(Format::Hevc), "no NVENC / VideoToolbox probe is registered here");
     let why = d.ok("ui.elements", json!({"prefix": "export.format.unavailable"}))[0]["label"].as_str().unwrap().to_string();
     assert!(why.contains("hardware encoder") && why.contains("H.265") && why.contains("H.264 or ProRes"), "{why}");
     d.click("export.format");
@@ -340,7 +340,7 @@ fn preset_manager_search_favourite_save_apply() {
     d.click("presetManager.ok");
     assert!(d.app().ui.export.manager.is_none(), "closed on OK");
     assert_eq!(d.app().ui.export.preset, "Apple ProRes 422 LT");
-    assert_eq!(d.app().ui.export.settings.format, filmcraft_engine::export::Format::ProRes);
+    assert_eq!(d.app().ui.export.settings.format, epsicut_engine::export::Format::ProRes);
     assert_eq!(d.app().ui.export.settings.prores_profile, "lt");
     // delete the user preset through the manager
     d.click("export.preset.more");
@@ -500,7 +500,7 @@ fn export_mode_file_name_can_be_emptied_and_retyped() {
 /// 32-bit integer.
 #[test]
 fn sample_size_lists_every_size_and_greys_out_what_the_format_cannot_store() {
-    use filmcraft_engine::export::{AudioCodec, ExportSettings, Format, SampleFormat};
+    use epsicut_engine::export::{AudioCodec, ExportSettings, Format, SampleFormat};
     let mut d = Driver::new("sample-size");
     d.ok("ui.set", json!({"mode": "export"}));
     d.frames(4);
@@ -565,7 +565,7 @@ fn sample_size_lists_every_size_and_greys_out_what_the_format_cannot_store() {
 
 #[test]
 fn frame_rate_offers_the_high_rates_a_sequence_can_have() {
-    use filmcraft_time::FrameRate;
+    use epsicut_time::FrameRate;
     let mut d = Driver::new("frame-rate");
     d.ok("ui.set", json!({"mode": "export"}));
     d.frames(4);
@@ -594,9 +594,9 @@ fn export_button_locks_and_cancels_during_active_export() {
     let loc = d.dir.to_string_lossy().to_string();
     d.ok("ui.set", json!({"export": {"preset": "Waveform Audio 48 kHz 24-bit", "location": loc, "fileName": "lock_test", "range": "custom", "customStart": 0.0, "customEnd": 20.0}}));
     d.frames(2);
-    let prog = std::sync::Arc::new(filmcraft_export::Progress::default());
+    let prog = std::sync::Arc::new(epsicut_export::Progress::default());
     let res = std::sync::Arc::new(std::sync::Mutex::new(None));
-    let job = filmcraft_engine::Job { id: 999, label: "Export lock_test.wav".into(), progress: prog.clone(), result: res.clone() };
+    let job = epsicut_engine::Job { id: 999, label: "Export lock_test.wav".into(), progress: prog.clone(), result: res.clone() };
     d.app().session.jobs.push(job);
     d.frames(2);
 

@@ -2,7 +2,7 @@
 //! Hand-built (no ffmpeg): a reduced still-picture sequence header plus a lossless key frame whose
 //! tiles are one zero byte each.
 
-use filmcraft_av1::{Decoder, Error};
+use epsicut_av1::{Decoder, Error};
 
 #[derive(Default)]
 struct Bits {

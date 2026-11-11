@@ -2,19 +2,19 @@
 //! whose frame size, frame rate or pixel aspect ratio differ (a 120 fps phone or game capture in a
 //! 23.976 fps sequence) asks whether the sequence takes the clip's settings, for a drag or a file
 //! dropped onto the Timeline and for Insert / Overwrite. The answer runs the edit with
-//! `matchSequence` ([`filmcraft_engine::commands::clip_mismatch`]); Escape puts nothing in.
+//! `matchSequence` ([`epsicut_engine::commands::clip_mismatch`]); Escape puts nothing in.
 //!
 //! Automation ids: `clipMismatch.change`, `clipMismatch.keep`.
 
 use egui::{Frame, Margin, RichText};
-use filmcraft_engine::project::{ItemId, SequenceSettings};
+use epsicut_engine::project::{ItemId, SequenceSettings};
 use serde_json::{Value, json};
 
-use crate::{Dialog, FilmcraftApp};
+use crate::{Dialog, EpsicutApp};
 
 /// The clip an edit puts in the sequence: `timeline.place`'s `item` (or the first of its `items`),
 /// the Source monitor's clip for Insert and Overwrite.
-fn clip_of(app: &FilmcraftApp, command: &str, params: &Value) -> Option<ItemId> {
+fn clip_of(app: &EpsicutApp, command: &str, params: &Value) -> Option<ItemId> {
     match command {
         "timeline.place" => params.get("item").and_then(Value::as_u64).or_else(|| params.get("items")?.as_array()?.first()?.as_u64()).map(ItemId),
         "source.insert" | "source.overwrite" => app.session.state.source_item,
@@ -25,12 +25,12 @@ fn clip_of(app: &FilmcraftApp, command: &str, params: &Value) -> Option<ItemId> 
 /// Opens the warning instead of running `command` when it would put a first clip in an empty
 /// sequence that doesn't match it; true when it did. Parameters that already answer it
 /// (`matchSequence`) and the setting turned off run the edit as it is.
-pub(crate) fn ask(app: &mut FilmcraftApp, command: &str, params: &Value) -> bool {
+pub(crate) fn ask(app: &mut EpsicutApp, command: &str, params: &Value) -> bool {
     if !app.session.prefs.timeline.clip_mismatch_warning || params.get("matchSequence").is_some() {
         return false;
     }
     let Some(item) = clip_of(app, command, params) else { return false };
-    if filmcraft_engine::commands::clip_mismatch(&app.session, item).is_none() {
+    if epsicut_engine::commands::clip_mismatch(&app.session, item).is_none() {
         return false;
     }
     app.clip_mismatch = Some((command.to_string(), params.clone()));
@@ -39,7 +39,7 @@ pub(crate) fn ask(app: &mut FilmcraftApp, command: &str, params: &Value) -> bool
 }
 
 /// Runs an edit dropped onto the Timeline, asking first when [`ask`] does.
-pub(crate) fn execute(app: &mut FilmcraftApp, command: &str, params: Value) -> Result<Value, String> {
+pub(crate) fn execute(app: &mut EpsicutApp, command: &str, params: Value) -> Result<Value, String> {
     if ask(app, command, &params) {
         return Ok(json!({"dialog": "clipMismatch"}));
     }
@@ -54,10 +54,10 @@ fn describe(st: &SequenceSettings) -> String {
 }
 
 /// The warning; returns whether it stays open.
-pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
+pub fn show(app: &mut EpsicutApp, ctx: &egui::Context) -> bool {
     let Some((command, params)) = app.clip_mismatch.clone() else { return false };
     // the sequence or the clip may have changed under it (an undo, another sequence opened)
-    let clip = clip_of(app, &command, &params).and_then(|i| filmcraft_engine::commands::clip_mismatch(&app.session, i));
+    let clip = clip_of(app, &command, &params).and_then(|i| epsicut_engine::commands::clip_mismatch(&app.session, i));
     let (Some(clip), Some(seq)) = (clip, app.session.active_sequence().map(|q| q.settings.clone())) else {
         app.clip_mismatch = None;
         return false;

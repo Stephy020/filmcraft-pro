@@ -8,7 +8,7 @@ use std::fs;
 use std::io::Cursor;
 
 use common::*;
-use filmcraft_isobmff::{Brand, CodecConfig, Mp4Writer, TrackConfig, WriteSample, WriterOptions};
+use epsicut_isobmff::{Brand, CodecConfig, Mp4Writer, TrackConfig, WriteSample, WriterOptions};
 
 const RATE: u32 = 48_000;
 
@@ -32,8 +32,8 @@ fn test_file(ff: &std::path::Path, codec: &str) -> std::path::PathBuf {
 
 fn rewrap(path: &std::path::Path, codec: &str) -> Vec<u8> {
     let data = fs::read(path).unwrap();
-    let file = filmcraft_isobmff::open(data.as_slice()).unwrap();
-    let track = file.tracks.iter().find(|t| t.kind == filmcraft_isobmff::TrackKind::Audio).unwrap();
+    let file = epsicut_isobmff::open(data.as_slice()).unwrap();
+    let track = file.tracks.iter().find(|t| t.kind == epsicut_isobmff::TrackKind::Audio).unwrap();
     let mut entry = track.entries[0].clone();
     entry.audio.as_mut().unwrap().channels = 2;
     if codec == "fallback"
@@ -52,11 +52,11 @@ fn rewrap(path: &std::path::Path, codec: &str) -> Vec<u8> {
 
 #[test]
 fn ac3_and_eac3_mp4_report_and_decode_all_six_channels() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     for codec in ["ac3", "eac3"] {
         let path = test_file(&ff, codec);
         let data = bytes(&path);
-        let source = filmcraft_codecs::open_bytes(&format!("{codec}.mp4"), data.clone()).unwrap();
+        let source = epsicut_codecs::open_bytes(&format!("{codec}.mp4"), data.clone()).unwrap();
         let info = source.info().audio().unwrap();
         assert_eq!(info.sample_rate, RATE, "{codec} sample rate");
         assert_eq!(info.channels, 6, "{codec} channels");
@@ -80,16 +80,16 @@ fn ac3_and_eac3_mp4_report_and_decode_all_six_channels() {
 
 #[test]
 fn descriptor_layout_survives_the_mandated_stereo_entry() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     let out = rewrap(&test_file(&ff, "ac3"), "ac3");
-    let src = filmcraft_codecs::open_bytes("rewrapped-ac3.mp4", out.into()).unwrap();
+    let src = epsicut_codecs::open_bytes("rewrapped-ac3.mp4", out.into()).unwrap();
     assert_eq!(src.info().audio().unwrap().channels, 6);
 }
 
 #[test]
 fn missing_descriptor_falls_back_to_a_primary_frame() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     let out = rewrap(&test_file(&ff, "ac3"), "fallback");
-    let src = filmcraft_codecs::open_bytes("fallback-ac3.mp4", out.into()).unwrap();
+    let src = epsicut_codecs::open_bytes("fallback-ac3.mp4", out.into()).unwrap();
     assert_eq!(src.info().audio().unwrap().channels, 6);
 }

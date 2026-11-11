@@ -6,10 +6,10 @@
 //! `progress.cancel.<id>`, `progress.showFinished`. State: `ui.panels.events` / `ui.panels.progress`.
 
 use egui::{Align2, Color32, Rect, RichText, Sense, Stroke, pos2, vec2};
-use filmcraft_engine::panels::{Level, LogEntry};
+use epsicut_engine::panels::{Level, LogEntry};
 use serde_json::json;
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::theme::Tokens;
 
 fn level_color(l: Level) -> Color32 {
@@ -49,7 +49,7 @@ fn ago(ms: u64) -> String {
     }
 }
 
-pub fn events(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn events(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let st = app.ui.panels.events.clone();
     let min = Level::from_name(&st.level).unwrap_or(Level::Info);
@@ -144,7 +144,7 @@ pub fn events(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     }
 }
 
-pub fn progress(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn progress(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let show_finished = app.ui.panels.progress.show_finished;
     let jobs: Vec<serde_json::Value> = app.session.jobs.iter().rev().map(|j| j.to_json()).collect();
@@ -240,14 +240,14 @@ mod tests {
     /// its time left shuffled the line.
     #[test]
     fn a_running_jobs_row_changes_once_a_second() {
-        let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
-        let job = filmcraft_engine::Job { id: 7, label: "Proxies".into(), progress: Default::default(), result: Default::default() };
+        let mut app = EpsicutApp::new(epsicut_engine::Session::default());
+        let job = epsicut_engine::Job { id: 7, label: "Proxies".into(), progress: Default::default(), result: Default::default() };
         let p = job.progress.clone();
         p.total.store(100, Ordering::Relaxed);
         p.done.store(10, Ordering::Relaxed);
         app.session.jobs.push(job);
         let ctx = egui::Context::default();
-        let draw = |app: &mut FilmcraftApp, now: f64| {
+        let draw = |app: &mut EpsicutApp, now: f64| {
             app.set_now_for_test(now);
             app.auto.begin_frame();
             ctx.run_ui(egui::RawInput::default(), |ui| {

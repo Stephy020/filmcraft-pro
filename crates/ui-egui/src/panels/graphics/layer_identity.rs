@@ -1,6 +1,6 @@
-use super::{ClipId, EffectInstance, FilmcraftApp, LayerView, ParamValue, Session, Tick, graphic, layer_display_name, layer_indices};
+use super::{ClipId, EffectInstance, EpsicutApp, LayerView, ParamValue, Session, Tick, graphic, layer_display_name, layer_indices};
 
-pub(super) fn layer_display_name_view(app: &FilmcraftApp, v: &LayerView) -> String {
+pub(super) fn layer_display_name_view(app: &EpsicutApp, v: &LayerView) -> String {
     app.session
         .active_sequence()
         .and_then(|q| q.find_item(v.clip))
@@ -256,8 +256,8 @@ fn layout_fingerprint(effect: &EffectInstance, t: Tick) -> u64 {
             Some(pin) => {
                 hash_bytes(&mut h, &[1]);
                 match pin.to {
-                    filmcraft_project::graphic_design::PinTarget::Frame => hash_bytes(&mut h, b"frame"),
-                    filmcraft_project::graphic_design::PinTarget::Layer(uid) => {
+                    epsicut_project::graphic_design::PinTarget::Frame => hash_bytes(&mut h, b"frame"),
+                    epsicut_project::graphic_design::PinTarget::Layer(uid) => {
                         hash_bytes(&mut h, b"layer");
                         hash_bytes(&mut h, &uid.to_le_bytes());
                     }

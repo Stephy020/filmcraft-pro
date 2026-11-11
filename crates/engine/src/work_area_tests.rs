@@ -2,7 +2,7 @@
 //! In / Out Point (Alt+[ / Alt+] in the Timeline) move its ends to the playhead, `sequence.setWorkArea`
 //! sets both ends (a drag of the bar), and Export ▸ Range ▸ Work Area exports it.
 
-use filmcraft_time::{Tick, TimeRange};
+use epsicut_time::{Tick, TimeRange};
 use serde_json::json;
 
 use crate::Session;

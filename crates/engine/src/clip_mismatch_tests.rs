@@ -1,9 +1,9 @@
 //! Settings ▸ Timeline ▸ Show Clip Mismatch Warning dialog: [`crate::commands::clip_mismatch`] and
 //! `matchSequence` on `timeline.place`, `source.insert` and `source.overwrite`.
 
-use filmcraft_media::MediaKind;
-use filmcraft_project::{ItemId, ItemKind};
-use filmcraft_time::FrameRate;
+use epsicut_media::MediaKind;
+use epsicut_project::{ItemId, ItemKind};
+use epsicut_time::FrameRate;
 use serde_json::json;
 
 use crate::Session;

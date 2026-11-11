@@ -2,8 +2,8 @@
 
 use crate::common;
 
-use filmcraft_bitstream::annexb_nals;
-use filmcraft_h264::Decoder;
+use epsicut_bitstream::annexb_nals;
+use epsicut_h264::Decoder;
 
 /// Build an avcC record and length-prefixed samples from an Annex-B stream.
 fn to_avcc(data: &[u8]) -> (Vec<u8>, Vec<Vec<u8>>) {
@@ -123,7 +123,7 @@ fn is_idr(au: &[u8]) -> bool {
     annexb_nals(au).iter().any(|n| n.first().is_some_and(|h| h & 0x1f == 5))
 }
 
-fn decode_all(dec: &mut Decoder, aus: &[&[u8]], first_pts: usize) -> Vec<filmcraft_h264::Picture> {
+fn decode_all(dec: &mut Decoder, aus: &[&[u8]], first_pts: usize) -> Vec<epsicut_h264::Picture> {
     let mut pics = Vec::new();
     for (i, au) in aus.iter().enumerate() {
         pics.extend(dec.decode(au, (first_pts + i) as i64).unwrap());
@@ -133,7 +133,7 @@ fn decode_all(dec: &mut Decoder, aus: &[&[u8]], first_pts: usize) -> Vec<filmcra
     pics
 }
 
-fn assert_same(a: &[filmcraft_h264::Picture], b: &[filmcraft_h264::Picture]) {
+fn assert_same(a: &[epsicut_h264::Picture], b: &[epsicut_h264::Picture]) {
     assert_eq!(a.len(), b.len());
     for (p, q) in a.iter().zip(b) {
         assert_eq!((p.pts, p.poc, p.key, p.width, p.height), (q.pts, q.poc, q.key, q.width, q.height));

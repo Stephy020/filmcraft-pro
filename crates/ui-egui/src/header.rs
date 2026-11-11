@@ -5,7 +5,7 @@
 
 use egui::{Color32, Rect, Sense, Stroke, pos2, vec2};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::icons::{self, Icon};
 use crate::state::Mode;
 use crate::theme::Tokens;
@@ -16,7 +16,7 @@ pub const HEIGHT: f32 = 38.0;
 /// Draws the header bar in `rect` and handles its clicks: Home, the mode tabs, the workspace name
 /// and its menu (the workspaces, then Reset to Saved Layout, Save Changes to this Workspace, Save as
 /// New Workspace… and Edit Workspaces…), Discord and the quick actions.
-pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().clone();
     p.rect_filled(rect, 0.0, t.header_bg);
@@ -75,7 +75,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     let title = if app.session.is_dirty() { tlf!("{name} - Edited", name = app.session.project.name) } else { app.session.project.name.clone() };
     // Right cluster: icons at ~38 pt pitch, then workspace name in caps.
     let mut rx = rect.max.x - 14.0;
-    let mut btn = |ui: &mut egui::Ui, icon: Icon, id: &str, tip: &str, app: &mut FilmcraftApp| -> egui::Response {
+    let mut btn = |ui: &mut egui::Ui, icon: Icon, id: &str, tip: &str, app: &mut EpsicutApp| -> egui::Response {
         let r = Rect::from_center_size(pos2(rx - 14.0, rect.center().y), vec2(28.0, 28.0));
         rx -= 38.0;
         let resp = ui.interact(r, egui::Id::unique(("hdr", id)), Sense::click()).on_hover_text(tip);
@@ -126,20 +126,11 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     let wresp = ui.interact(wr, egui::Id::unique("hdr-ws-name"), Sense::click());
     app.auto.add("header.workspaceName", wr, &ws);
     p.galley_with_override_text_color(pos2(wr.min.x + 4.0, rect.center().y - wg.size().y / 2.0), wg, if wresp.hovered() { t.text } else { t.text_dim });
-    // Community: a labelled Discord button, always one click away.
+    // The document title, centred in the room between the menus and the workspace name.
     {
-        let label = "Discord";
-        let g = p.layout_no_wrap(label.to_string(), Tokens::ui(12.0), Color32::WHITE);
-        let w = g.size().x + 34.0;
-        let r = Rect::from_min_size(pos2(wr.min.x - w - 14.0, rect.center().y - 12.0), vec2(w, 24.0));
-        let resp = ui.interact(r, egui::Id::unique("hdr-discord"), Sense::click()).on_hover_text(tl!("Join the ArtCraft Discord (discord.gg/artcraft)"));
-        app.auto.add("header.discord", r, "Join the ArtCraft Discord");
-        ui.painter().rect_filled(r, 12.0, if resp.hovered() { t.accent_hover } else { t.accent });
-        icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + 14.0, r.center().y), vec2(14.0, 14.0)), Icon::Chat, Color32::WHITE);
-        ui.painter().galley(pos2(r.min.x + 25.0, r.center().y - g.size().y / 2.0), g, Color32::WHITE);
         // Localized menus and user titles can be wider than English. Use the actual gap.
         let left = left_end + 12.0;
-        let right = r.min.x - 12.0;
+        let right = wr.min.x - 12.0;
         if right > left + 40.0 {
             let mut job = egui::text::LayoutJob::simple_singleline(title, Tokens::ui(14.0), t.tab_text_active);
             job.wrap.max_width = right - left;
@@ -152,10 +143,6 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 galley,
                 t.tab_text_active,
             );
-        }
-
-        if resp.clicked() {
-            crate::links::open(app, ui.ctx(), crate::links::DISCORD);
         }
     }
     let popup_id = egui::Id::unique("workspaces-popup");

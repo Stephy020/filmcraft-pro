@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <?ifndef HasCraftFontLicences ?>
+  <?define HasCraftFontLicences=0 ?>
+  <?endif?>
+  <Package Name="EpsiCut" Manufacturer="Learning Machines LLC" Version="$(var.Version)" UpgradeCode="31E6FB14-9DBC-41DD-B24B-26B71FB31B62" Scope="perUserOrMachine" Compressed="yes" Language="1033">
+    <SummaryInformation Description="EpsiCut video editor" Manufacturer="Learning Machines LLC" />
+    <?include $(sys.SOURCEFILEDIR)install-policy.wxi?>
+    <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
+         (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of EpsiCut is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="EpsicutIcon.ico" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="EpsicutIcon.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Stephy020/epsicut" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/Stephy020/epsicut" />
+    <Property Id="ARPHELPLINK" Value="https://discord.gg/artcraft" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="CraftSuiteFolder" Name="ArtCraft">
+        <Directory Id="INSTALLFOLDER" Name="EpsiCut" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="Main" Title="EpsiCut" Level="1">
+      <?if $(var.HasCraftFontLicences) = 1 ?>
+      <ComponentGroupRef Id="CraftFontLicences" />
+      <?endif?>
+      <ComponentGroupRef Id="EpsicutFiles" />
+    </Feature>
+  <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <UI>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="2" Condition="NOT Installed" />
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2" Condition="NOT Installed" />
+    </UI>
+  </Package>
+
+  <Fragment>
+    <?if $(var.HasCraftFontLicences) = 1 ?>
+    <ComponentGroup Id="CraftFontLicences" Directory="INSTALLFOLDER">
+      <Files Include="$(var.DocsDir)\**" />
+    </ComponentGroup>
+    <?endif?>
+    <ComponentGroup Id="EpsicutFiles" Directory="INSTALLFOLDER">
+      <Component Id="EpsicutApp" Guid="15933017-925B-4963-8992-52000EB26AAA">
+        <File Id="EpsicutNotice" Source="$(var.BinDir)\NOTICE" KeyPath="no" />
+        <File Id="EpsicutExe" Source="$(var.BinDir)\epsicut.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="EpsiCut" Description="EpsiCut video editor" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="EpsicutIcon.ico" IconIndex="0" />
+        </File>
+
+        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\epsicut.exe" Value="[#EpsicutExe]" Type="string" />
+      <RegistryValue Root="HKMU" Key="Software\EpsiCut" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
+      </Component>
+
+      <Component Id="EpsicutCli">
+        <File Id="EpsicutCliExe" Source="$(var.BinDir)\epsicut-cli.exe" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

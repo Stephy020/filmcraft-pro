@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Build and package FilmCraft for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
+# Build and package EpsiCut for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
 #
-#   $DIST/filmcraft-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
-#   $DIST/filmcraft-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
-#   $DIST/filmcraft-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
-#   $DIST/filmcraft-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
-#   $DIST/filmcraft-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
+#   $DIST/epsicut-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
+#   $DIST/epsicut-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
+#   $DIST/epsicut-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
+#   $DIST/epsicut-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
+#   $DIST/epsicut-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
 #
 # Usage: packaging/linux/package.sh [--skip-build] [--formats "appimage deb rpm tar"]
 #
@@ -21,7 +21,7 @@ set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
-APP_ID=ai.storyteller.filmcraft
+APP_ID=ai.storyteller.epsicut
 
 SKIP_BUILD=0
 FORMATS="appimage deb rpm tar"
@@ -41,16 +41,16 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-export FILMCRAFT_MAINTAINER="${FILMCRAFT_MAINTAINER:-FilmCraft maintainers <filmcraft@storyteller.ai>}"
-BASENAME="filmcraft-$VERSION-linux-$ARCH"
+export EPSICUT_MAINTAINER="${EPSICUT_MAINTAINER:-EpsiCut maintainers <epsicut@storyteller.ai>}"
+BASENAME="epsicut-$VERSION-linux-$ARCH"
 
-echo "==> FilmCraft $VERSION for Linux $ARCH ($FORMATS)"
+echo "==> EpsiCut $VERSION for Linux $ARCH ($FORMATS)"
 
 if [[ "$SKIP_BUILD" = 0 ]]; then
   if [[ -n "${CROSS_TARGET:-}" ]]; then
-    (cd "$ROOT" && cargo build --release --locked -p filmcraft -p filmcraft-cli --target "$CROSS_TARGET")
+    (cd "$ROOT" && cargo build --release --locked -p epsicut -p epsicut-cli --target "$CROSS_TARGET")
   else
-    (cd "$ROOT" && cargo build --release --locked -p filmcraft -p filmcraft-cli)
+    (cd "$ROOT" && cargo build --release --locked -p epsicut -p epsicut-cli)
   fi
 fi
 BIN="$CARGO_TARGET_DIR/${CROSS_TARGET:+$CROSS_TARGET/}release"
@@ -59,18 +59,18 @@ STAGE="$WORK/root"
 rm -rf "$WORK"
 
 # ---- stage an FHS tree (shared by every format) -------------------------------------------------
-install -Dm755 "$BIN/filmcraft" "$STAGE/usr/bin/filmcraft"
-install -Dm755 "$BIN/filmcraft-cli" "$STAGE/usr/bin/filmcraft-cli"
-"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/filmcraft" "$STAGE/usr/bin/filmcraft-cli" 2>/dev/null || true
+install -Dm755 "$BIN/epsicut" "$STAGE/usr/bin/epsicut"
+install -Dm755 "$BIN/epsicut-cli" "$STAGE/usr/bin/epsicut-cli"
+"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/epsicut" "$STAGE/usr/bin/epsicut-cli" 2>/dev/null || true
 install -Dm644 "$HERE/$APP_ID.desktop" "$STAGE/usr/share/applications/$APP_ID.desktop"
 install -Dm644 "$HERE/$APP_ID.mime.xml" "$STAGE/usr/share/mime/packages/$APP_ID.xml"
 mkdir -p "$STAGE/usr/share/metainfo"
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$FILMCRAFT_BUILD_DATE/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$EPSICUT_BUILD_DATE/g" \
   "$HERE/$APP_ID.metainfo.xml.in" >"$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 mkdir -p "$STAGE/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/usr/share/icons/"
-mkdir -p "$STAGE/usr/share/doc/filmcraft"
-copy_docs "$STAGE/usr/share/doc/filmcraft"
+mkdir -p "$STAGE/usr/share/doc/epsicut"
+copy_docs "$STAGE/usr/share/doc/epsicut"
 
 if command -v desktop-file-validate >/dev/null; then
   desktop-file-validate "$STAGE/usr/share/applications/$APP_ID.desktop"
@@ -118,9 +118,9 @@ if has appimage; then
       ;;
     *) APPIMAGETOOL_SHA256='' RUNTIME_SHA256='' ;;
   esac
-  APPDIR="$WORK/FilmCraft.AppDir"
+  APPDIR="$WORK/EpsiCut.AppDir"
   cp -R "$STAGE" "$APPDIR"
-  ln -s usr/bin/filmcraft "$APPDIR/AppRun"
+  ln -s usr/bin/epsicut "$APPDIR/AppRun"
   cp "$HERE/$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
   cp "$ROOT/assets/app-icon/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/$APP_ID.png"
   ln -s "$APP_ID.png" "$APPDIR/.DirIcon"
@@ -168,8 +168,8 @@ if has appimage; then
   # fetch only the blocks that changed in a newer release, through the .zsync published next to
   # each AppImage on GitHub Releases. `latest` is the newest published release that is not a
   # pre-release. A fork's builds point at its own releases through GITHUB_REPOSITORY.
-  REPO="${GITHUB_REPOSITORY:-storytold/filmcraft}"
-  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|filmcraft-*-linux-$ARCH.AppImage.zsync"
+  REPO="${GITHUB_REPOSITORY:-Stephy020/epsicut}"
+  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|epsicut-*-linux-$ARCH.AppImage.zsync"
   # Extract-and-run: works without FUSE (containers, CI). The output embeds the static runtime,
   # so users don't need libfuse2 either. With zsyncmake on the host (CI installs the zsync
   # package) appimagetool also writes the .zsync, into its working directory, hence the cd.
@@ -183,9 +183,9 @@ if has appimage; then
 fi
 
 if [[ -z "${CROSS_TARGET:-}" ]]; then
-  "$STAGE/usr/bin/filmcraft-cli" --version
+  "$STAGE/usr/bin/epsicut-cli" --version
 elif [[ -n "${EMULATOR:-}" ]]; then
-  "$EMULATOR" "$STAGE/usr/bin/filmcraft-cli" --version
+  "$EMULATOR" "$STAGE/usr/bin/epsicut-cli" --version
 fi
 echo "==> done"
 ls -lh "$DIST"

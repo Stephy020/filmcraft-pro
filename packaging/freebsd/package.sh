@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build and package FilmCraft for FreeBSD:
+# Build and package EpsiCut for FreeBSD:
 #
-#   $DIST/filmcraft-<version>-freebsd-<arch>.tar.gz   (arch: x86_64 or aarch64) a /usr/local-style tree:
-#       filmcraft-<version>-freebsd-<arch>/{bin, share/applications, share/icons, share/mime,
-#       share/metainfo, share/doc/filmcraft}
+#   $DIST/epsicut-<version>-freebsd-<arch>.tar.gz   (arch: x86_64 or aarch64) a /usr/local-style tree:
+#       epsicut-<version>-freebsd-<arch>/{bin, share/applications, share/icons, share/mime,
+#       share/metainfo, share/doc/epsicut}
 #
 # Install by copying the tree's contents into /usr/local:
-#   tar -xzf filmcraft-<version>-freebsd-x86_64.tar.gz --strip-components 1 -C /usr/local
+#   tar -xzf epsicut-<version>-freebsd-x86_64.tar.gz --strip-components 1 -C /usr/local
 #
 # Usage: packaging/freebsd/package.sh [--skip-build] [--dry-run]
 #   --dry-run   stage the tree from stub binaries and list it, without building (works on any OS)
@@ -16,7 +16,7 @@ set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 LINUX="$ROOT/packaging/linux"
-APP_ID=ai.storyteller.filmcraft
+APP_ID=ai.storyteller.epsicut
 
 SKIP_BUILD=0
 DRY_RUN=0
@@ -49,14 +49,14 @@ if [[ "$DRY_RUN" = 0 ]] && [[ "$(uname -s)" != FreeBSD ]]; then
   echo "error: build on FreeBSD (or pass --dry-run to check the tree layout)" >&2
   exit 2
 fi
-BASENAME="filmcraft-$VERSION-freebsd-$ARCH"
+BASENAME="epsicut-$VERSION-freebsd-$ARCH"
 
-echo "==> FilmCraft $VERSION for FreeBSD $ARCH"
+echo "==> EpsiCut $VERSION for FreeBSD $ARCH"
 
 # The release VM has 12 GB; full parallelism on the biggest crates runs it out of memory.
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-4}"
 if [[ "$SKIP_BUILD" = 0 ]]; then
-  (cd "$ROOT" && cargo build --release --locked ${CARGO_BUILD_TARGET:+--target "$CARGO_BUILD_TARGET"} -p filmcraft -p filmcraft-cli)
+  (cd "$ROOT" && cargo build --release --locked ${CARGO_BUILD_TARGET:+--target "$CARGO_BUILD_TARGET"} -p epsicut -p epsicut-cli)
 fi
 WORK="$CARGO_TARGET_DIR/freebsd-package"
 STAGE="$WORK/$BASENAME"
@@ -70,7 +70,7 @@ if [[ "$DRY_RUN" = 1 ]]; then
   BIN="$WORK/stub-bin"
   OUT_DIR="$WORK"
   mkdir -p "$BIN"
-  for b in filmcraft filmcraft-cli; do
+  for b in epsicut epsicut-cli; do
     printf '#!/bin/sh\necho "%s %s (dry-run stub)"\n' "$b" "$VERSION" >"$BIN/$b"
     chmod 755 "$BIN/$b"
   done
@@ -79,23 +79,23 @@ fi
 # ---- stage a /usr/local-style tree --------------------------------------------------------------
 # FreeBSD's install(1) has no -D: create the directories first.
 mkdir -p "$STAGE/bin" "$STAGE/share/applications" "$STAGE/share/mime/packages" \
-  "$STAGE/share/metainfo" "$STAGE/share/icons" "$STAGE/share/doc/filmcraft"
-install -m 755 "$BIN/filmcraft" "$BIN/filmcraft-cli" "$STAGE/bin/"
-strip "$STAGE/bin/filmcraft" "$STAGE/bin/filmcraft-cli" 2>/dev/null || true
+  "$STAGE/share/metainfo" "$STAGE/share/icons" "$STAGE/share/doc/epsicut"
+install -m 755 "$BIN/epsicut" "$BIN/epsicut-cli" "$STAGE/bin/"
+strip "$STAGE/bin/epsicut" "$STAGE/bin/epsicut-cli" 2>/dev/null || true
 # The desktop entry, MIME type, metainfo and icons are the freedesktop files Linux ships.
 install -m 644 "$LINUX/$APP_ID.desktop" "$STAGE/share/applications/$APP_ID.desktop"
 install -m 644 "$LINUX/$APP_ID.mime.xml" "$STAGE/share/mime/packages/$APP_ID.xml"
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$FILMCRAFT_BUILD_DATE/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$EPSICUT_BUILD_DATE/g" \
   "$LINUX/$APP_ID.metainfo.xml.in" >"$STAGE/share/metainfo/$APP_ID.metainfo.xml"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/share/icons/"
-copy_docs "$STAGE/share/doc/filmcraft"
+copy_docs "$STAGE/share/doc/epsicut"
 for f in NOTICE ATTRIBUTION.md; do
-  if [[ -f "$ROOT/$f" ]]; then install -m 644 "$ROOT/$f" "$STAGE/share/doc/filmcraft/"; fi
+  if [[ -f "$ROOT/$f" ]]; then install -m 644 "$ROOT/$f" "$STAGE/share/doc/epsicut/"; fi
 done
 
-for f in bin/filmcraft bin/filmcraft-cli "share/applications/$APP_ID.desktop" \
+for f in bin/epsicut bin/epsicut-cli "share/applications/$APP_ID.desktop" \
   "share/icons/hicolor/256x256/apps/$APP_ID.png" "share/icons/hicolor/scalable/apps/$APP_ID.svg" \
-  share/doc/filmcraft/LICENSE-MIT share/doc/filmcraft/LICENSE-APACHE; do
+  share/doc/epsicut/LICENSE-MIT share/doc/epsicut/LICENSE-APACHE; do
   if [[ ! -e "$STAGE/$f" ]]; then echo "error: $f is missing from the package" >&2; exit 1; fi
 done
 
@@ -105,7 +105,7 @@ tar -C "$WORK" -czf "$OUT_DIR/$BASENAME.tar.gz" "$BASENAME"
 echo "wrote $OUT_DIR/$BASENAME.tar.gz"
 
 # A cross-built binary can't run on this host.
-if [[ "$ARCH" = "$NATIVE_ARCH" ]]; then "$STAGE/bin/filmcraft-cli" --version; fi
+if [[ "$ARCH" = "$NATIVE_ARCH" ]]; then "$STAGE/bin/epsicut-cli" --version; fi
 if [[ "$DRY_RUN" = 1 ]]; then
   echo "==> dry run: tarball contents"
   tar -tzvf "$OUT_DIR/$BASENAME.tar.gz"

@@ -4,17 +4,17 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use filmcraft_media::generators::GeneratorSource;
-use filmcraft_media::{DemoScene, Generator, MediaSource};
-use filmcraft_project::{ItemId, ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
-use filmcraft_time::{FrameRate, Tick, TimeRange};
+use epsicut_media::generators::GeneratorSource;
+use epsicut_media::{DemoScene, Generator, MediaSource};
+use epsicut_project::{ItemId, ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
+use epsicut_time::{FrameRate, Tick, TimeRange};
 use serde_json::json;
 
 use crate::Session;
 
 pub fn tmp_dir(name: &str) -> PathBuf {
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-    let d = std::env::temp_dir().join(format!("filmcraft-{name}-{}-{nanos}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("epsicut-{name}-{}-{nanos}", std::process::id()));
     std::fs::create_dir_all(&d).unwrap();
     d
 }
@@ -48,7 +48,7 @@ pub fn make_movie_at(path: &Path, scene: DemoScene, w: u32, h: u32, rate: FrameR
     let r = TimeRange::new(Tick::ZERO, dur);
     let mut v = p.make_track_item(item, TrackKind::Video, Tick::ZERO, r, rate).unwrap();
     for e in &mut v.effects {
-        filmcraft_project::resolve_auto_points(e, (w, h), (w, h));
+        epsicut_project::resolve_auto_points(e, (w, h), (w, h));
     }
     let a = p.make_track_item(item, TrackKind::Audio, Tick::ZERO, r, rate).unwrap();
     let q = p.sequence_mut(seq).unwrap();
@@ -56,20 +56,20 @@ pub fn make_movie_at(path: &Path, scene: DemoScene, w: u32, h: u32, rate: FrameR
     q.audio_tracks[0].items.push(a);
     q.start_timecode = start_tc;
     let fmt = match path.extension().and_then(|e| e.to_str()) {
-        Some("mp4") => filmcraft_export::Format::H264,
-        Some("mxf") => filmcraft_export::Format::MxfOp1a,
-        _ => filmcraft_export::Format::ProRes,
+        Some("mp4") => epsicut_export::Format::H264,
+        Some("mxf") => epsicut_export::Format::MxfOp1a,
+        _ => epsicut_export::Format::ProRes,
     };
-    let settings = filmcraft_export::ExportSettings {
+    let settings = epsicut_export::ExportSettings {
         format: fmt,
         path: path.to_string_lossy().into_owned(),
         bitrate_kbps: 4000,
-        mxf_video_codec: filmcraft_export::MxfVideoCodec::ProRes,
+        mxf_video_codec: epsicut_export::MxfVideoCodec::ProRes,
         ..Default::default()
     };
-    let shared: filmcraft_media::SharedSource = Arc::new(src);
+    let shared: epsicut_media::SharedSource = Arc::new(src);
     let provider = move |id: ItemId| (id == item).then(|| shared.clone());
-    filmcraft_export::export(&Arc::new(p), seq, &settings, &provider, &Default::default()).unwrap();
+    epsicut_export::export(&Arc::new(p), seq, &settings, &provider, &Default::default()).unwrap();
 }
 
 /// A session with `files` imported and a sequence (sized like the first file) holding each file
@@ -91,7 +91,7 @@ pub fn session_with(files: &[&Path]) -> (Session, Vec<ItemId>, ItemId) {
         let range = TimeRange::new(Tick::ZERO, d);
         let mut vi = p.make_track_item(it, TrackKind::Video, at, range, rate).unwrap();
         for e in &mut vi.effects {
-            filmcraft_project::resolve_auto_points(e, (v.width, v.height), (v.width, v.height));
+            epsicut_project::resolve_auto_points(e, (v.width, v.height), (v.width, v.height));
         }
         let ai = p.make_track_item(it, TrackKind::Audio, at, range, rate).unwrap();
         let q = p.sequence_mut(seq).unwrap();

@@ -8,11 +8,11 @@
 
 use std::sync::Arc;
 
-use filmcraft_audio_dsp::AudioEffect;
-use filmcraft_audio_dsp::effects::Limiter;
-use filmcraft_project::{ItemId, Project, Sequence};
-use filmcraft_render::SourceProvider;
-use filmcraft_time::TimeRange;
+use epsicut_audio_dsp::AudioEffect;
+use epsicut_audio_dsp::effects::Limiter;
+use epsicut_project::{ItemId, Project, Sequence};
+use epsicut_render::SourceProvider;
+use epsicut_time::TimeRange;
 
 use crate::{ExportError, ExportSettings, Result};
 
@@ -71,7 +71,7 @@ impl AudioOut {
         if !ln.enabled {
             return Ok(());
         }
-        let mut meter = filmcraft_audio_dsp::LoudnessMeter::new(self.sr as f64, self.channels);
+        let mut meter = epsicut_audio_dsp::LoudnessMeter::new(self.sr as f64, self.channels);
         let mut pos = self.out;
         while pos < self.end {
             if cancel() {
@@ -84,7 +84,7 @@ impl AudioOut {
             pos += n as i64;
         }
         let measured = meter.integrated();
-        let gain_db = filmcraft_audio_dsp::normalize_gain_db(measured, ln.target_lufs);
+        let gain_db = epsicut_audio_dsp::normalize_gain_db(measured, ln.target_lufs);
         // Limiting changes integrated loudness. Measure the actual limited signal and
         // refine its INPUT gain; the peak ceiling remains in force on every pass.
         // Four trials and at most 9 dB of extra drive bound both work and compression.
@@ -96,7 +96,7 @@ impl AudioOut {
         if measured.is_finite() && ln.target_lufs.is_finite() {
             for _ in 0..4 {
                 self.rewind(start, trial_gain);
-                let mut limited = filmcraft_audio_dsp::LoudnessMeter::new(self.sr as f64, self.channels);
+                let mut limited = epsicut_audio_dsp::LoudnessMeter::new(self.sr as f64, self.channels);
                 while self.out < self.end {
                     if cancel() {
                         self.rewind(start, best_gain);
@@ -148,17 +148,9 @@ impl AudioOut {
         let real = (self.end - pos).clamp(0, n as i64) as usize;
         let out_ch = if self.channels == 6 { 6 } else { 2 };
         let mut st = if real > 0 {
-            let layout = filmcraft_audio_dsp::channels::Layout::from_channels(out_ch);
-            filmcraft_render::audio::mix_sequence_layout(
-                &self.project,
-                &self.seq,
-                pos,
-                real,
-                sources,
-                layout,
-                filmcraft_audio_dsp::channels::Mixdown::FrontRear,
-            )
-            .channels
+            let layout = epsicut_audio_dsp::channels::Layout::from_channels(out_ch);
+            epsicut_render::audio::mix_sequence_layout(&self.project, &self.seq, pos, real, sources, layout, epsicut_audio_dsp::channels::Mixdown::FrontRear)
+                .channels
         } else {
             vec![Vec::new(); out_ch]
         };

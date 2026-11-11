@@ -1,6 +1,6 @@
 use super::*;
-use filmcraft_project::graphic::{new_shape_layer, new_text_layer};
-use filmcraft_project::{ParamValue, find_effect};
+use epsicut_project::graphic::{new_shape_layer, new_text_layer};
+use epsicut_project::{ParamValue, find_effect};
 
 fn set(e: &mut EffectInstance, k: &str, v: ParamValue) {
     e.params.get_mut(k).unwrap_or_else(|| panic!("{k}")).value = v;
@@ -8,11 +8,11 @@ fn set(e: &mut EffectInstance, k: &str, v: ParamValue) {
 
 /// A 5 s graphic clip holding `layers` (canvas 400×300 at 25 fps).
 fn graphic_item(layers: Vec<EffectInstance>) -> TrackItem {
-    let mut p = filmcraft_project::Project::new("t");
-    let rate = filmcraft_time::FrameRate::FPS_25;
-    let g = p.add_item("G", filmcraft_project::Label::Rose, filmcraft_project::ItemKind::Graphic { width: 400, height: 300, rate }, None);
+    let mut p = epsicut_project::Project::new("t");
+    let rate = epsicut_time::FrameRate::FPS_25;
+    let g = p.add_item("G", epsicut_project::Label::Rose, epsicut_project::ItemKind::Graphic { width: 400, height: 300, rate }, None);
     let mut it = p
-        .make_track_item(g, filmcraft_project::TrackKind::Video, Tick::ZERO, filmcraft_time::TimeRange::new(Tick::ZERO, Tick::from_seconds_f64(5.0)), rate)
+        .make_track_item(g, epsicut_project::TrackKind::Video, Tick::ZERO, epsicut_time::TimeRange::new(Tick::ZERO, Tick::from_seconds_f64(5.0)), rate)
         .unwrap();
     it.effects.extend(layers);
     it
@@ -35,7 +35,7 @@ fn ink_box(img: &Image) -> Option<[usize; 4]> {
 
 #[test]
 fn character_stroke_kind_colour_and_width_match_their_individual_references() {
-    use filmcraft_project::graphic_design::{LayerExtra, StyleRun};
+    use epsicut_project::graphic_design::{LayerExtra, StyleRun};
     for slot in ["stroke", "stroke2"] {
         let mut e = new_text_layer("HH", Vec2::new(30.0, 110.0), 70.0);
         set(&mut e, "tracking", ParamValue::Float(2000.0));
@@ -70,7 +70,7 @@ fn character_stroke_kind_colour_and_width_match_their_individual_references() {
 
 #[test]
 fn per_character_stroke_width_and_enablement_render_independently() {
-    use filmcraft_project::graphic_design::{LayerExtra, StyleRun};
+    use epsicut_project::graphic_design::{LayerExtra, StyleRun};
     for slot in ["stroke", "stroke2"] {
         for kind in [0, 1, 2] {
             let mut e = new_text_layer("HH", Vec2::new(60.0, 100.0), 60.0);
@@ -118,7 +118,7 @@ fn per_character_stroke_width_and_enablement_render_independently() {
 
 #[test]
 fn per_character_stroke_colours_render_independently() {
-    use filmcraft_project::graphic_design::{LayerExtra, StyleRun};
+    use epsicut_project::graphic_design::{LayerExtra, StyleRun};
     for slot in ["stroke", "stroke2"] {
         for kind in [0, 1, 2] {
             for filled in [false, true] {
@@ -159,7 +159,7 @@ fn per_character_stroke_colours_render_independently() {
 
 #[test]
 fn per_character_fill_and_size() {
-    use filmcraft_project::graphic_design::{CharStyle, LayerExtra, StyleRun};
+    use epsicut_project::graphic_design::{CharStyle, LayerExtra, StyleRun};
     let mut e = new_text_layer("AAAA", Vec2::new(20.0, 100.0), 60.0);
     set(&mut e, "fill_color", ParamValue::Color([1.0, 1.0, 1.0, 1.0]));
     let red = CharStyle { fill: Some([1.0, 0.0, 0.0, 1.0]), ..Default::default() };
@@ -199,7 +199,7 @@ fn per_character_fill_and_size() {
 
 #[test]
 fn pinned_box_follows_text_growth() {
-    use filmcraft_project::graphic_design::{LayerExtra, Pin, PinTarget};
+    use epsicut_project::graphic_design::{LayerExtra, Pin, PinTarget};
     let mut t = new_text_layer("Hi", Vec2::new(50.0, 100.0), 40.0);
     t.layer = Some(Box::new(LayerExtra { uid: 1, ..Default::default() }));
     let mut bx = new_shape_layer(0, Vec2::new(60.0, 90.0), Vec2::new(40.0, 40.0), vec![]);
@@ -220,7 +220,7 @@ fn pinned_box_follows_text_growth() {
 
 #[test]
 fn roll_moves_the_whole_graphic() {
-    use filmcraft_project::graphic_design::{GraphicMeta, Roll, RollMode};
+    use epsicut_project::graphic_design::{GraphicMeta, Roll, RollMode};
     let e = new_shape_layer(0, Vec2::new(200.0, 150.0), Vec2::new(100.0, 100.0), vec![]);
     let mut item = graphic_item(vec![e]);
     item.graphic = Some(Box::new(GraphicMeta {
@@ -346,7 +346,7 @@ fn linear_gradient_blends_in_linear_light_and_turns_with_the_layer() {
 
 #[test]
 fn linear_gradient_keeps_a_per_character_fill_solid() {
-    use filmcraft_project::graphic_design::{CharStyle, LayerExtra, StyleRun};
+    use epsicut_project::graphic_design::{CharStyle, LayerExtra, StyleRun};
     let mut e = new_text_layer("AAAA", Vec2::new(20.0, 100.0), 60.0);
     set(&mut e, "fill_kind", ParamValue::Choice(1));
     set(&mut e, "gradient_start", ParamValue::Color([0.0, 1.0, 0.0, 1.0]));
@@ -458,7 +458,7 @@ fn tight_image_matches_full_render() {
 /// keyframe on the clip's own effect. Documented in docs/graphics.md.
 #[test]
 fn responsive_time_remaps_layer_keyframes_not_the_clips_own_effects() {
-    use filmcraft_project::graphic_design::GraphicMeta;
+    use epsicut_project::graphic_design::GraphicMeta;
     let sec = Tick::from_seconds_f64;
     let mut layer = new_shape_layer(0, Vec2::new(200.0, 150.0), Vec2::new(100.0, 100.0), vec![]);
     // layer opacity fades 100 → 0 over the designed outro (4 s .. 5 s)

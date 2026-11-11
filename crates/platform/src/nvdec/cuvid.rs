@@ -4,8 +4,8 @@ use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::ptr;
 
-use filmcraft_codecs::hw::NalCodec;
-use filmcraft_frame::VideoFrame;
+use epsicut_codecs::hw::NalCodec;
+use epsicut_frame::VideoFrame;
 
 use super::ffi::{
     CUVID_PKT_ENDOFPICTURE, CUVID_PKT_ENDOFSTREAM, CUVID_PKT_TIMESTAMP, CUVIDDECODECAPS, CUVIDDECODECREATEINFO, CUVIDEOFORMAT, CUVIDPARSERDISPINFO,
@@ -567,7 +567,7 @@ pub fn probe() -> Result<String, String> {
 mod tests {
     use super::*;
     fn geometry() -> Geometry {
-        Geometry { crop: (0, 0, 640, 360), bits: 8, color: filmcraft_color::ColorInfo::REC709, par: (1, 1) }
+        Geometry { crop: (0, 0, 640, 360), bits: 8, color: epsicut_color::ColorInfo::REC709, par: (1, 1) }
     }
     #[test]
     fn hostile_geometry_and_driver_sizes_are_errors() {

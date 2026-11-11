@@ -1,4 +1,4 @@
-//! Graphics templates (`.fcgt`): FilmCraft's own format for reusable graphics with editable
+//! Graphics templates (`.fcgt`): EpsiCut's own format for reusable graphics with editable
 //! properties, the counterpart of motion graphics templates in other editors.
 //!
 //! A template file is UTF-8 JSON ([`GraphicsTemplate`]):
@@ -29,16 +29,16 @@
 //! - `resources.fonts` optionally embeds font files (base64) that the template needs; installing
 //!   the template registers them. Only embed fonts whose licence allows redistribution.
 //!
-//! FilmCraft never reads Adobe `.mogrt` files (or any other application's template format);
+//! EpsiCut never reads Adobe `.mogrt` files (or any other application's template format);
 //! [`GraphicsTemplate::from_bytes`] rejects ZIP archives with a message saying so.
 //!
-//! The built-in templates ([`builtin_templates`]) are original designs made for FilmCraft in code
+//! The built-in templates ([`builtin_templates`]) are original designs made for EpsiCut in code
 //! (no image, font or template files), under the project licence.
 
 use std::collections::{HashMap, HashSet};
 
-use filmcraft_geom::Vec2;
-use filmcraft_time::{TICKS_PER_SECOND, Tick};
+use epsicut_geom::Vec2;
+use epsicut_time::{TICKS_PER_SECOND, Tick};
 use serde::{Deserialize, Serialize};
 
 use crate::effect::EffectInstance;
@@ -212,12 +212,12 @@ impl Default for GraphicsTemplate {
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum TemplateError {
     #[error(
-        "this file is a ZIP archive (an Adobe .mogrt or another application's package?): FilmCraft does not read motion graphics templates from other applications, only its own .fcgt graphics templates"
+        "this file is a ZIP archive (an Adobe .mogrt or another application's package?): EpsiCut does not read motion graphics templates from other applications, only its own .fcgt graphics templates"
     )]
     ForeignPackage,
-    #[error("not a FilmCraft graphics template: {0}")]
+    #[error("not a EpsiCut graphics template: {0}")]
     NotTemplate(String),
-    #[error("this graphics template was made by a newer FilmCraft (format version {0}; this build reads up to {TEMPLATE_VERSION})")]
+    #[error("this graphics template was made by a newer EpsiCut (format version {0}; this build reads up to {TEMPLATE_VERSION})")]
     TooNew(u32),
     #[error("invalid graphics template: {0}")]
     Invalid(String),
@@ -465,7 +465,7 @@ fn builtin(
         name: name.into(),
         category: category.into(),
         description: description.into(),
-        author: "FilmCraft contributors".into(),
+        author: "EpsiCut contributors".into(),
         license: "MIT OR Apache-2.0".into(),
         tags: vec![category.to_ascii_lowercase()],
         duration: Tick(seconds * TICKS_PER_SECOND),
@@ -475,7 +475,7 @@ fn builtin(
     }
 }
 
-/// The built-in templates: original FilmCraft designs (lower thirds, titles, end credits,
+/// The built-in templates: original EpsiCut designs (lower thirds, titles, end credits,
 /// callouts, a ticker), defined here in code. Designed at 1920×1080 with the bundled Inter font.
 pub fn builtin_templates() -> Vec<GraphicsTemplate> {
     let mut v = Vec::new();
@@ -602,7 +602,7 @@ pub fn builtin_templates() -> Vec<GraphicsTemplate> {
         let mut heading = text(1, "Heading", "CREDITS", (960.0, 160.0), 72.0, "Bold");
         set(&mut heading, "align", ParamValue::Choice(1));
         set(&mut heading, "tracking", ParamValue::Float(120.0));
-        let body = "Directed by\nJordan Lee\n\nWritten by\nPriya Natarajan\n\nEdited by\nMarco Bianchi\n\nMusic by\nHana Kobayashi\n\nMade with FilmCraft";
+        let body = "Directed by\nJordan Lee\n\nWritten by\nPriya Natarajan\n\nEdited by\nMarco Bianchi\n\nMusic by\nHana Kobayashi\n\nMade with EpsiCut";
         let mut credits = text(2, "Credits", body, (960.0, 300.0), 46.0, "Regular");
         set(&mut credits, "align", ParamValue::Choice(1));
         set(&mut credits, "leading", ParamValue::Float(10.0));

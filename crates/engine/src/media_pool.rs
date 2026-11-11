@@ -4,8 +4,8 @@
 //! - Sources are cached per item **and per reference** (the file path, the offline flag), so a
 //!   relink, Make Offline or their undo picks up the right file on the next frame.
 //! - Media that can't be opened (missing, unreadable) or was made offline renders the offline
-//!   slate ([`filmcraft_render::offline`]) instead of failing; the reason is kept for the UI. So
-//!   do the frames of a file that opens but whose picture FilmCraft cannot decode (a codec or
+//!   slate ([`epsicut_render::offline`]) instead of failing; the reason is kept for the UI. So
+//!   do the frames of a file that opens but whose picture EpsiCut cannot decode (a codec or
 //!   profile without a decoder).
 //! - With proxies enabled ([`MediaPool::set_use_proxies`]) items with an attached proxy are read
 //!   from it. Proxy frames are smaller; the source still reports the full-resolution size, and the
@@ -22,11 +22,11 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
-use filmcraft_frame::{AudioBuffer, VideoFrame};
-use filmcraft_media::generators::GeneratorSource;
-use filmcraft_media::{FrameRequest, MediaError, MediaInfo, MediaSource, Opener, SharedSource};
-use filmcraft_project::{ItemId, MediaClip, MediaRef, Project};
-use filmcraft_render::offline::OfflineReason;
+use epsicut_frame::{AudioBuffer, VideoFrame};
+use epsicut_media::generators::GeneratorSource;
+use epsicut_media::{FrameRequest, MediaError, MediaInfo, MediaSource, Opener, SharedSource};
+use epsicut_project::{ItemId, MediaClip, MediaRef, Project};
+use epsicut_render::offline::OfflineReason;
 
 use crate::Services;
 
@@ -73,7 +73,7 @@ impl Default for MediaPool {
             offline: Arc::new(RwLock::new(HashMap::new())),
             use_proxies: AtomicBool::new(false),
             failures: Arc::default(),
-            openers: RwLock::new(filmcraft_codecs::openers()),
+            openers: RwLock::new(epsicut_codecs::openers()),
             stored: RwLock::default(),
         }
     }
@@ -98,7 +98,7 @@ pub fn media_key(m: &MediaClip) -> String {
 /// the highest present one, played at `rate`. Frames are listed with [`Services::list_dir`], or
 /// found by probing consecutive numbers (stopping after 100 missing in a row) when the host cannot
 /// list directories.
-pub fn open_image_sequence(first: &str, services: &dyn Services, rate: filmcraft_time::FrameRate, name: &str) -> Result<SharedSource, MediaError> {
+pub fn open_image_sequence(first: &str, services: &dyn Services, rate: epsicut_time::FrameRate, name: &str) -> Result<SharedSource, MediaError> {
     let frames = image_sequence_frames(first, services)?;
     let loader = match services.file_loader() {
         Some(l) => l,
@@ -113,12 +113,12 @@ pub fn open_image_sequence(first: &str, services: &dyn Services, rate: filmcraft
             Arc::new(move |p: &str| files.get(p).map(|b| b.to_vec()).ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, p.to_string())))
         }
     };
-    Ok(Arc::new(filmcraft_media::sequence::ImageSequenceSource::new(name, frames, rate, loader)?))
+    Ok(Arc::new(epsicut_media::sequence::ImageSequenceSource::new(name, frames, rate, loader)?))
 }
 
 /// The frames of the image sequence starting at `first` (see [`open_image_sequence`]).
 pub fn image_sequence_frames(first: &str, services: &dyn Services) -> Result<Vec<Option<String>>, MediaError> {
-    use filmcraft_media::sequence::{Numbered, sequence_frames};
+    use epsicut_media::sequence::{Numbered, sequence_frames};
     let n = Numbered::parse(first).ok_or_else(|| MediaError::Unsupported(format!("{first}: not a numbered still image")))?;
     let io = |e: std::io::Error| {
         if e.kind() == std::io::ErrorKind::NotFound { MediaError::Offline(format!("{first}: {e}")) } else { MediaError::Io(format!("{first}: {e}")) }
@@ -276,7 +276,7 @@ impl MediaPool {
     /// Open a file through the registered openers.
     pub fn open_bytes(&self, name: &str, bytes: Arc<[u8]>) -> Result<SharedSource, MediaError> {
         let openers = self.openers.read().unwrap_or_else(PoisonError::into_inner).clone();
-        filmcraft_media::open_bytes(name, bytes, &openers)
+        epsicut_media::open_bytes(name, bytes, &openers)
     }
 
     /// Read and open a file through `services` (through its random-access reader when the host
@@ -285,7 +285,7 @@ impl MediaPool {
         let io = |e: std::io::Error| if e.kind() == std::io::ErrorKind::NotFound { MediaError::Offline(e.to_string()) } else { MediaError::Io(e.to_string()) };
         if let Some(r) = services.reader(path) {
             let openers = self.openers.read().unwrap_or_else(PoisonError::into_inner).clone();
-            return filmcraft_media::reader::open_reader(&file_name(path), r.map_err(io)?, &filmcraft_codecs::reader_openers(), &openers);
+            return epsicut_media::reader::open_reader(&file_name(path), r.map_err(io)?, &epsicut_codecs::reader_openers(), &openers);
         }
         let bytes = services.read_file(path).map_err(io)?;
         self.open_bytes(&file_name(path), bytes.into())
@@ -298,7 +298,7 @@ impl MediaPool {
         let Some(r) = services.reader(path) else { return self.open_file(path, services) };
         let r = r.map_err(|e| if e.kind() == std::io::ErrorKind::NotFound { MediaError::Offline(e.to_string()) } else { MediaError::Io(e.to_string()) })?;
         let openers = self.openers.read().unwrap_or_else(PoisonError::into_inner).clone();
-        filmcraft_media::reader::open_reader_within(&file_name(path), r, &filmcraft_codecs::reader_openers(), &openers, PROBE_WHOLE_FILE_MAX)
+        epsicut_media::reader::open_reader_within(&file_name(path), r, &epsicut_codecs::reader_openers(), &openers, PROBE_WHOLE_FILE_MAX)
     }
 
     /// Resolve (and cache) the source for a project item, using proxies when they are enabled.
@@ -338,7 +338,7 @@ impl MediaPool {
                 Arc::new(SlateSource::new(m.info.clone(), &file_name(path), OfflineReason::MadeOffline))
             }
             MediaRef::File { path } => match self.follow_media(path).and_then(|file| {
-                if m.info.kind == filmcraft_media::MediaKind::ImageSequence {
+                if m.info.kind == epsicut_media::MediaKind::ImageSequence {
                     open_image_sequence(&file, services, m.info.frame_rate(), &it.name)
                 } else {
                     self.open_file(&file, services)
@@ -348,7 +348,7 @@ impl MediaPool {
                     self.offline.write().unwrap_or_else(PoisonError::into_inner).remove(&item);
                     self.unsupported_as_slate(item, path, s)
                 }
-                Err(_) if filmcraft_media::pending::is_set() => {
+                Err(_) if epsicut_media::pending::is_set() => {
                     // the host is still fetching the file's bytes: show the slate for now, retry later
                     return Some(Arc::new(SlateSource::new(m.info.clone(), &file_name(path), OfflineReason::Missing)));
                 }
@@ -373,13 +373,13 @@ impl MediaPool {
     pub fn own_source(&self, p: &Project, item: ItemId, services: &dyn Services) -> Option<SharedSource> {
         let (item, m, _) = p.resolve_media(item)?;
         let MediaRef::File { path } = &m.media else { return None };
-        if m.offline || m.info.kind == filmcraft_media::MediaKind::ImageSequence || self.offline_status(item).is_some() {
+        if m.offline || m.info.kind == epsicut_media::MediaKind::ImageSequence || self.offline_status(item).is_some() {
             return None;
         }
         let file = self.follow_media(path).ok()?;
         let reader = services.reader(&file)?.ok()?;
         let openers = self.openers.read().unwrap_or_else(PoisonError::into_inner).clone();
-        let src = filmcraft_media::reader::open_reader_within(&file_name(&file), reader, &filmcraft_codecs::reader_openers(), &openers, 0).ok()?;
+        let src = epsicut_media::reader::open_reader_within(&file_name(&file), reader, &epsicut_codecs::reader_openers(), &openers, 0).ok()?;
         Some(self.unsupported_as_slate(item, path, src))
     }
 
@@ -431,7 +431,7 @@ impl MediaPool {
     }
 }
 
-/// Implements [`filmcraft_render::SourceProvider`] over the pool for one project snapshot.
+/// Implements [`epsicut_render::SourceProvider`] over the pool for one project snapshot.
 pub struct PoolProvider {
     pub pool: Arc<MediaPool>,
     pub project: Arc<Project>,
@@ -482,7 +482,7 @@ impl PoolProvider {
     }
 }
 
-impl filmcraft_render::SourceProvider for PoolProvider {
+impl epsicut_render::SourceProvider for PoolProvider {
     fn source(&self, item: ItemId) -> Option<SharedSource> {
         if let Some(used) = &self.used {
             used.lock().unwrap_or_else(PoisonError::into_inner).insert(item);
@@ -497,7 +497,7 @@ impl filmcraft_render::SourceProvider for PoolProvider {
                 None => {
                     let src = self.pool.own_source(&self.project, media, &*self.services);
                     // the host is still fetching the file's bytes (the browser): try again next time
-                    if src.is_some() || !filmcraft_media::pending::is_set() {
+                    if src.is_some() || !epsicut_media::pending::is_set() {
                         own.insert(media, src.clone());
                     }
                     src
@@ -533,7 +533,7 @@ impl MediaSource for SlateSource {
     fn info(&self) -> &MediaInfo {
         &self.info
     }
-    fn video_frame(&self, req: FrameRequest) -> filmcraft_media::Result<Arc<VideoFrame>> {
+    fn video_frame(&self, req: FrameRequest) -> epsicut_media::Result<Arc<VideoFrame>> {
         let v = self.info.video.as_ref().ok_or(MediaError::NoStream("video"))?;
         let s = req.scale.clamp(1.0 / 64.0, 1.0);
         let (w, h) = (((v.width as f32 * s).round() as u32).max(2), ((v.height as f32 * s).round() as u32).max(2));
@@ -544,15 +544,15 @@ impl MediaSource for SlateSource {
         {
             return Ok(Arc::new((**f).clone().with_pts(req.time)));
         }
-        let px = filmcraft_render::offline::slate_rgba8(w as usize, h as usize, &self.name, self.reason);
+        let px = epsicut_render::offline::slate_rgba8(w as usize, h as usize, &self.name, self.reason);
         let f = Arc::new(VideoFrame::rgba8(w, h, px));
         *last = Some(f.clone());
         Ok(Arc::new((*f).clone().with_pts(req.time)))
     }
-    fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+    fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
         // the shape comes from the project's stored metadata (the media is offline)
         let channels = self.info.audio().map_or(2, |a| a.channels as usize);
-        filmcraft_media::validate_audio_buffer_shape(channels, frames)?;
+        epsicut_media::validate_audio_buffer_shape(channels, frames)?;
         Ok(AudioBuffer::silence(sample_rate, channels, frames))
     }
 }
@@ -573,7 +573,7 @@ impl MediaSource for UnsupportedAsSlate {
     fn info(&self) -> &MediaInfo {
         self.inner.info()
     }
-    fn video_frame(&self, req: FrameRequest) -> filmcraft_media::Result<Arc<VideoFrame>> {
+    fn video_frame(&self, req: FrameRequest) -> epsicut_media::Result<Arc<VideoFrame>> {
         match self.inner.video_frame(req) {
             Err(MediaError::Unsupported(why)) => {
                 self.offline.write().unwrap_or_else(PoisonError::into_inner).entry(self.item).or_insert_with(|| {
@@ -585,10 +585,10 @@ impl MediaSource for UnsupportedAsSlate {
             r => r,
         }
     }
-    fn audio(&self, start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+    fn audio(&self, start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
         self.inner.audio(start, frames, sample_rate)
     }
-    fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+    fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
         self.inner.audio_stream(stream, start, frames, sample_rate)
     }
 }
@@ -600,7 +600,7 @@ pub const DAMAGED_AFTER: u32 = 3;
 
 /// See [`MediaPool::monitor_source`]. Counts `Decode` / `Io` failures per item; a successful frame
 /// resets the count. Data still on its way (the web build's pending reads, see
-/// [`filmcraft_media::pending`]) neither counts nor resets, and cancellation, absent video and
+/// [`epsicut_media::pending`]) neither counts nor resets, and cancellation, absent video and
 /// unsupported frames (already the slate, #762) pass through.
 struct DamagedAsSlate {
     inner: SharedSource,
@@ -613,7 +613,7 @@ impl MediaSource for DamagedAsSlate {
     fn info(&self) -> &MediaInfo {
         self.inner.info()
     }
-    fn video_frame(&self, req: FrameRequest) -> filmcraft_media::Result<Arc<VideoFrame>> {
+    fn video_frame(&self, req: FrameRequest) -> epsicut_media::Result<Arc<VideoFrame>> {
         let r = self.inner.video_frame(req);
         let mut failures = self.failures.lock().unwrap_or_else(PoisonError::into_inner);
         match r {
@@ -621,7 +621,7 @@ impl MediaSource for DamagedAsSlate {
                 failures.remove(&self.item);
                 Ok(f)
             }
-            Err(MediaError::Decode(_) | MediaError::Io(_)) if !filmcraft_media::pending::is_set() => {
+            Err(MediaError::Decode(_) | MediaError::Io(_)) if !epsicut_media::pending::is_set() => {
                 let n = failures.entry(self.item).or_insert(0);
                 *n = n.saturating_add(1);
                 if *n >= DAMAGED_AFTER {
@@ -633,10 +633,10 @@ impl MediaSource for DamagedAsSlate {
             r => r,
         }
     }
-    fn audio(&self, start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+    fn audio(&self, start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
         self.inner.audio(start, frames, sample_rate)
     }
-    fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+    fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
         self.inner.audio_stream(stream, start, frames, sample_rate)
     }
 }
@@ -655,7 +655,7 @@ impl MediaSource for ProxySource {
     fn info(&self) -> &MediaInfo {
         &self.info
     }
-    fn video_frame(&self, req: FrameRequest) -> filmcraft_media::Result<Arc<VideoFrame>> {
+    fn video_frame(&self, req: FrameRequest) -> epsicut_media::Result<Arc<VideoFrame>> {
         let full = self.info.video.as_ref().ok_or(MediaError::NoStream("video"))?;
         let pv = self.proxy.info().video.as_ref().map(|v| (v.width, v.height)).unwrap_or((full.width, full.height));
         // ask the proxy for the scale relative to its own size
@@ -676,10 +676,10 @@ impl MediaSource for ProxySource {
         }
         Ok(Arc::new(VideoFrame::rgba8(w as u32, h as u32, out).with_pts(f.pts)))
     }
-    fn audio(&self, start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+    fn audio(&self, start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
         self.audio_from.as_ref().unwrap_or(&self.proxy).audio(start, frames, sample_rate)
     }
-    fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+    fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
         self.audio_from.as_ref().unwrap_or(&self.proxy).audio_stream(stream, start, frames, sample_rate)
     }
 }
@@ -687,7 +687,7 @@ impl MediaSource for ProxySource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmcraft_project::ItemKind;
+    use epsicut_project::ItemKind;
 
     /// A host whose whole-file read fails: opening must go through the reader.
     struct ReaderOnly(Arc<[u8]>);
@@ -698,8 +698,8 @@ mod tests {
         fn write_file(&self, _path: &str, _data: &[u8]) -> std::io::Result<()> {
             Ok(())
         }
-        fn reader(&self, _path: &str) -> Option<std::io::Result<filmcraft_media::SharedReader>> {
-            Some(Ok(Arc::new(filmcraft_media::reader::MemReader(self.0.clone()))))
+        fn reader(&self, _path: &str) -> Option<std::io::Result<epsicut_media::SharedReader>> {
+            Some(Ok(Arc::new(epsicut_media::reader::MemReader(self.0.clone()))))
         }
     }
 
@@ -708,22 +708,18 @@ mod tests {
         let mut project = Project::new("damaged references");
         let a = project.add_item(
             "A",
-            filmcraft_project::Label::Iris,
+            epsicut_project::Label::Iris,
             ItemKind::Subclip {
                 parent: ItemId(999),
-                range: filmcraft_time::TimeRange::new(filmcraft_time::Tick::ZERO, filmcraft_time::Tick(1000)),
+                range: epsicut_time::TimeRange::new(epsicut_time::Tick::ZERO, epsicut_time::Tick(1000)),
                 restrict_trims: false,
             },
             None,
         );
         let b = project.add_item(
             "B",
-            filmcraft_project::Label::Iris,
-            ItemKind::Subclip {
-                parent: a,
-                range: filmcraft_time::TimeRange::new(filmcraft_time::Tick::ZERO, filmcraft_time::Tick(1000)),
-                restrict_trims: false,
-            },
+            epsicut_project::Label::Iris,
+            ItemKind::Subclip { parent: a, range: epsicut_time::TimeRange::new(epsicut_time::Tick::ZERO, epsicut_time::Tick(1000)), restrict_trims: false },
             None,
         );
         let pool = MediaPool::default();
@@ -733,10 +729,10 @@ mod tests {
             assert!(pool.source_for(&project, a, &crate::FsServices).is_none());
             assert!(pool.full_res_source(&project, a, &crate::FsServices).is_none());
             assert!(crate::media_duration(&project, &pool, a).is_none());
-            assert!(filmcraft_render::source_size(&project, a).is_none());
+            assert!(epsicut_render::source_size(&project, a).is_none());
             assert!(project.resolve_media(a).is_none());
-            assert!(filmcraft_render::colorman::override_of(&project, a).is_none());
-            assert!(filmcraft_render::colorman::source_peak_nits(&project, a).is_none());
+            assert!(epsicut_render::colorman::override_of(&project, a).is_none());
+            assert!(epsicut_render::colorman::source_peak_nits(&project, a).is_none());
             assert!(crate::sync::project_clip(&project, a).is_none());
             let mut session = crate::Session { project: Arc::new(project.clone()), ..Default::default() };
             session.state.project_selection = vec![a];
@@ -766,12 +762,12 @@ mod tests {
         fn write_file(&self, _path: &str, _data: &[u8]) -> std::io::Result<()> {
             Ok(())
         }
-        fn reader(&self, _path: &str) -> Option<std::io::Result<filmcraft_media::SharedReader>> {
+        fn reader(&self, _path: &str) -> Option<std::io::Result<epsicut_media::SharedReader>> {
             if !self.1.swap(true, Ordering::Relaxed) {
-                filmcraft_media::pending::mark();
-                return Some(Err(filmcraft_media::pending::would_block()));
+                epsicut_media::pending::mark();
+                return Some(Err(epsicut_media::pending::would_block()));
             }
-            Some(Ok(Arc::new(filmcraft_media::reader::MemReader(self.0.clone()))))
+            Some(Ok(Arc::new(epsicut_media::reader::MemReader(self.0.clone()))))
         }
     }
 
@@ -779,15 +775,15 @@ mod tests {
     /// the job reading the monitors' source to its end.
     #[test]
     fn own_sources_retry_a_file_still_being_fetched() {
-        use filmcraft_render::SourceProvider;
+        use epsicut_render::SourceProvider;
         let movie = crate::media_test_util::tmp_dir("own-sources-pending").join("a.mp4");
-        crate::media_test_util::make_movie(&movie, filmcraft_media::DemoScene::Aurora, 64, 36, 12);
+        crate::media_test_util::make_movie(&movie, epsicut_media::DemoScene::Aurora, 64, 36, 12);
         let (s, items, _) = crate::media_test_util::session_with(&[&movie]);
         let monitor = s.media.full_res_source(&s.project, items[0], &*s.services).unwrap();
         let host = Arc::new(FetchingFirst(std::fs::read(&movie).unwrap().into(), Default::default()));
         let job = s.media.full_res_provider(s.project.clone(), host).own_sources();
         assert!(job.source(items[0]).is_some_and(|x| Arc::ptr_eq(&x, &monitor)), "shared while the bytes are fetched");
-        assert!(filmcraft_media::pending::take());
+        assert!(epsicut_media::pending::take());
         assert!(job.source(items[0]).is_some_and(|x| !Arc::ptr_eq(&x, &monitor)), "its own copy once they are there");
     }
 
@@ -795,9 +791,9 @@ mod tests {
     /// and frames wherever the job reads. What cannot be copied is shared, as before.
     #[test]
     fn own_sources_read_their_own_copy_of_each_file() {
-        use filmcraft_render::SourceProvider;
+        use epsicut_render::SourceProvider;
         let movie = crate::media_test_util::tmp_dir("own-sources").join("a.mp4");
-        crate::media_test_util::make_movie(&movie, filmcraft_media::DemoScene::Aurora, 64, 36, 12);
+        crate::media_test_util::make_movie(&movie, epsicut_media::DemoScene::Aurora, 64, 36, 12);
         let (mut s, items, _) = crate::media_test_util::session_with(&[&movie]);
         let item = items[0];
         let monitor = s.media.source_for(&s.project, item, &*s.services).unwrap();
@@ -805,7 +801,7 @@ mod tests {
         let own = job.source(item).unwrap();
         assert!(!Arc::ptr_eq(&own, &monitor), "the job reads the monitors' source");
         assert!(Arc::ptr_eq(&own, &job.source(item).unwrap()), "one copy per job");
-        let req = FrameRequest { time: filmcraft_time::Tick::ZERO, scale: 1.0 };
+        let req = FrameRequest { time: epsicut_time::Tick::ZERO, scale: 1.0 };
         assert_eq!(own.video_frame(req).unwrap().to_rgba8(), monitor.video_frame(req).unwrap().to_rgba8());
         assert!(s.media.full_res_provider(s.project.clone(), s.services.clone()).own_sources().source(item).is_some_and(|o| !Arc::ptr_eq(&o, &own)));
 
@@ -827,7 +823,7 @@ mod tests {
 
     #[test]
     fn open_file_prefers_the_hosts_reader() {
-        let wav = filmcraft_media::wav::write_wav16(&[0.0, 0.5, -0.5, 0.25], 2, 48_000);
+        let wav = epsicut_media::wav::write_wav16(&[0.0, 0.5, -0.5, 0.25], 2, 48_000);
         let s = MediaPool::default().open_file("a.wav", &ReaderOnly(wav.into())).unwrap();
         assert!(s.info().has_audio());
     }
@@ -836,10 +832,10 @@ mod tests {
     #[cfg(any(unix, windows))]
     #[test]
     fn fs_services_open_media_through_a_file_reader() {
-        let dir = std::env::temp_dir().join(format!("filmcraft-pool-reader-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("epsicut-pool-reader-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("a.wav");
-        let wav = filmcraft_media::wav::write_wav16(&[0.0, 0.5, -0.5, 0.25], 2, 48_000);
+        let wav = epsicut_media::wav::write_wav16(&[0.0, 0.5, -0.5, 0.25], 2, 48_000);
         std::fs::write(&path, &wav).unwrap();
         let p = path.to_string_lossy().to_string();
         let r = crate::FsServices.reader(&p).expect("a reader").unwrap();
@@ -850,20 +846,20 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
-    /// A file whose first frame decodes and whose later frames need a decoder FilmCraft lacks.
+    /// A file whose first frame decodes and whose later frames need a decoder EpsiCut lacks.
     struct PartlyDecodable(MediaInfo);
     impl MediaSource for PartlyDecodable {
         fn info(&self) -> &MediaInfo {
             &self.0
         }
-        fn video_frame(&self, req: FrameRequest) -> filmcraft_media::Result<Arc<VideoFrame>> {
+        fn video_frame(&self, req: FrameRequest) -> epsicut_media::Result<Arc<VideoFrame>> {
             match req.time.0 {
                 0 => Ok(Arc::new(VideoFrame::rgba8(2, 2, vec![7; 16]))),
                 1 => Err(MediaError::Decode("damaged slice".into())),
                 _ => Err(MediaError::Unsupported("H.264: field pictures".into())),
             }
         }
-        fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+        fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
             Ok(AudioBuffer::silence(sample_rate, 3, frames))
         }
     }
@@ -872,20 +868,19 @@ mod tests {
     /// item says why; decodable frames, damaged ones and the sound are left alone.
     #[test]
     fn undecodable_frames_show_the_unreadable_slate() {
-        let info = GeneratorSource::new(filmcraft_media::Generator::ColorMatte { color: [0.0; 4] }, 16, 8, Default::default(), filmcraft_time::Tick(100))
-            .info()
-            .clone();
+        let info =
+            GeneratorSource::new(epsicut_media::Generator::ColorMatte { color: [0.0; 4] }, 16, 8, Default::default(), epsicut_time::Tick(100)).info().clone();
         let pool = MediaPool::default();
         let item = ItemId(1);
         pool.insert_file(item, "/media/cam/a.mov", Arc::new(PartlyDecodable(info)));
         let src = pool.cached(item).unwrap();
-        let at = |t| src.video_frame(FrameRequest { time: filmcraft_time::Tick(t), scale: 1.0 });
+        let at = |t| src.video_frame(FrameRequest { time: epsicut_time::Tick(t), scale: 1.0 });
         assert_eq!(at(0).unwrap().to_rgba8(), vec![7; 16]);
         assert!(matches!(at(1), Err(MediaError::Decode(_))));
         assert!(pool.offline_status(item).is_none(), "nothing unsupported yet");
         let f = at(2).unwrap();
         assert_eq!((f.width, f.height), (16, 8));
-        assert_eq!(f.to_rgba8(), filmcraft_render::offline::slate_rgba8(16, 8, "a.mov", OfflineReason::Unreadable));
+        assert_eq!(f.to_rgba8(), epsicut_render::offline::slate_rgba8(16, 8, "a.mov", OfflineReason::Unreadable));
         let st = pool.offline_status(item).unwrap();
         assert_eq!((st.reason, st.path.as_str(), st.error.as_str()), (OfflineReason::Unreadable, "/media/cam/a.mov", "H.264: field pictures"));
         assert_eq!(src.audio(0, 4, 48_000).unwrap().channels.len(), 3);
@@ -911,38 +906,37 @@ mod tests {
         fn info(&self) -> &MediaInfo {
             &self.0
         }
-        fn video_frame(&self, _: FrameRequest) -> filmcraft_media::Result<Arc<VideoFrame>> {
+        fn video_frame(&self, _: FrameRequest) -> epsicut_media::Result<Arc<VideoFrame>> {
             Err(match self.1.load(Ordering::Relaxed) {
                 OK => return Ok(Arc::new(VideoFrame::rgba8(2, 2, vec![7; 16]))),
                 DAMAGED => MediaError::Decode("damaged slice".into()),
                 IO => MediaError::Io("short read".into()),
                 LOADING => {
                     // as the web build's WebCodecs / Blob sources do
-                    filmcraft_media::pending::mark();
+                    epsicut_media::pending::mark();
                     MediaError::Decode("still decoding".into())
                 }
                 CANCELLED => MediaError::Cancelled,
                 _ => MediaError::NoStream("video"),
             })
         }
-        fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<AudioBuffer> {
+        fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<AudioBuffer> {
             Ok(AudioBuffer::silence(sample_rate, 1, frames))
         }
     }
 
     fn flaky() -> (MediaPool, ItemId, Arc<Flaky>) {
-        let info = GeneratorSource::new(filmcraft_media::Generator::ColorMatte { color: [0.0; 4] }, 16, 8, Default::default(), filmcraft_time::Tick(100))
-            .info()
-            .clone();
+        let info =
+            GeneratorSource::new(epsicut_media::Generator::ColorMatte { color: [0.0; 4] }, 16, 8, Default::default(), epsicut_time::Tick(100)).info().clone();
         (MediaPool::default(), ItemId(1), Arc::new(Flaky(info, Default::default())))
     }
 
-    fn frame(src: &SharedSource) -> filmcraft_media::Result<Arc<VideoFrame>> {
-        src.video_frame(FrameRequest { time: filmcraft_time::Tick(0), scale: 1.0 })
+    fn frame(src: &SharedSource) -> epsicut_media::Result<Arc<VideoFrame>> {
+        src.video_frame(FrameRequest { time: epsicut_time::Tick(0), scale: 1.0 })
     }
 
-    fn is_slate(r: &filmcraft_media::Result<Arc<VideoFrame>>, name: &str) -> bool {
-        r.as_ref().is_ok_and(|f| f.to_rgba8() == filmcraft_render::offline::slate_rgba8(16, 8, name, OfflineReason::Unreadable))
+    fn is_slate(r: &epsicut_media::Result<Arc<VideoFrame>>, name: &str) -> bool {
+        r.as_ref().is_ok_and(|f| f.to_rgba8() == epsicut_render::offline::slate_rgba8(16, 8, name, OfflineReason::Unreadable))
     }
 
     /// #626 follow-up to #762: a damaged file (frames failing again and again) shows the
@@ -984,7 +978,7 @@ mod tests {
         src.set(LOADING);
         for _ in 0..DAMAGED_AFTER * 4 {
             assert!(frame(&mon).is_err());
-            assert!(filmcraft_media::pending::take());
+            assert!(epsicut_media::pending::take());
         }
         // and they do not interrupt a run of real failures either way: a following damaged frame
         // is still only the first
@@ -1011,13 +1005,13 @@ mod tests {
         }
     }
 
-    /// #626 end to end: an H.264 profile FilmCraft does not decode yet (4:4:4) imports and shows
+    /// #626 end to end: an H.264 profile EpsiCut does not decode yet (4:4:4) imports and shows
     /// the unreadable slate with the decoder's reason, instead of a black picture.
     #[test]
     fn ffmpeg_unsupported_h264_profile_shows_the_unreadable_slate() {
-        let Some(ffmpeg) = filmcraft_testkit::oracle::ffmpeg_or_skip("media_pool") else { return };
-        let path = filmcraft_testkit::fixtures_dir("engine/media_pool").join("h264_444_64x32.mp4");
-        let Some(path) = filmcraft_testkit::fixtures::generate(&path, |tmp| {
+        let Some(ffmpeg) = epsicut_testkit::oracle::ffmpeg_or_skip("media_pool") else { return };
+        let path = epsicut_testkit::fixtures_dir("engine/media_pool").join("h264_444_64x32.mp4");
+        let Some(path) = epsicut_testkit::fixtures::generate(&path, |tmp| {
             std::process::Command::new(&ffmpeg)
                 .args(["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=64x32:rate=24:duration=0.5"])
                 .args(["-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv444p"])
@@ -1031,8 +1025,8 @@ mod tests {
         let r = s.execute("file.import", serde_json::json!({"paths": [path.to_string_lossy()]})).unwrap();
         let item = ItemId(r["items"][0].as_u64().unwrap());
         let src = s.media.source_for(&s.project, item, &*s.services).unwrap();
-        let f = src.video_frame(FrameRequest { time: filmcraft_time::Tick::ZERO, scale: 1.0 }).unwrap();
-        assert_eq!(f.to_rgba8(), filmcraft_render::offline::slate_rgba8(64, 32, "h264_444_64x32.mp4", OfflineReason::Unreadable));
+        let f = src.video_frame(FrameRequest { time: epsicut_time::Tick::ZERO, scale: 1.0 }).unwrap();
+        assert_eq!(f.to_rgba8(), epsicut_render::offline::slate_rgba8(64, 32, "h264_444_64x32.mp4", OfflineReason::Unreadable));
         let st = s.media.offline_status(item).unwrap();
         assert_eq!(st.reason, OfflineReason::Unreadable);
         assert!(st.error.contains("H.264") && st.error.contains("chroma_format_idc 3"), "{}", st.error);

@@ -3,15 +3,15 @@ use crate::{
     EngineError, Result, Session,
     commands::{bad, marker_author_p, marker_color_p},
 };
-use filmcraft_project::{ItemId, Marker, MarkerId, MarkerKind, Project};
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_project::{ItemId, Marker, MarkerId, MarkerKind, Project};
+use epsicut_time::{FrameRate, Tick};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
 fn list(project: &mut Project, owner: ItemId) -> Result<&mut Vec<Marker>> {
     match &mut project.item_mut(owner).ok_or_else(|| EngineError::Other("Marker owner no longer exists".into()))?.kind {
-        filmcraft_project::ItemKind::Media(m) => Ok(&mut m.markers),
-        filmcraft_project::ItemKind::Sequence(q) => Ok(&mut std::sync::Arc::make_mut(q).markers),
+        epsicut_project::ItemKind::Media(m) => Ok(&mut m.markers),
+        epsicut_project::ItemKind::Sequence(q) => Ok(&mut std::sync::Arc::make_mut(q).markers),
         _ => Err(EngineError::Other("This item cannot own markers".into())),
     }
 }
@@ -108,7 +108,7 @@ pub(crate) fn run(s: &mut Session, p: &Value, delete: bool) -> Result<Value> {
                 .filter(|v| v.len() <= 8192 && !v.chars().any(char::is_control))
                 .ok_or_else(|| bad(id, "url must be text of at most 8192 bytes without control characters"))?
                 .trim();
-            if !value.is_empty() && filmcraft_project::marker_web_url(value).is_none() {
+            if !value.is_empty() && epsicut_project::marker_web_url(value).is_none() {
                 return Err(bad(id, "url must be an absolute HTTP or HTTPS address without credentials"));
             }
             Some(value.to_string())

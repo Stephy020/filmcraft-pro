@@ -1,6 +1,6 @@
 # Security policy
 
-FilmCraft processes untrusted media, projects, interchange files, fonts and presets,
+EpsiCut processes untrusted media, projects, interchange files, fonts and presets,
 and provides CLI, control-channel and MCP automation. Security reports about those
 inputs, automation boundaries, dependencies or release artifacts are welcome.
 
@@ -14,7 +14,7 @@ Do not publish a working exploit, malicious attachment, credential, private proj
 or sensitive crash dump in a public issue or chat. Wait for a private channel before
 sharing those details; if none is established, withhold sensitive material.
 
-A useful report includes the FilmCraft version or commit, operating system and
+A useful report includes the EpsiCut version or commit, operating system and
 architecture, affected component, impact, reproduction steps, and any workaround.
 For media or project parsing problems, initially describe the file format, size,
 cryptographic hash and whether the sample is synthetic or privately owned. Remove

@@ -19,7 +19,7 @@ use egui::{ColorImage, ViewportCommand};
 use serde_json::{Value, json};
 use web_time::{Duration, Instant};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 
 /// At most this many queued, in-flight or completed-but-not-yet-drained requests.
 pub(crate) const MAX_REQUESTS: usize = 4;
@@ -305,7 +305,7 @@ fn reject(reply: Sender<Value>, token: u64, message: impl std::fmt::Display) {
 
 /// The active sequence id (none when no sequence is open) and project revision that a capture
 /// is bound to.
-fn active_document(app: &FilmcraftApp) -> DocumentId {
+fn active_document(app: &EpsicutApp) -> DocumentId {
     DocumentId { sequence: app.session.state.active_sequence.map(|id| id.0), revision: app.session.revision }
 }
 
@@ -316,7 +316,7 @@ fn current_focus(ctx: &egui::Context) -> Option<egui::Id> {
 
 /// Refresh the fresh raw-input surface/identity snapshot. Called from `raw_input_hook`, so it runs
 /// on both UI and hidden logic-only callbacks and never reads the stale `InputState` rectangle.
-pub(crate) fn note_raw_geometry(app: &mut FilmcraftApp, ctx: &egui::Context, raw: &egui::RawInput) {
+pub(crate) fn note_raw_geometry(app: &mut EpsicutApp, ctx: &egui::Context, raw: &egui::RawInput) {
     let previous = app.capture_geometry;
     let Some(surface) = SurfaceGeometry::from_raw(raw, ctx, previous.map(|geometry| geometry.surface)) else {
         app.capture_geometry = None;
@@ -334,7 +334,7 @@ pub(crate) fn note_raw_geometry(app: &mut FilmcraftApp, ctx: &egui::Context, raw
 
 /// Pick up document/revision and keyboard-focus changes made since the raw-input snapshot (a
 /// control request, or the UI pass that admitted a `ui.screenshot` at its end).
-fn refresh_identity(app: &mut FilmcraftApp, ctx: &egui::Context) {
+fn refresh_identity(app: &mut EpsicutApp, ctx: &egui::Context) {
     let Some(geometry) = app.capture_geometry else { return };
     let refreshed = CaptureGeometry { document: active_document(app), focus: current_focus(ctx), ..geometry };
     let changed = refreshed != geometry;
@@ -347,7 +347,7 @@ fn refresh_identity(app: &mut FilmcraftApp, ctx: &egui::Context) {
 /// Admit one `ui.screenshot` request without issuing it. Counts queued, in-flight and
 /// completed-but-undrained requests and reserves the raw image plus its encode/encode-reply buffers
 /// before capture.
-pub(crate) fn admit(app: &mut FilmcraftApp, ctx: &egui::Context, path: Option<String>, crop: Option<CropTarget>, reply: Sender<Value>) {
+pub(crate) fn admit(app: &mut EpsicutApp, ctx: &egui::Context, path: Option<String>, crop: Option<CropTarget>, reply: Sender<Value>) {
     refresh_identity(app, ctx);
     let token = next_token(&mut app.shots);
     let Some(geometry) = app.capture_geometry else {
@@ -421,7 +421,7 @@ pub(crate) fn admit(app: &mut FilmcraftApp, ctx: &egui::Context, path: Option<St
 /// Why the request's bound document/revision or keyboard focus no longer matches. `None`
 /// means identity is unchanged; a mismatch must reject rather than save pixels from another
 /// document or focus.
-fn identity_reason(app: &FilmcraftApp, ctx: &egui::Context, shot: &Shot) -> Option<&'static str> {
+fn identity_reason(app: &EpsicutApp, ctx: &egui::Context, shot: &Shot) -> Option<&'static str> {
     if active_document(app) != shot.document {
         Some("the document or project revision changed while the capture was queued")
     } else if current_focus(ctx) != shot.focus {
@@ -433,7 +433,7 @@ fn identity_reason(app: &FilmcraftApp, ctx: &egui::Context, shot: &Shot) -> Opti
 
 /// Why the live surface snapshot or capture epoch differs from the one this request was
 /// admitted or issued against. `None` means the geometry is still the one it reserved for.
-fn geometry_reason(app: &FilmcraftApp, shot: &Shot) -> Option<&'static str> {
+fn geometry_reason(app: &EpsicutApp, shot: &Shot) -> Option<&'static str> {
     if app.capture_geometry != Some(shot.geometry) || app.capture_epoch != shot.geometry_epoch {
         Some("the window geometry changed while the capture was queued")
     } else {
@@ -445,7 +445,7 @@ fn geometry_reason(app: &FilmcraftApp, shot: &Shot) -> Option<&'static str> {
 /// per-image and aggregate budgets including every other request, and reset its settled
 /// frames, crop misses and ready time. On failure nothing is changed and the caller rejects
 /// it; on success the request is unissued again and must collect fresh settling passes.
-fn retry_geometry(app: &mut FilmcraftApp, ctx: &egui::Context, index: usize) -> Result<(), String> {
+fn retry_geometry(app: &mut EpsicutApp, ctx: &egui::Context, index: usize) -> Result<(), String> {
     let now = Instant::now();
     let current = app.capture_geometry.ok_or_else(|| "the window geometry is no longer known".to_string())?;
     let expected = current.expected_size().ok_or_else(|| "the window has no capturable size".to_string())?;
@@ -501,7 +501,7 @@ enum IssueOutcome {
 /// not-yet-drawn crop target for a bounded number of accepted passes, or issue the screenshot
 /// with the crop resolved from this pass. The callback is taken at most once and `issued` is
 /// set only when the viewport command was sent.
-fn try_issue_shot(app: &mut FilmcraftApp, ctx: &egui::Context, index: usize) -> IssueOutcome {
+fn try_issue_shot(app: &mut EpsicutApp, ctx: &egui::Context, index: usize) -> IssueOutcome {
     let shot = &app.shots.requests[index];
     if let Some(reason) = identity_reason(app, ctx, shot) {
         return IssueOutcome::Identity(reason.to_string());
@@ -538,7 +538,7 @@ fn try_issue_shot(app: &mut FilmcraftApp, ctx: &egui::Context, index: usize) -> 
 
 /// Reject failed requests from the highest index down, so an earlier removal cannot shift a later
 /// index and remove the wrong shot.
-fn reject_failures(app: &mut FilmcraftApp, mut failures: Vec<(usize, String)>) {
+fn reject_failures(app: &mut EpsicutApp, mut failures: Vec<(usize, String)>) {
     failures.sort_unstable_by_key(|(i, _)| std::cmp::Reverse(*i));
     for (i, message) in failures {
         if i >= app.shots.requests.len() {
@@ -556,7 +556,7 @@ fn reject_failures(app: &mut FilmcraftApp, mut failures: Vec<(usize, String)>) {
 /// `run_logic` tick), including the accepted final pass of a multipass layout. `monitor_inexact`
 /// describes the pass that just drew the monitor, so consume it here: it must not stay sticky and
 /// delay every later screenshot until the 5 s settle maximum.
-pub(crate) fn issue(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub(crate) fn issue(app: &mut EpsicutApp, ctx: &egui::Context) {
     let monitor_inexact = std::mem::take(&mut app.monitor_inexact);
     if ctx.will_discard() {
         return;
@@ -606,7 +606,7 @@ enum DrainStep {
 /// identity, then geometry (an unissued request keeps waiting for a retry, while in-flight
 /// stale pixels are rejected), and finally take a completed slot. `Keep` leaves the request
 /// in place and advances the scan.
-fn drain_step(app: &FilmcraftApp, ctx: &egui::Context, index: usize, now: Instant) -> DrainStep {
+fn drain_step(app: &EpsicutApp, ctx: &egui::Context, index: usize, now: Instant) -> DrainStep {
     let shot = &app.shots.requests[index];
     if now >= shot.deadline {
         return DrainStep::Timeout;
@@ -634,7 +634,7 @@ fn drain_step(app: &FilmcraftApp, ctx: &egui::Context, index: usize, now: Instan
 
 /// Remove one request, cancel its slot and send its error reply; later requests shift down by
 /// one index.
-fn remove_and_reject(app: &mut FilmcraftApp, index: usize, message: impl std::fmt::Display) {
+fn remove_and_reject(app: &mut EpsicutApp, index: usize, message: impl std::fmt::Display) {
     let shot = app.shots.requests.remove(index);
     if let Some(slot) = shot.slot {
         slot.cancel();
@@ -677,7 +677,7 @@ fn complete_shot(mut shot: Shot, result: Result<Arc<ColorImage>, CaptureError>) 
 
 /// Drain completed slots and expire timed-out requests. Call from every logic callback (including
 /// hidden ones). The deadline is checked before taking or writing an image.
-pub(crate) fn drain(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub(crate) fn drain(app: &mut EpsicutApp, ctx: &egui::Context) {
     let mut i = 0;
     while i < app.shots.requests.len() {
         let now = Instant::now();
@@ -699,7 +699,7 @@ pub(crate) fn drain(app: &mut FilmcraftApp, ctx: &egui::Context) {
 
 /// Cancel every queued/in-flight capture (app exit). Late callbacks see a dropped slot and write
 /// nothing; clients receive one error reply instead of hanging past the transport timeout.
-pub(crate) fn cancel_all(app: &mut FilmcraftApp) {
+pub(crate) fn cancel_all(app: &mut EpsicutApp) {
     for shot in app.shots.requests.drain(..) {
         if let Some(slot) = shot.slot {
             slot.cancel();
@@ -710,7 +710,7 @@ pub(crate) fn cancel_all(app: &mut FilmcraftApp) {
 
 /// Ask for a painted frame while a request is still queued, and on hidden logic ticks when a
 /// capture is waiting for settlement. The screenshot command itself forces one paint once issued.
-pub(crate) fn request_hidden_paint(app: &FilmcraftApp, ctx: &egui::Context) {
+pub(crate) fn request_hidden_paint(app: &EpsicutApp, ctx: &egui::Context) {
     if app.shots.has_unissued() {
         ctx.send_viewport_cmd(ViewportCommand::RequestPaintWhileHidden);
     }

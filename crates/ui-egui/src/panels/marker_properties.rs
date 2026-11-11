@@ -1,10 +1,10 @@
 //! Marker editing and project palette creation are separate, undoable operations.
 use crate::{
-    FilmcraftApp,
+    EpsicutApp,
     widgets::color_picker::{self, ColorDraft},
 };
 use egui::{Color32, Sense, Stroke, vec2};
-use filmcraft_project::{HexColor, Label, Marker, MarkerKind};
+use epsicut_project::{HexColor, Label, Marker, MarkerKind};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -15,7 +15,7 @@ pub struct Draft {
     pub time: String,
     pub duration: String,
     pub range: bool,
-    pub original_duration: filmcraft_time::Tick,
+    pub original_duration: epsicut_time::Tick,
     pub initial_time: String,
     pub initial_duration: String,
     pub marker: u64,
@@ -45,11 +45,11 @@ impl Owner {
             Self::Source(id) => json!({"target":"source","item":id}),
         }
     }
-    pub fn current(app: &FilmcraftApp, source: bool) -> Option<Self> {
+    pub fn current(app: &EpsicutApp, source: bool) -> Option<Self> {
         if source { app.session.state.source_item.map(|id| Self::Source(id.0)) } else { app.session.state.active_sequence.map(|id| Self::Sequence(id.0)) }
     }
-    pub fn details(self, app: &FilmcraftApp) -> Option<(String, filmcraft_time::FrameRate, bool, Vec<Marker>)> {
-        let id = filmcraft_project::ItemId(match self {
+    pub fn details(self, app: &EpsicutApp) -> Option<(String, epsicut_time::FrameRate, bool, Vec<Marker>)> {
+        let id = epsicut_project::ItemId(match self {
             Self::Sequence(id) | Self::Source(id) => id,
         });
         let item = app.session.project.item(id)?;
@@ -59,7 +59,7 @@ impl Owner {
                 Some((tlf!("Sequence: {name}", name = &item.name), q.settings.frame_rate, q.settings.drop_frame, q.markers.clone()))
             }
             Self::Source(_) => {
-                let v = filmcraft_engine::clip_ops::source_view(&app.session, id)?;
+                let v = epsicut_engine::clip_ops::source_view(&app.session, id)?;
                 Some((
                     if v.media != id { tlf!("Source: {name} (shared source markers)", name = &item.name) } else { tlf!("Source: {name}", name = &item.name) },
                     v.rate,
@@ -70,14 +70,14 @@ impl Owner {
         }
     }
 }
-pub fn open(app: &mut FilmcraftApp, marker: &Marker) {
+pub fn open(app: &mut EpsicutApp, marker: &Marker) {
     if let Some(owner) = Owner::current(app, false) {
         open_owned(app, marker, owner);
     }
 }
-pub fn open_owned(app: &mut FilmcraftApp, marker: &Marker, owner: Owner) {
+pub fn open_owned(app: &mut EpsicutApp, marker: &Marker, owner: Owner) {
     let Some((_, rate, drop, _)) = owner.details(app) else { return };
-    let format = |ticks| filmcraft_time::format_time(ticks, rate, drop, filmcraft_time::TimeDisplay::Timecode, 48000).replace(';', ":");
+    let format = |ticks| epsicut_time::format_time(ticks, rate, drop, epsicut_time::TimeDisplay::Timecode, 48000).replace(';', ":");
     let time = format(marker.start);
     let duration = format(marker.duration);
     app.ui.marker_properties = Some(Draft {
@@ -87,7 +87,7 @@ pub fn open_owned(app: &mut FilmcraftApp, marker: &Marker, owner: Owner) {
         initial_duration: duration.clone(),
         time,
         duration,
-        range: marker.duration > filmcraft_time::Tick::ZERO,
+        range: marker.duration > epsicut_time::Tick::ZERO,
         original_duration: marker.duration,
         marker: marker.id.0,
         original: marker.clone(),
@@ -112,7 +112,7 @@ enum Action {
     Navigate(Marker),
 }
 
-pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut EpsicutApp, ctx: &egui::Context) {
     let Some(mut draft) = app.ui.marker_properties.take() else { return };
     if !Arc::ptr_eq(&draft.project, &app.session.project_instance) {
         return;
@@ -192,7 +192,7 @@ pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
     app.ui.marker_properties = Some(draft);
 }
 
-fn field_area(app: &mut FilmcraftApp, ui: &mut egui::Ui, draft: &mut Draft, width: f32, height: f32, rate: filmcraft_time::FrameRate) {
+fn field_area(app: &mut EpsicutApp, ui: &mut egui::Ui, draft: &mut Draft, width: f32, height: f32, rate: epsicut_time::FrameRate) {
     ui.allocate_ui_with_layout(vec2(width, height), egui::Layout::top_down(egui::Align::Min), |ui| {
         egui::ScrollArea::vertical().id_salt("marker-fields").max_height(height).show(ui, |ui| {
             ui.set_width(width - 12.0);
@@ -212,7 +212,7 @@ fn action_button(ui: &mut egui::Ui, label: &str, width: f32, enabled: bool, prim
     })
 }
 
-fn actions(app: &mut FilmcraftApp, ui: &mut egui::Ui, previous: Option<&Marker>, next: Option<&Marker>, vertical: bool, can_save: bool) -> Option<Action> {
+fn actions(app: &mut EpsicutApp, ui: &mut egui::Ui, previous: Option<&Marker>, next: Option<&Marker>, vertical: bool, can_save: bool) -> Option<Action> {
     let mut action = None;
     let mut buttons = |ui: &mut egui::Ui| {
         let width = if vertical { 80.0 } else { 96.0 };
@@ -275,7 +275,7 @@ impl egui::TextBuffer for TimecodeBuffer<'_> {
     }
 }
 
-fn timecode_field(ui: &mut egui::Ui, value: &mut String, rate: filmcraft_time::FrameRate, label: &str) -> egui::Response {
+fn timecode_field(ui: &mut egui::Ui, value: &mut String, rate: epsicut_time::FrameRate, label: &str) -> egui::Response {
     let font = egui::TextStyle::Monospace.resolve(ui.style());
     let sample = if rate.timecode_base() >= 100 { "00:00:00:000" } else { "00:00:00:00" };
     // egui 0.37 includes frame padding in desired_width; reserve it and the caret explicitly.
@@ -287,27 +287,27 @@ fn timecode_field(ui: &mut egui::Ui, value: &mut String, rate: filmcraft_time::F
     )
 }
 
-fn parse_marker_timecode(value: &str, rate: filmcraft_time::FrameRate, drop: bool) -> Result<i64, String> {
+fn parse_marker_timecode(value: &str, rate: epsicut_time::FrameRate, drop: bool) -> Result<i64, String> {
     let error = || tl!("Enter a valid HH:MM:SS:FF timecode").to_string();
     let length = if rate.timecode_base() >= 100 { 12 } else { 11 };
     if value.len() != length || !value.bytes().enumerate().all(|(i, b)| if matches!(i, 2 | 5 | 8) { b == b':' } else { b.is_ascii_digit() }) {
         return Err(error());
     }
-    let frame = filmcraft_time::parse_timecode(value, rate, drop, 0).map_err(|_| error())?;
+    let frame = epsicut_time::parse_timecode(value, rate, drop, 0).map_err(|_| error())?;
     // Reject overflowed fields and skipped drop-frame labels rather than normalizing them.
-    let formatted = filmcraft_time::format_timecode_frames(frame, rate, drop);
+    let formatted = epsicut_time::format_timecode_frames(frame, rate, drop);
     if !formatted.split([':', ';']).map(|s| s.parse::<u32>().ok()).eq(value.split(':').map(|s| s.parse::<u32>().ok())) {
         return Err(error());
     }
     Ok(frame)
 }
 
-fn valid_times(draft: &Draft, rate: filmcraft_time::FrameRate, drop: bool) -> bool {
+fn valid_times(draft: &Draft, rate: epsicut_time::FrameRate, drop: bool) -> bool {
     // Imported timings can exceed the editable timecode width or contain subframes.
     // Metadata-only edits retain those exact original ticks; edited fields stay strict.
     (draft.time == draft.initial_time || parse_marker_timecode(&draft.time, rate, drop).is_ok())
         && (!draft.range
-            || (draft.duration == draft.initial_duration && draft.original_duration > filmcraft_time::Tick::ZERO)
+            || (draft.duration == draft.initial_duration && draft.original_duration > epsicut_time::Tick::ZERO)
             || parse_marker_timecode(&draft.duration, rate, drop).is_ok_and(|f| f > 0))
 }
 
@@ -326,7 +326,7 @@ fn field_row_height(ui: &mut egui::Ui, label: &str, min_height: f32, contents: i
     });
 }
 
-fn fields(app: &mut FilmcraftApp, ui: &mut egui::Ui, draft: &mut Draft, rate: filmcraft_time::FrameRate) {
+fn fields(app: &mut EpsicutApp, ui: &mut egui::Ui, draft: &mut Draft, rate: epsicut_time::FrameRate) {
     field_row(ui, tl!("Name"), |ui| {
         let response = crate::widgets::accessible_name(ui.add(egui::TextEdit::singleline(&mut draft.name).desired_width(f32::INFINITY)), tl!("Name"));
         app.auto.add_response("markerProperties.name", &response, tl!("Name"));
@@ -349,8 +349,8 @@ fn fields(app: &mut FilmcraftApp, ui: &mut egui::Ui, draft: &mut Draft, rate: fi
             ui.add_space(16.0);
             let response = ui.checkbox(&mut draft.range, tl!("Duration")).on_hover_text(tl!("Range marker"));
             app.auto.add_response("markerProperties.range", &response, tl!("Range marker"));
-            if response.changed() && draft.range && draft.original_duration == filmcraft_time::Tick::ZERO && draft.duration == draft.initial_duration {
-                draft.duration = filmcraft_time::format_timecode_frames(1, rate, false);
+            if response.changed() && draft.range && draft.original_duration == epsicut_time::Tick::ZERO && draft.duration == draft.initial_duration {
+                draft.duration = epsicut_time::format_timecode_frames(1, rate, false);
             }
             let response = ui.add_enabled(draft.range, |ui: &mut egui::Ui| timecode_field(ui, &mut draft.duration, rate, tl!("Duration")));
             app.auto.add_response("markerProperties.duration", &response, tl!("Duration"));
@@ -431,7 +431,7 @@ fn fields(app: &mut FilmcraftApp, ui: &mut egui::Ui, draft: &mut Draft, rate: fi
                                 .hint_text("https://"),
                         );
                         app.auto.add_response("markerProperties.url", &response, tl!("URL"));
-                        let address = filmcraft_project::marker_web_url(&draft.url);
+                        let address = epsicut_project::marker_web_url(&draft.url);
                         let response = ui.add_enabled(address.is_some(), |ui: &mut egui::Ui| {
                             let response = ui.add_sized(vec2(24.0, 24.0), egui::Button::new(""));
                             response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), tl!("Open Link")));
@@ -454,7 +454,7 @@ fn fields(app: &mut FilmcraftApp, ui: &mut egui::Ui, draft: &mut Draft, rate: fi
                 if kind == MarkerKind::WebLink
                     && draft.kind == MarkerKind::WebLink
                     && !draft.url.trim().is_empty()
-                    && filmcraft_project::marker_web_url(&draft.url).is_none()
+                    && epsicut_project::marker_web_url(&draft.url).is_none()
                 {
                     ui.colored_label(ui.visuals().error_fg_color, tl!("Enter a valid HTTP or HTTPS URL without credentials"));
                 }
@@ -465,7 +465,7 @@ fn fields(app: &mut FilmcraftApp, ui: &mut egui::Ui, draft: &mut Draft, rate: fi
 }
 
 /// Navigation commits only this marker; unchanged navigation does not dirty the project or Undo.
-fn save(app: &mut FilmcraftApp, draft: &Draft) -> Result<(), String> {
+fn save(app: &mut EpsicutApp, draft: &Draft) -> Result<(), String> {
     let params = edit_params(app, draft)?;
     let original = &draft.original;
     let changed = draft.name != original.name
@@ -474,7 +474,7 @@ fn save(app: &mut FilmcraftApp, draft: &Draft) -> Result<(), String> {
         || draft.kind != original.kind
         || draft.url != original.url
         || draft.time != draft.initial_time
-        || draft.range != (original.duration > filmcraft_time::Tick::ZERO)
+        || draft.range != (original.duration > epsicut_time::Tick::ZERO)
         || (draft.range && draft.duration != draft.initial_duration)
         || draft.custom != original.custom_color.is_some()
         || if draft.custom { HexColor::parse(&draft.hex) != original.custom_color } else { draft.preset != original.color };
@@ -484,13 +484,13 @@ fn save(app: &mut FilmcraftApp, draft: &Draft) -> Result<(), String> {
     Ok(())
 }
 
-fn edit_params(app: &FilmcraftApp, draft: &Draft) -> Result<serde_json::Value, String> {
+fn edit_params(app: &EpsicutApp, draft: &Draft) -> Result<serde_json::Value, String> {
     let Some((_, rate, drop, _)) = draft.owner.details(app) else {
         return Err(tl!("Marker owner is unavailable").into());
     };
     let parse = |value: &str| -> Result<i64, String> {
         let f = parse_marker_timecode(value, rate, drop)?;
-        if f < 0 || f > rate.frame_at(filmcraft_time::Tick::MAX) {
+        if f < 0 || f > rate.frame_at(epsicut_time::Tick::MAX) {
             return Err(tl!("Time is outside the supported range").into());
         }
         Ok(f)
@@ -509,9 +509,9 @@ fn edit_params(app: &FilmcraftApp, draft: &Draft) -> Result<serde_json::Value, S
     if draft.time != draft.initial_time {
         p["frame"] = json!(parse(&draft.time)?);
     }
-    if !draft.range && draft.original_duration != filmcraft_time::Tick::ZERO {
+    if !draft.range && draft.original_duration != epsicut_time::Tick::ZERO {
         p["durationFrames"] = json!(0);
-    } else if draft.range && (draft.duration != draft.initial_duration || draft.original_duration == filmcraft_time::Tick::ZERO) {
+    } else if draft.range && (draft.duration != draft.initial_duration || draft.original_duration == epsicut_time::Tick::ZERO) {
         let duration = parse(&draft.duration)?;
         if duration == 0 {
             return Err(tl!("A range marker needs a positive duration").into());
@@ -541,7 +541,7 @@ fn kind_label(kind: MarkerKind) -> &'static str {
     }
 }
 
-fn color_dialog(app: &mut FilmcraftApp, ctx: &egui::Context, draft: &mut Draft) {
+fn color_dialog(app: &mut EpsicutApp, ctx: &egui::Context, draft: &mut Draft) {
     let Some(editor) = &mut draft.color_editor else { return };
     let mut add = false;
     let mut cancel = false;
@@ -610,7 +610,7 @@ fn allocate_swatch(ui: &mut egui::Ui) -> (egui::Rect, egui::Response) {
 #[cfg(test)]
 mod timecode_tests {
     use super::parse_marker_timecode;
-    use filmcraft_time::FrameRate;
+    use epsicut_time::FrameRate;
 
     #[test]
     fn marker_timecode_requires_complete_fields_and_valid_drop_frame_labels() {

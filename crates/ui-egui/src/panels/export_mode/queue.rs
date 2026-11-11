@@ -1,10 +1,10 @@
-use super::{Align2, CUSTOM, Color32, FilmcraftApp, Rect, Reg, Tokens, Value, json, pos2, vec2};
+use super::{Align2, CUSTOM, Color32, EpsicutApp, Rect, Reg, Tokens, Value, json, pos2, vec2};
 
 // ---------------------------------------------------------------------------------------------
 // left: destinations + queue
 // ---------------------------------------------------------------------------------------------
 
-pub(super) fn queue_column(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub(super) fn queue_column(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let mut reg = Reg::default();
     let p = ui.painter();

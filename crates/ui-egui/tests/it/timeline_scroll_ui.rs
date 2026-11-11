@@ -7,14 +7,14 @@ use std::sync::mpsc::{Sender, channel};
 
 use egui::CursorIcon;
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
-use filmcraft_ui_egui::panels::timeline::{max_scroll, timeline_extent};
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
+use epsicut_ui_egui::panels::timeline::{max_scroll, timeline_extent};
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     /// Where the pointer was last put by `move_to` or `press`.
     pointer: egui::Pos2,
@@ -25,7 +25,7 @@ impl Driver {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
+        let app = EpsicutApp::new(session).with_control(rx);
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000).build_eframe(move |_cc| app);
         let mut d = Driver { harness, tx, pointer: egui::Pos2::ZERO };
         d.frames(4);
@@ -66,7 +66,7 @@ impl Driver {
 }
 
 impl Driver {
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
 

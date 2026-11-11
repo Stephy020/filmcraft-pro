@@ -368,7 +368,7 @@ fn full_size_yuv8_tables_give_the_per_pixel_values_bit_for_bit() {
         seed ^= seed << 5;
         (seed >> 24) as u8
     };
-    let curve = filmcraft_color::DecodeTable::new(0.0, 1.0, 4096, |v| v.max(0.0).powf(2.4));
+    let curve = epsicut_color::DecodeTable::new(0.0, 1.0, 4096, |v| v.max(0.0).powf(2.4));
     for chroma in [Chroma::C420, Chroma::C422, Chroma::C444] {
         let (sx, sy) = chroma.shifts();
         let (cw, ch) = (w.div_ceil(1 << sx), h.div_ceil(1 << sy));
@@ -401,7 +401,7 @@ fn full_size_yuv8_tables_give_the_per_pixel_values_bit_for_bit() {
 
 #[test]
 fn opaque_yuv8_to_srgb_bytes_is_the_linear_picture_in_srgb() {
-    use filmcraft_color::{Primaries, Transfer};
+    use epsicut_color::{Primaries, Transfer};
     let mut seed = 0x9e37_79b9_u32;
     let mut code = move || {
         seed ^= seed << 13;
@@ -500,7 +500,7 @@ fn a_full_size_yuv8_picture_converts_exactly_pixel_by_pixel() {
         s ^= s << 17;
         s as u8
     };
-    let pq = DecodeTable::new(0.0, 1.0, 4096, |v| f64::from(filmcraft_color::pq_eotf(v as f32)) * 100.0);
+    let pq = DecodeTable::new(0.0, 1.0, 4096, |v| f64::from(epsicut_color::pq_eotf(v as f32)) * 100.0);
     for (w, h) in [(1usize, 1usize), (2, 2), (3, 5), (37, 23), (64, 2)] {
         for chroma in [Chroma::C420, Chroma::C422, Chroma::C444] {
             let (sx, sy) = chroma.shifts();
@@ -554,7 +554,7 @@ fn a_yuv8_picture_with_short_planes_converts_without_panicking() {
 
 /// Timing of the display-rotation turn on a UHD 4:2:0 picture (portrait phone video is stored
 /// landscape and turned on every decoded frame). No machine-dependent assertion: run alone with
-/// `cargo test --release -p filmcraft-frame rotation_benchmark -- --ignored --nocapture`.
+/// `cargo test --release -p epsicut-frame rotation_benchmark -- --ignored --nocapture`.
 #[test]
 #[ignore = "benchmark"]
 fn rotation_benchmark() {

@@ -1,9 +1,9 @@
 //! Decode speed (ignored by default; run with
-//! `cargo test --release -p filmcraft-hevc --test it perf:: -- --ignored --nocapture`).
+//! `cargo test --release -p epsicut-hevc --test it perf:: -- --ignored --nocapture`).
 
 use crate::common;
 
-use filmcraft_hevc::Decoder;
+use epsicut_hevc::Decoder;
 use std::time::Instant;
 
 fn bench(data: &[u8], threads: usize, iters: usize) -> (usize, f64) {

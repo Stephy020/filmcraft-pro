@@ -1,7 +1,7 @@
 use super::layout::Row;
 use super::menus::{run_track_menu, track_column_menu, track_header_popup};
 use super::{
-    Align2, Color32, CursorIcon, FilmcraftApp, Icon, MASTER_H, Rect, Sense, Sequence, Stroke, StrokeKind, TRACK_HEADER_TINT, Tokens, TrackKind, Value, json,
+    Align2, Color32, CursorIcon, EpsicutApp, Icon, MASTER_H, Rect, Sense, Sequence, Stroke, StrokeKind, TRACK_HEADER_TINT, Tokens, TrackKind, Value, json,
     label_color, pos2, vec2,
 };
 
@@ -36,7 +36,7 @@ fn patch_button(ui: &mut egui::Ui, button: PatchButton<'_>) -> egui::Response {
 
 /// Draw only the visible track headers, including colour label, targeting, lock and header controls clipped to each row.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn draw_headers(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, rows: &[Row], rect: Rect, vclip: Rect, aclip: Rect, t: &Tokens) {
+pub(super) fn draw_headers(app: &mut EpsicutApp, ui: &mut egui::Ui, seq: &Sequence, rows: &[Row], rect: Rect, vclip: Rect, aclip: Rect, t: &Tokens) {
     let hw = app.ui.timeline.header_w;
     let tg = app.session.targeting();
     let mut actions: Vec<(String, Value)> = Vec::new();
@@ -87,7 +87,7 @@ pub(super) fn draw_headers(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequ
             }
             // the user's label names and colours, as in Edit ▸ Label
             let labels = app.session.prefs.labels.clone();
-            for l in filmcraft_project::Label::ALL {
+            for l in epsicut_project::Label::ALL {
                 if crate::menus::label_choice(ui, &mut app.auto, &labels, l, &prefix).clicked() {
                     actions.push(("timeline.setTrack".into(), json!({"track": r.track.0, "label": l.name()})));
                     ui.close();
@@ -214,11 +214,11 @@ pub(super) fn draw_headers(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequ
 /// solo, voiceover and automation for an audio track.
 #[allow(clippy::too_many_arguments)]
 fn header_line_buttons(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &mut egui::Ui,
     seq: &Sequence,
     r: &Row,
-    tr: &filmcraft_project::Track,
+    tr: &epsicut_project::Track,
     visible: Rect,
     hrect: Rect,
     label: &str,

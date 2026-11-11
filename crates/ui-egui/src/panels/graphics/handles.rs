@@ -255,7 +255,7 @@ impl HandleDrag {
 }
 
 /// Paragraph text: wrapped in a box (vertical text never is).
-pub(super) fn is_paragraph(t: &filmcraft_project::graphic::TextProps) -> bool {
+pub(super) fn is_paragraph(t: &epsicut_project::graphic::TextProps) -> bool {
     t.box_width > 0.0 && !t.vertical
 }
 

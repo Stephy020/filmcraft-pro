@@ -6,13 +6,13 @@ use super::ime::{current_graphics_ime_target, draw_preedit, graphics_ime_target,
 use super::layer_identity::{current_layer_text, current_layer_uid, layer_display_name_view};
 use super::text_edit::{char_boundary_floor, text_edit, text_of};
 use super::{
-    Affine, ClipId, Color32, FilmcraftApp, GfxEdit, ImeTarget, ItemKind, LayerView, Pos2, Rect, Sense, Stroke, StrokeKind, Tool, Value, Vec2, eval_layer, json,
+    Affine, ClipId, Color32, EpsicutApp, GfxEdit, ImeTarget, ItemKind, LayerView, Pos2, Rect, Sense, Stroke, StrokeKind, Tool, Value, Vec2, eval_layer, json,
     layer_indices, pos2, selected_graphic, text_layout, vec2,
 };
 
 /// `graphics.newText` for the Type tool: point text at `at`, or paragraph text in the box from
 /// `at` to `corner`.
-fn new_text_action(app: &FilmcraftApp, pic: Rect, frame: (u32, u32), at: Pos2, corner: Option<Pos2>) -> (String, Value) {
+fn new_text_action(app: &EpsicutApp, pic: Rect, frame: (u32, u32), at: Pos2, corner: Option<Pos2>) -> (String, Value) {
     let (into, m) = canvas_target(app, pic, frame);
     let a = to_canvas(&m, at);
     let size = 100.0 * frame.1 as f64 / 1080.0;
@@ -36,7 +36,7 @@ pub(crate) const TEXT_EDIT_ID: &str = "gfx-text-edit";
 /// End text editing: type the marked text still being composed, clear `gfx_edit`, invalidate any
 /// in-flight IME composition, surrender focus and forget the panel tag so a late commit cannot
 /// reach the next editor.
-pub(super) fn end_edit(app: &mut FilmcraftApp, ui: &egui::Ui) {
+pub(super) fn end_edit(app: &mut EpsicutApp, ui: &egui::Ui) {
     commit_marked_text(app, ui.ctx());
     app.ui.gfx_edit = None;
     // Any composition that was in flight belongs to the editor that just ended; a late commit
@@ -50,7 +50,7 @@ pub(super) fn end_edit(app: &mut FilmcraftApp, ui: &egui::Ui) {
 /// into the layer's text at the caret, over the selection, as one `graphics.setText`: Korean
 /// commits a syllable only when the next one starts, so the last one would be lost (#2445). The
 /// composer drops the input method's late commit of that text.
-fn commit_marked_text(app: &mut FilmcraftApp, ctx: &egui::Context) {
+fn commit_marked_text(app: &mut EpsicutApp, ctx: &egui::Context) {
     let target = app.ui.gfx_edit.as_ref().and_then(|ed| current_graphics_ime_target(app, ed.clip, ed.layer));
     let live = target.is_some_and(|target| composing_live(app, ctx, target));
     let Some(marked) = app.ime_composer.end(ctx).filter(|_| live) else { return };
@@ -67,7 +67,7 @@ fn commit_marked_text(app: &mut FilmcraftApp, ctx: &egui::Context) {
 
 /// Whether the composer's marked text is `target`'s composition in `ctx`'s viewport, not one a
 /// command, a control request or a caret move retired.
-fn composing_live(app: &FilmcraftApp, ctx: &egui::Context, target: ImeTarget) -> bool {
+fn composing_live(app: &EpsicutApp, ctx: &egui::Context, target: ImeTarget) -> bool {
     app.ime_composer_target == Some(target)
         && app.ime_composition == Some(crate::ImeComposition::Active(target))
         && app.ime_composition_viewport == Some(ctx.viewport_id())
@@ -75,7 +75,7 @@ fn composing_live(app: &FilmcraftApp, ctx: &egui::Context, target: ImeTarget) ->
 
 /// A click on the Program monitor's empty space (the picture's, or around it): end the text edit
 /// and let go of the selected graphic layers and mask (#683).
-pub(crate) fn deselect_on_monitor(app: &mut FilmcraftApp, ui: &egui::Ui) {
+pub(crate) fn deselect_on_monitor(app: &mut EpsicutApp, ui: &egui::Ui) {
     end_edit(app, ui);
     app.session.state.graphic_layers.clear();
     if app.session.state.selected_mask.is_some()
@@ -86,7 +86,7 @@ pub(crate) fn deselect_on_monitor(app: &mut FilmcraftApp, ui: &egui::Ui) {
 }
 
 /// Draw the overlay and handle graphics tools on the Program monitor picture `pic`.
-pub fn monitor_overlay(app: &mut FilmcraftApp, ui: &mut egui::Ui, pic: Rect, frame: (u32, u32)) {
+pub fn monitor_overlay(app: &mut EpsicutApp, ui: &mut egui::Ui, pic: Rect, frame: (u32, u32)) {
     // A project command may have reordered or deleted layers since the last pass. Follow the
     // edited layer (or end the edit) before anything reads `gfx_edit`.
     reconcile_gfx_edit(app);
@@ -143,7 +143,7 @@ pub fn monitor_overlay(app: &mut FilmcraftApp, ui: &mut egui::Ui, pic: Rect, fra
 /// selected (or being-edited) graphic layers.
 #[allow(clippy::too_many_arguments)]
 fn draw_boxes(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     painter: &egui::Painter,
     views: &[LayerView],
     sel_clip: Option<ClipId>,
@@ -245,7 +245,7 @@ fn set_hover_cursor(
 /// layers alone).
 #[allow(clippy::too_many_arguments)]
 fn press(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &egui::Ui,
     resp: &egui::Response,
     graphics_tool: bool,
@@ -349,7 +349,7 @@ fn move_group<'a>(views: &'a [LayerView], pressed: Option<&'a LayerView>, d: Dra
 /// comes up, commit it as actions.
 #[allow(clippy::too_many_arguments)]
 fn drag_step(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &egui::Ui,
     painter: &egui::Painter,
     resp: &egui::Response,
@@ -515,7 +515,7 @@ fn drag_step(
 /// A click of the graphics tools on the picture: edit text, select a layer, add a pen point.
 #[allow(clippy::too_many_arguments)]
 fn click(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &egui::Ui,
     resp: &egui::Response,
     graphics_tool: bool,
@@ -616,7 +616,7 @@ fn click(
 /// Draw the pen path being traced, and finish it on Enter (Escape drops it).
 #[allow(clippy::too_many_arguments)]
 fn pen_path(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &egui::Ui,
     painter: &egui::Painter,
     pic: Rect,
@@ -650,7 +650,7 @@ fn pen_path(
 
 /// Run the overlay's accepted `graphics.*` commands in order; `#edit` opens the text edit on
 /// the layer the command created or selected.
-fn run_actions(app: &mut FilmcraftApp, actions: Vec<(String, Value)>) {
+fn run_actions(app: &mut EpsicutApp, actions: Vec<(String, Value)>) {
     // ---- run accepted actions before drawing the caret
     for (cmd, p) in actions {
         let (cmd, then_edit) = match cmd.strip_suffix("#edit") {
@@ -673,7 +673,7 @@ fn run_actions(app: &mut FilmcraftApp, actions: Vec<(String, Value)>) {
 
 /// Draw the post-action caret, selection highlight and IME preedit of the text being edited
 /// (the model may already have changed), and note the editor's IME target.
-fn draw_caret(app: &mut FilmcraftApp, ui: &egui::Ui, painter: &egui::Painter, pic: Rect, frame: (u32, u32)) {
+fn draw_caret(app: &mut EpsicutApp, ui: &egui::Ui, painter: &egui::Painter, pic: Rect, frame: (u32, u32)) {
     // The model may have changed above; draw the post-action caret and committed text.
     let views = visible_layers(app, pic, frame);
     if let Some(ed) = app.ui.gfx_edit.clone()
@@ -714,7 +714,7 @@ fn draw_caret(app: &mut FilmcraftApp, ui: &egui::Ui, painter: &egui::Painter, pi
     }
 }
 
-fn finish_pen(app: &mut FilmcraftApp, pic: Rect, frame: (u32, u32), actions: &mut Vec<(String, Value)>) {
+fn finish_pen(app: &mut EpsicutApp, pic: Rect, frame: (u32, u32), actions: &mut Vec<(String, Value)>) {
     let pts = std::mem::take(&mut app.ui.pen_points);
     if pts.len() < 3 {
         return;
@@ -734,7 +734,7 @@ fn finish_pen(app: &mut FilmcraftApp, pic: Rect, frame: (u32, u32), actions: &mu
 }
 
 /// Start editing a text layer at screen point `p` (caret at the text hit, else the end), restart the IME target, record clip/layer/uid and select the layer.
-fn start_edit_at(app: &mut FilmcraftApp, ui: &egui::Ui, v: &LayerView, p: Pos2, actions: &mut Vec<(String, Value)>) {
+fn start_edit_at(app: &mut EpsicutApp, ui: &egui::Ui, v: &LayerView, p: Pos2, actions: &mut Vec<(String, Value)>) {
     let Some(tp) = text_of(&v.spec) else { return };
     let l = text_layout(tp);
     let caret = v.to_local(p).map_or(tp.text.len(), |(x, y)| l.hit(x, y));
@@ -749,7 +749,7 @@ fn start_edit_at(app: &mut FilmcraftApp, ui: &egui::Ui, v: &LayerView, p: Pos2, 
 /// Edit ▸ Select All while text is edited on the monitor selects all of that text, not the
 /// timeline clips: on macOS the native menu takes Cmd+A before the text sees the key (#1102).
 /// False when no text is being edited.
-pub(crate) fn select_all_edited_text(app: &mut FilmcraftApp) -> bool {
+pub(crate) fn select_all_edited_text(app: &mut EpsicutApp) -> bool {
     let Some((clip, layer)) = app.ui.gfx_edit.as_ref().map(|e| (e.clip, e.layer)) else { return false };
     let t = app.session.playhead();
     let Some((_, it)) = app.session.active_sequence().and_then(|q| q.find_item(ClipId(clip))) else { return false };

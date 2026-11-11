@@ -1,7 +1,7 @@
 //! A 14-byte sequence header must not make the decoder size its frame buffers at 16383 x 16383
 //! (gigabytes per picture). Hand-built, no ffmpeg.
 
-use filmcraft_mpeg2v::Decoder;
+use epsicut_mpeg2v::Decoder;
 
 #[derive(Default)]
 struct Bits {

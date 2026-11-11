@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn rotation_survives_the_clock_going_back_at_the_end_of_dst() {
-        let d = std::env::temp_dir().join(format!("filmcraft-rotate-dst-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("epsicut-rotate-dst-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         let t0 = 1_792_900_000;
         // 02:30 at +02:00, then 40 minutes later the clock reads 02:10 at +01:00.
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn repeated_wall_clock_hour_does_not_overwrite_earlier_saves() {
-        let d = std::env::temp_dir().join(format!("filmcraft-rotate-dst2-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("epsicut-rotate-dst2-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         let t0 = 1_792_900_000;
         // The same wall-clock second, one hour apart (+02:00 then +01:00).
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn rotation_keeps_newest_and_ignores_other_files() {
-        let d = std::env::temp_dir().join(format!("filmcraft-rotate-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("epsicut-rotate-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         for i in 0..7 {
             write_auto_save(&d, "Cut", 1_790_000_000 + i * 60, 0, b"{}", 5).unwrap();

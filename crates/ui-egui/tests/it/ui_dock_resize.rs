@@ -2,31 +2,31 @@
 
 use egui::{Event, Key, Modifiers, PointerButton, Rect, pos2, vec2};
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::dock::PanelKind;
-use filmcraft_ui_egui::theme::ThemeKind;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::dock::PanelKind;
+use epsicut_ui_egui::theme::ThemeKind;
 use serde_json::json;
 
-fn step(h: &mut Harness<'_, FilmcraftApp>) {
+fn step(h: &mut Harness<'_, EpsicutApp>) {
     h.step();
     assert!(h.state().ui_error.is_none(), "the app caught a UI panic: {:?}", h.state().ui_error);
 }
 
-fn frames(h: &mut Harness<'_, FilmcraftApp>, count: usize) {
+fn frames(h: &mut Harness<'_, EpsicutApp>, count: usize) {
     for _ in 0..count {
         step(h);
     }
 }
 
-fn snapshots(h: &mut Harness<'_, FilmcraftApp>, directory: Option<&std::path::Path>, phase: &str) {
+fn snapshots(h: &mut Harness<'_, EpsicutApp>, directory: Option<&std::path::Path>, phase: &str) {
     let Some(directory) = directory else { return };
     std::fs::create_dir_all(directory).unwrap();
     for (name, theme) in [("dark", ThemeKind::Dark), ("medium", ThemeKind::Medium), ("light", ThemeKind::Light)] {
         let ctx = h.ctx.clone();
         h.state_mut().set_theme(&ctx, theme);
         frames(h, 3);
-        h.render().unwrap().save(directory.join(format!("filmcraft-{phase}-{name}.png"))).unwrap();
+        h.render().unwrap().save(directory.join(format!("epsicut-{phase}-{name}.png"))).unwrap();
     }
     let ctx = h.ctx.clone();
     h.state_mut().set_theme(&ctx, ThemeKind::Dark);
@@ -35,7 +35,7 @@ fn snapshots(h: &mut Harness<'_, FilmcraftApp>, directory: Option<&std::path::Pa
 
 /// The drawn width of the Project panel, the first child of the tests' split, after the layout
 /// change has been drawn.
-fn first_size(h: &mut Harness<'_, FilmcraftApp>) -> f32 {
+fn first_size(h: &mut Harness<'_, EpsicutApp>) -> f32 {
     frames(h, 2);
     h.state().auto.find("panel.Project").unwrap().rect[2]
 }
@@ -48,7 +48,7 @@ fn assert_near(value: f32, expected: f32) {
 fn focused_dock_resize_owns_arrows_and_keeps_pointer_dragging() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
-    let app = FilmcraftApp::new(session);
+    let app = EpsicutApp::new(session);
     // Opt in to GPU snapshots while the ordinary test remains headless and renderer-independent.
     let directory = std::env::var_os("CRAFT_UI_PANES_SNAPSHOT_DIR").map(std::path::PathBuf::from);
     let mut builder = Harness::builder().with_size(vec2(1400.0, 900.0)).with_max_steps(10_000);
@@ -72,7 +72,7 @@ fn focused_dock_resize_owns_arrows_and_keeps_pointer_dragging() {
     let before_project = h.state().session.project.clone();
     let before_playheads = h.state().session.state.playheads.clone();
     let id = craft_ui::docking::DockArea::<PanelKind>::hit_id(
-        filmcraft_ui_egui::dock_area_id(),
+        epsicut_ui_egui::dock_area_id(),
         &craft_ui::docking::Hit::Divider(craft_ui::docking::Divider::Split(vec![])),
     );
     h.ctx.memory_mut(|memory| memory.request_focus(id));
@@ -104,7 +104,7 @@ fn focused_dock_resize_owns_arrows_and_keeps_pointer_dragging() {
     assert_eq!(h.state().session.state.playheads, before_playheads);
 }
 
-fn press(h: &mut Harness<'_, FilmcraftApp>, key: Key) {
+fn press(h: &mut Harness<'_, EpsicutApp>, key: Key) {
     for pressed in [true, false] {
         h.event(Event::Key { key, physical_key: None, pressed, repeat: false, modifiers: Modifiers::NONE });
         step(h);
@@ -116,7 +116,7 @@ fn press(h: &mut Harness<'_, FilmcraftApp>, key: Key) {
 fn space_plays_after_a_pane_is_resized_with_the_pointer() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
-    let app = FilmcraftApp::new(session);
+    let app = EpsicutApp::new(session);
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).build_eframe(move |_| app);
     frames(&mut h, 4);
     h.state_mut().ui.focused = PanelKind::Timeline;
@@ -147,7 +147,7 @@ fn space_plays_after_a_pane_is_resized_with_the_pointer() {
     assert_ne!(
         h.ctx.memory(|memory| memory.focused()),
         Some(craft_ui::docking::DockArea::<PanelKind>::hit_id(
-            filmcraft_ui_egui::dock_area_id(),
+            epsicut_ui_egui::dock_area_id(),
             &craft_ui::docking::Hit::Divider(craft_ui::docking::Divider::Split(vec![]))
         ))
     );
@@ -163,15 +163,15 @@ fn space_plays_after_a_pane_is_resized_with_the_pointer() {
 fn space_plays_while_any_floating_resize_edge_has_focus() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
-    let app = FilmcraftApp::new(session);
+    let app = EpsicutApp::new(session);
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).build_eframe(move |_| app);
     frames(&mut h, 4);
     let ctx = h.ctx.clone();
-    filmcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.floatPanel", json!({"panel": "Info", "rect": [300, 200, 400, 300]})).unwrap();
+    epsicut_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.floatPanel", json!({"panel": "Info", "rect": [300, 200, 400, 300]})).unwrap();
     frames(&mut h, 3);
     use craft_ui::docking::{DockArea, Hit, ResizeEdge};
     for edge in [ResizeEdge::Top, ResizeEdge::Left, ResizeEdge::BottomRight] {
-        let grip = DockArea::<PanelKind>::hit_id(filmcraft_ui_egui::dock_area_id(), &Hit::Resize(PanelKind::Info, edge));
+        let grip = DockArea::<PanelKind>::hit_id(epsicut_ui_egui::dock_area_id(), &Hit::Resize(PanelKind::Info, edge));
         h.ctx.memory_mut(|memory| memory.request_focus(grip));
         frames(&mut h, 2);
         assert_eq!(h.ctx.memory(|memory| memory.focused()), Some(grip), "{edge:?}");
@@ -188,15 +188,15 @@ fn space_plays_while_any_floating_resize_edge_has_focus() {
 fn space_plays_while_a_floating_group_divider_has_focus() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
-    let app = FilmcraftApp::new(session);
+    let app = EpsicutApp::new(session);
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).build_eframe(move |_| app);
     frames(&mut h, 4);
     let ctx = h.ctx.clone();
-    filmcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.floatPanel", json!({"panel": "Info", "rect": [300, 200, 400, 400]})).unwrap();
-    filmcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.dockPanel", json!({"panel": "Project", "anchor": "Info", "zone": "bottom"})).unwrap();
+    epsicut_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.floatPanel", json!({"panel": "Info", "rect": [300, 200, 400, 400]})).unwrap();
+    epsicut_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.dockPanel", json!({"panel": "Project", "anchor": "Info", "zone": "bottom"})).unwrap();
     frames(&mut h, 3);
     use craft_ui::docking::{Divider, DockArea, Hit};
-    let area = filmcraft_ui_egui::dock_area_id();
+    let area = epsicut_ui_egui::dock_area_id();
     let hit = Hit::Divider(Divider::WindowSplit(PanelKind::Info, vec![]));
     assert!(DockArea::<PanelKind>::hit_rects(&h.ctx, area).iter().any(|(drawn, _)| *drawn == hit), "no window divider drawn");
     let divider = DockArea::<PanelKind>::hit_id(area, &hit);
@@ -214,7 +214,7 @@ fn space_plays_while_a_floating_group_divider_has_focus() {
 /// Tools is an ordinary group: the divider beside it widens and narrows it.
 #[test]
 fn the_divider_beside_tools_moves_both_ways() {
-    let app = FilmcraftApp::new(Session::default());
+    let app = EpsicutApp::new(Session::default());
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).build_eframe(move |_| app);
     frames(&mut h, 4);
     h.state_mut().ui.dock = craft_ui::docking::Layout {
@@ -227,9 +227,9 @@ fn the_divider_beside_tools_moves_both_ways() {
         floating: vec![],
     };
     frames(&mut h, 3);
-    let width = |h: &Harness<'_, FilmcraftApp>| h.state().auto.find("panel.Tools").unwrap().rect[2];
+    let width = |h: &Harness<'_, EpsicutApp>| h.state().auto.find("panel.Tools").unwrap().rect[2];
     let before = width(&h);
-    let drag = |h: &mut Harness<'_, FilmcraftApp>, dx: f32| {
+    let drag = |h: &mut Harness<'_, EpsicutApp>, dx: f32| {
         let element = h.state().auto.find("dock.gutter.").unwrap();
         let from = Rect::from_min_size(pos2(element.rect[0], element.rect[1]), vec2(element.rect[2], element.rect[3])).center();
         h.event(Event::PointerMoved(from));
@@ -251,7 +251,7 @@ fn the_divider_beside_tools_moves_both_ways() {
     assert!(narrower <= wider - 100.0, "Tools narrowed only from {wider} to {narrower}");
 }
 
-fn drag_with(h: &mut Harness<'_, FilmcraftApp>, button: PointerButton, from: egui::Pos2, to: egui::Pos2) {
+fn drag_with(h: &mut Harness<'_, EpsicutApp>, button: PointerButton, from: egui::Pos2, to: egui::Pos2) {
     h.event(Event::PointerMoved(from));
     step(h);
     h.event(Event::PointerButton { pos: from, button, pressed: true, modifiers: Modifiers::NONE });
@@ -270,10 +270,10 @@ fn drag_with(h: &mut Harness<'_, FilmcraftApp>, button: PointerButton, from: egu
 fn only_a_left_button_drag_moves_or_resizes_a_panel() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
-    let app = FilmcraftApp::new(session);
+    let app = EpsicutApp::new(session);
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).with_max_steps(10_000).build_eframe(move |_| app);
     frames(&mut h, 4);
-    let center = |h: &Harness<'_, FilmcraftApp>, id: &str| {
+    let center = |h: &Harness<'_, EpsicutApp>, id: &str| {
         let r = h.state().auto.find(id).unwrap_or_else(|| panic!("{id} is missing")).rect;
         pos2(r[0] + r[2] / 2.0, r[1] + r[3] / 2.0)
     };
@@ -285,7 +285,7 @@ fn only_a_left_button_drag_moves_or_resizes_a_panel() {
     assert_ne!(h.state().ui.dock, before, "a left-button drag on a grip did not move the panel");
 
     let ctx = h.ctx.clone();
-    filmcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.floatPanel", json!({"panel": "Info", "rect": [45, 65, 420, 320]})).unwrap();
+    epsicut_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.floatPanel", json!({"panel": "Info", "rect": [45, 65, 420, 320]})).unwrap();
     frames(&mut h, 4);
     let floated = h.state().ui.dock.floating[0].rect;
     let corner = center(&h, "panel.float.0.resize");

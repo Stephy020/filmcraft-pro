@@ -1,5 +1,5 @@
-//! FilmCraft's panels in craft-ui's shared docking. craft-ui draws the frames, tab strips,
-//! floating windows and drag previews and owns the gestures; FilmCraft draws the panel
+//! EpsiCut's panels in craft-ui's shared docking. craft-ui draws the frames, tab strips,
+//! floating windows and drag previews and owns the gestures; EpsiCut draws the panel
 //! bodies, the ≡ panel menu, the panel items of each tab's context menu and the Timeline's
 //! sequence tabs, and maps its control commands onto
 //! craft-ui's `DockCommand`.
@@ -15,11 +15,11 @@ use serde_json::{Value, json};
 use crate::dock::{self, LayoutExt as _, PanelKind, SeqAction, SeqTabs};
 use crate::icons::{self, Icon};
 use crate::theme::Tokens;
-use crate::{FilmcraftApp, panels};
+use crate::{EpsicutApp, panels};
 
 /// The dock area's egui id; `DockArea::hit_rects` and `float_space` read by it.
 pub fn area_id() -> egui::Id {
-    egui::Id::unique("filmcraft-docking")
+    egui::Id::unique("epsicut-docking")
 }
 
 /// Where each panel body was drawn last frame, and on which layer.
@@ -30,7 +30,7 @@ fn bodies_id() -> egui::Id {
 /// Width of the ≡ panel menu button at the end of each tab strip.
 const MENU_W: f32 = 26.0;
 
-pub(crate) fn route(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub(crate) fn route(app: &mut EpsicutApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if id == "window.dockAction" {
         return Some((|| {
             let value = params.get("action").cloned().ok_or("missing docking action")?;
@@ -54,9 +54,9 @@ pub(crate) fn route(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, param
     None
 }
 
-/// FilmCraft's own docking commands, as craft-ui `window.panel.*` commands. `panel` defaults to
+/// EpsiCut's own docking commands, as craft-ui `window.panel.*` commands. `panel` defaults to
 /// the focused panel.
-fn alias(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Result<Value, String> {
+fn alias(app: &mut EpsicutApp, ctx: &egui::Context, id: &str, params: &Value) -> Result<Value, String> {
     let panel = match params.get("panel") {
         None => app.ui.focused,
         Some(value) => value.as_str().and_then(PanelKind::from_name).ok_or("unknown panel")?,
@@ -109,7 +109,7 @@ fn check_last_docked(before: &Layout<PanelKind>, action: &Action<PanelKind>, aft
     Ok(())
 }
 
-impl FilmcraftApp {
+impl EpsicutApp {
     /// A layout action from the dock area, through the command path the control channel uses.
     fn dock_command(&mut self, ctx: &egui::Context, action: Action<PanelKind>) -> Result<(), String> {
         let value = serde_json::to_value(action).map_err(|error| error.to_string())?;
@@ -117,12 +117,12 @@ impl FilmcraftApp {
     }
 
     /// Run a craft-ui docking command on the current layout, all or nothing. Workspaces are
-    /// FilmCraft's own (Window ▸ Workspaces).
+    /// EpsiCut's own (Window ▸ Workspaces).
     pub(crate) fn run_dock_command(&mut self, ctx: &egui::Context, command: DockCommand<PanelKind>) -> Result<(), String> {
         if command.is_app_owned() {
             return Err("use the window.workspace.* commands for workspaces".into());
         }
-        // A closed panel reopens through FilmCraft's own path: where it was, floating again if it
+        // A closed panel reopens through EpsiCut's own path: where it was, floating again if it
         // was closed floating (#1985).
         if let DockCommand::Activate { panel } = &command
             && !self.ui.dock.contains(panel)
@@ -241,7 +241,7 @@ impl FilmcraftApp {
                     self.session
                         .project
                         .item(*id)
-                        .filter(|item| matches!(item.kind, filmcraft_project::ItemKind::Sequence(_)))
+                        .filter(|item| matches!(item.kind, epsicut_project::ItemKind::Sequence(_)))
                         .map(|item| (id.0, item.name.clone()))
                 })
                 .collect(),
@@ -260,7 +260,7 @@ impl FilmcraftApp {
             area = area.raise_panel(panel);
         }
         let layout = self.ui.dock.clone();
-        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(body).id_salt("filmcraft-dock-area"));
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(body).id_salt("epsicut-dock-area"));
         child.set_clip_rect(body.intersect(ui.clip_rect()));
         let seq_width = dock::sequence_tabs_width(ui, &seqs);
         // Known before anything draws, so header elements of a native window (the ≡ menu, the
@@ -441,7 +441,7 @@ fn path_id(path: &[bool]) -> String {
     path.iter().map(|second| if *second { 'b' } else { 'a' }).collect()
 }
 
-/// FilmCraft's window is all groups: drops on all four window edges, Ctrl/Cmd-drag undocks, a
+/// EpsiCut's window is all groups: drops on all four window edges, Ctrl/Cmd-drag undocks, a
 /// release over no target cancels, and a floating window's title bar only moves it.
 fn dock_style(ui: &egui::Ui, t: &Tokens) -> DockStyle {
     let mut style = DockStyle::from_ui(ui);
@@ -471,9 +471,9 @@ fn dock_style(ui: &egui::Ui, t: &Tokens) -> DockStyle {
     style
 }
 
-/// FilmCraft's side of the dock area for one frame.
+/// EpsiCut's side of the dock area for one frame.
 struct FilmContent<'a> {
-    app: &'a mut FilmcraftApp,
+    app: &'a mut EpsicutApp,
     seqs: SeqTabs,
     /// The width the sequence tabs take in the Timeline's tab strip.
     seq_width: f32,
@@ -502,7 +502,7 @@ impl DockContent<PanelKind> for FilmContent<'_> {
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect).id_salt(("panel", panel.id())));
         child.set_clip_rect(rect.intersect(ui.clip_rect()));
         panels::show(self.app, &mut child, *panel, rect);
-        // FilmCraft's drag payload lives in context data, not egui's drag-and-drop, so craft-ui
+        // EpsiCut's drag payload lives in context data, not egui's drag-and-drop, so craft-ui
         // routes it to the native window under the pointer only when asked, each frame.
         if panels::dragging(ui.ctx()) {
             craft_ui::docking::route_app_drag(ui.ctx(), area_id());
@@ -546,7 +546,7 @@ impl DockContent<PanelKind> for FilmContent<'_> {
         if *panel == PanelKind::Timeline && self.seqs.open.is_empty() { self.seqs.label().into() } else { logical.into() }
     }
 
-    /// FilmCraft's own panel items head a tab's context menu, as in its ≡ menu; craft-ui adds
+    /// EpsiCut's own panel items head a tab's context menu, as in its ≡ menu; craft-ui adds
     /// Undock, Move, Close and the group items after them.
     fn panel_menu(&mut self, ui: &mut egui::Ui, panel: &PanelKind) {
         let app = &mut *self.app;

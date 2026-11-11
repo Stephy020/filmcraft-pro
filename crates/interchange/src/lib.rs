@@ -1,4 +1,4 @@
-//! Timeline interchange for FilmCraft: import and export of
+//! Timeline interchange for EpsiCut: import and export of
 //!
 //! - **CMX 3600 EDL** (`.edl`) with the common comment extensions (`* FROM CLIP NAME:`,
 //!   `* SOURCE FILE:`, `* LOC:`), `M2` speed lines, dissolves, wipes, key events, audio channels and
@@ -17,7 +17,7 @@
 //! (unmapped effects, speed ramps, …). Exporters take a sequence of a project and never fail on
 //! unsupported features either; they record them in the report instead.
 //!
-//! All time math is exact on [`filmcraft_time::Tick`]s: document frame counts, SMPTE timecode and
+//! All time math is exact on [`epsicut_time::Tick`]s: document frame counts, SMPTE timecode and
 //! rational seconds (`1001/24000s`) map onto ticks without rounding for every broadcast rate.
 //!
 //! This crate is L2: it does no file I/O. Media references are strings (absolute paths, or paths
@@ -41,8 +41,8 @@ mod xml;
 
 use std::collections::{BTreeMap, HashMap};
 
-use filmcraft_project::{BinEntry, BinId, ClipId, ItemId, ItemKind, MarkerId, Project, TrackId, TransitionId};
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_project::{BinEntry, BinId, ClipId, ItemId, ItemKind, MarkerId, Project, TrackId, TransitionId};
+use epsicut_time::{FrameRate, Tick};
 use serde::{Deserialize, Serialize};
 
 pub use common::{file_url_to_path, path_to_file_url, resolve_path};
@@ -51,11 +51,11 @@ pub use comp::ExtractedMedia;
 /// Warn once when an export cannot carry exact marker metadata, including nested/source markers.
 fn warn_marker_metadata_loss(project: &Project, sequence: ItemId, report: &mut Report) {
     if !project.custom_colors.is_empty() {
-        report.warn("This format does not preserve the saved custom-color palette or its swatch names. Use a FilmCraft project or OTIO to retain the palette.");
+        report.warn("This format does not preserve the saved custom-color palette or its swatch names. Use a EpsiCut project or OTIO to retain the palette.");
     }
     let mut pending = std::collections::BTreeSet::from([sequence]);
     let mut seen = std::collections::BTreeSet::new();
-    let extra = |m: &filmcraft_project::Marker| m.custom_color.is_some() || !m.author.is_empty() || !m.url.is_empty();
+    let extra = |m: &epsicut_project::Marker| m.custom_color.is_some() || !m.author.is_empty() || !m.url.is_empty();
     while let Some(id) = pending.pop_first() {
         if !seen.insert(id) {
             continue;
@@ -83,7 +83,7 @@ fn warn_marker_metadata_loss(project: &Project, sequence: ItemId, report: &mut R
                 _ => false,
             };
         if has_extra {
-            report.warn("This format does not preserve marker authors or exact custom colors (including clip labels), or marker URLs. Use a FilmCraft project or OTIO for those properties.");
+            report.warn("This format does not preserve marker authors or exact custom colors (including clip labels), or marker URLs. Use a EpsiCut project or OTIO for those properties.");
             return;
         }
     }
@@ -521,7 +521,7 @@ pub fn merge_into(target: &mut Project, fragment: Imported, bin: Option<BinId>) 
     let mut map_u64: HashMap<u64, u64> = HashMap::new();
     let mut fresh = |target: &mut Project, old: u64| *map_u64.entry(old).or_insert_with(|| target.alloc_id());
 
-    let mut new_items: BTreeMap<ItemId, filmcraft_project::ProjectItem> = BTreeMap::new();
+    let mut new_items: BTreeMap<ItemId, epsicut_project::ProjectItem> = BTreeMap::new();
     for (old, mut it) in frag.items {
         it.id = items[&old];
         it.created = it.id.0;
@@ -568,7 +568,7 @@ pub fn merge_into(target: &mut Project, fragment: Imported, bin: Option<BinId>) 
         }
         new_items.insert(it.id, it);
     }
-    fn remap_bin(b: &mut filmcraft_project::Bin, items: &HashMap<ItemId, ItemId>, target: &mut Project) {
+    fn remap_bin(b: &mut epsicut_project::Bin, items: &HashMap<ItemId, ItemId>, target: &mut Project) {
         for c in &mut b.children {
             match c {
                 BinEntry::Item(i) => *i = items[i],

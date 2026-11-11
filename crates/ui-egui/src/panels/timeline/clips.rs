@@ -1,7 +1,7 @@
 use super::layout::Layout;
 use super::waveforms::draw_waveform;
 use super::{
-    Align2, Arc, ClipId, Color32, DuplicateFrames, FilmcraftApp, FrameRate, HashMap, ItemId, Pos2, Rect, Sequence, Stroke, StrokeKind, ThumbnailMode, Tick,
+    Align2, Arc, ClipId, Color32, DuplicateFrames, EpsicutApp, FrameRate, HashMap, ItemId, Pos2, Rect, Sequence, Stroke, StrokeKind, ThumbnailMode, Tick,
     TimeRange, Tokens, TrackItem, TrackKind, duplicate_frames, label_color, pos2, vec2,
 };
 
@@ -13,7 +13,7 @@ pub(super) type DuplicateMarkers = Arc<HashMap<ClipId, DuplicateFrames>>;
 /// The duplicate frame markers of sequence `seq_id`, worked out again on a background thread
 /// after the project changes: a long sequence takes too long for a frame. Until the new markers
 /// are ready, the last ones of the same sequence are shown.
-pub(super) fn duplicate_markers(app: &mut FilmcraftApp, ctx: &egui::Context, seq_id: ItemId, seq: &Sequence) -> DuplicateMarkers {
+pub(super) fn duplicate_markers(app: &mut EpsicutApp, ctx: &egui::Context, seq_id: ItemId, seq: &Sequence) -> DuplicateMarkers {
     let key = (app.session.revision, seq_id, Arc::as_ptr(&app.session.project) as usize);
     let done = app.tl.duplicates_done.lock().unwrap_or_else(|e| e.into_inner()).take();
     // a job that finishes after a newer one leaves the newer markers in place
@@ -69,7 +69,7 @@ pub(super) fn paint_through_edit(p: &egui::Painter, x: f32, row: Rect) -> Rect {
 /// being its first range.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_duplicate_stripes(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     p: &egui::Painter,
     layout: &Layout,
     ranges: &[TimeRange],
@@ -81,7 +81,7 @@ pub(super) fn paint_duplicate_stripes(
 ) {
     let first = ranges.partition_point(|r| r.end() + offset < visible.0);
     let mut stripe: Option<(usize, f32, f32)> = None;
-    let flush = |app: &mut FilmcraftApp, s: (usize, f32, f32)| {
+    let flush = |app: &mut EpsicutApp, s: (usize, f32, f32)| {
         let r = Rect::from_min_max(pos2(s.1, ys.0), pos2(s.2.max(s.1 + 1.0), ys.1));
         let shown = r.intersect(p.clip_rect());
         if shown.width() > 0.0 && shown.height() > 0.0 {
@@ -114,7 +114,7 @@ fn lighten(c: Color32, f: f32) -> Color32 {
 }
 
 /// Whether a clip lies inside the sequence In/Out range (Premiere brightens those).
-fn in_range(app: &FilmcraftApp, it: &TrackItem) -> bool {
+fn in_range(app: &EpsicutApp, it: &TrackItem) -> bool {
     let Some(q) = app.session.active_sequence() else { return false };
     if q.mark_in.is_none() && q.mark_out.is_none() {
         return false;
@@ -181,7 +181,7 @@ pub fn zoomed_thumbnail_tiles(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_clip(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ctx: &egui::Context,
     p: &egui::Painter,
     body: Rect,
@@ -219,8 +219,8 @@ pub(super) fn draw_clip(
     if kind == TrackKind::Video && app.ui.timeline.show_thumbnails && body.height() > 28.0 && w > 20.0 && it.enabled {
         let th = Rect::from_min_max(pos2(body.min.x + 1.0, body.min.y + name_h), pos2(body.max.x - 1.0, body.max.y - 1.0));
         let aspect = app.session.project.item(it.item).and_then(|pi| match &pi.kind {
-            filmcraft_project::ItemKind::Media(m) => m.info.video.as_ref().map(|v| v.width as f32 / v.height as f32),
-            filmcraft_project::ItemKind::Sequence(s) => Some(s.settings.width as f32 / s.settings.height as f32),
+            epsicut_project::ItemKind::Media(m) => m.info.video.as_ref().map(|v| v.width as f32 / v.height as f32),
+            epsicut_project::ItemKind::Sequence(s) => Some(s.settings.width as f32 / s.settings.height as f32),
             _ => None,
         });
         if let Some(aspect) = aspect.filter(|a| a.is_finite() && *a > 0.0) {
@@ -327,11 +327,11 @@ pub(super) fn paint_hatch(p: &egui::Painter, r: Rect) {
     }
 }
 
-pub(super) fn draw_transition(p: &egui::Painter, r: Rect, trn: &filmcraft_project::Transition, selected: bool, t: &Tokens) {
+pub(super) fn draw_transition(p: &egui::Painter, r: Rect, trn: &epsicut_project::Transition, selected: bool, t: &Tokens) {
     let cp = p.with_clip_rect(r.intersect(p.clip_rect()));
     cp.rect_filled(r, 0.0, Color32::from_black_alpha(90));
     paint_hatch(p, r);
-    let audio = matches!(trn.effect.def().map(|d| d.kind), Some(filmcraft_project::EffectKind::AudioTransition));
+    let audio = matches!(trn.effect.def().map(|d| d.kind), Some(epsicut_project::EffectKind::AudioTransition));
     if audio {
         // crossing fade curves
         let n = 16;

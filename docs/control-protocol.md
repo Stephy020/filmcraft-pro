@@ -1,15 +1,15 @@
 # Control protocol & MCP
 
 ## Desktop control channel
-`filmcraft --control 9876` (or `FILMCRAFT_CONTROL_PORT`) listens on `127.0.0.1:<port>` (loopback only).
-The listener requires `FILMCRAFT_CONTROL_TOKEN`: 64 random hex characters shared with authorized
+`epsicut --control 9876` (or `EPSICUT_CONTROL_PORT`) listens on `127.0.0.1:<port>` (loopback only).
+The listener requires `EPSICUT_CONTROL_TOKEN`: 64 random hex characters shared with authorized
 clients through their inherited environment. Generate a fresh token for each desktop session, then
 start the desktop and bridge from that environment:
 
 ```sh
-export FILMCRAFT_CONTROL_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
-filmcraft --control 9876 &
-filmcraft-cli mcp --bridge 127.0.0.1:9876
+export EPSICUT_CONTROL_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+epsicut --control 9876 &
+epsicut-cli mcp --bridge 127.0.0.1:9876
 ```
 
 The CLI / MCP bridge reads this variable automatically. Keep it private: don't put the value in
@@ -24,7 +24,7 @@ Expiration closes the connection without an unsolicited reply; reconnect before 
 limit. A partial request that times out is not dispatched.
 
 One JSON request per line → one JSON reply per line. The app opts out of macOS App Nap
-(`apps/filmcraft/src/app_nap.rs`): a hidden window would otherwise drop the whole process to
+(`apps/epsicut/src/app_nap.rs`): a hidden window would otherwise drop the whole process to
 background priority, and on a busy machine it would stop answering.
 
 **Only requests are read.** Every line must be a JSON object with a string `method` (`id` and `params`
@@ -35,10 +35,10 @@ an object without `method`, invalid UTF-8, and a line longer than 4 MiB. An HTTP
 web page's cross-origin `fetch` to `127.0.0.1:<port>`) therefore can't smuggle a command in its body:
 its request line is rejected first. At most 16 connections are served at once; further ones get an error
 line and are closed. Clients that get an error reply should reconnect. Transport:
-`apps/filmcraft/src/control_server.rs`.
+`apps/epsicut/src/control_server.rs`.
 
 ```json
-{"id": 1, "token": "<FILMCRAFT_CONTROL_TOKEN>", "method": "engine.execute", "params": {"command": "sequence.addEdit", "params": {"seconds": 3}}}
+{"id": 1, "token": "<EPSICUT_CONTROL_TOKEN>", "method": "engine.execute", "params": {"command": "sequence.addEdit", "params": {"seconds": 3}}}
 {"id": 1, "ok": true, "result": {"cuts": 2}}
 ```
 
@@ -80,7 +80,7 @@ still apply. `engine.commands` and the menus always show the selection's enablem
 **Focus.** Driving the app never steals the user's keyboard. Started with `--control`, the app opens
 without activating itself. UI requests and screenshots that need a rendered frame bring the window
 forward without making it key (macOS `orderFrontRegardless`), so the user's typing keeps going to
-the app they are in. Only an explicit `ui.focus {}` activates FilmCraft. Injected keys work on
+the app they are in. Only an explicit `ui.focus {}` activates EpsiCut. Injected keys work on
 focused widgets even when the native window is in the background.
 
 `ui.focus {id}` targets an enabled, visible widget registered with a real egui response. It rejects
@@ -196,11 +196,11 @@ Ctrl), `Ctrl` (macOS ⌃), `Alt`, `Shift`. The dialog (Edit ▸ Keyboard Shortcu
 `shortcuts.*` (`shortcuts.key.K`, `shortcuts.cell.<command>`, `shortcuts.ok`, …).
 
 ## MCP
-`filmcraft-cli mcp` serves MCP on stdio: headless (in-process session; `--demo` / `--project p.fcproj`)
+`epsicut-cli mcp` serves MCP on stdio: headless (in-process session; `--demo` / `--project p.fcproj`)
 or `--bridge 127.0.0.1:9876` to drive the running app. Tools: `command_list`, `command_run`,
 `command_batch`, `doc_inspect`, `render_preview`, `project_inspect`, `sequence_inspect`, `media_import`,
 `render_frame`, `ui_inspect`, `ui_elements`, `ui_click`, `ui_drag`, `ui_key`, `ui_type`, `ui_screenshot`,
-`ui_control`; resources `filmcraft://document` and `filmcraft://commands`. `.mcp.json` registers both.
+`ui_control`; resources `epsicut://document` and `epsicut://commands`. `.mcp.json` registers both.
 Annotations, argument checking, errors and export progress / cancellation:
 [agents.md § Conventions](agents.md#conventions).
 
@@ -229,7 +229,7 @@ four-way handle where two dividers meet, `panel.float.<index>.gutter.<path>` and
 The panels use craft-ui's shared docking with its split-tree settings. Its control commands
 (`window.panel.move`, `.float`, `.dock`, `.activate`, `.close`, `.closeGroup`, `.closeOthers`,
 `.minimize`, `.layout`; see craft-libs `docs/ui-docking.md`) route here too; the three
-commands above are FilmCraft's names for `window.panel.float`, `.dock` and `.close`.
+commands above are EpsiCut's names for `window.panel.float`, `.dock` and `.close`.
 
 `window.dockAction` accepts `{action}` using the shared docking action's JSON form. It
 covers tab moves and ordering, split and floating geometry, activation, and closing.

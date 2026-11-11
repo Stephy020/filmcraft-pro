@@ -1,17 +1,17 @@
 //! A standalone export gives back the float images and plane buffers it left on the frame
-//! pool (`filmcraft_frame::pool`) when it ends, however it ends; one part of a batch keeps them. One test in this file on purpose: the pool is shared by every test of a binary,
+//! pool (`epsicut_frame::pool`) when it ends, however it ends; one part of a batch keeps them. One test in this file on purpose: the pool is shared by every test of a binary,
 //! and its numbers mean something only while nothing else renders.
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-use filmcraft_export::{ExportSettings, Exporter, Format, Progress, Step, export};
-use filmcraft_frame::pool;
-use filmcraft_media::generators::GeneratorSource;
-use filmcraft_media::{Generator, MediaSource};
-use filmcraft_project::{ItemId, ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
-use filmcraft_render::SourceMap;
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
+use epsicut_export::{ExportSettings, Exporter, Format, Progress, Step, export};
+use epsicut_frame::pool;
+use epsicut_media::generators::GeneratorSource;
+use epsicut_media::{Generator, MediaSource};
+use epsicut_project::{ItemId, ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
+use epsicut_render::SourceMap;
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
 
 /// A red matte filling a 320×180 sequence for a second.
 fn project() -> (Arc<Project>, ItemId, SourceMap) {
@@ -55,7 +55,7 @@ fn the_float_shelf_is_empty_when_a_standalone_export_ends_however_it_ended() {
     let leave_something = || {
         pool::recycle_f32(vec![0.0; 100_000]);
         // and a decoded picture's plane for the 8-bit shelf (the sources' caches hand those back)
-        pool::recycle(Arc::new(filmcraft_frame::VideoFrame::rgba8(200, 100, vec![0u8; 80_000])));
+        pool::recycle(Arc::new(epsicut_frame::VideoFrame::rgba8(200, 100, vec![0u8; 80_000])));
         assert!(pool::stats().f32_idle_bytes > 0);
     };
     let check = |what: &str| {

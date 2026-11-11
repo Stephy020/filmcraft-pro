@@ -4,7 +4,7 @@
 use crate::common;
 
 use common::*;
-use filmcraft_aac::{AudioSpecificConfig, Decoder, Encoder, EncoderConfig, split_adts};
+use epsicut_aac::{AudioSpecificConfig, Decoder, Encoder, EncoderConfig, split_adts};
 
 fn corpus() -> Vec<(Vec<u8>, Vec<Vec<u8>>)> {
     let mut out = Vec::new();

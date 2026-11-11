@@ -7,7 +7,7 @@ mod common;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use filmcraft_mpeg2v::{Decoder, access_units, probe, scan_access_unit};
+use epsicut_mpeg2v::{Decoder, access_units, probe, scan_access_unit};
 
 struct Rng(u64);
 impl Rng {
@@ -60,7 +60,7 @@ fn count_panics() {
 }
 
 fn run_all(d: &[u8], label: &str) {
-    filmcraft_testkit::set_progress(label);
+    epsicut_testkit::set_progress(label);
     count_panics();
     let before = PANICS.load(std::sync::atomic::Ordering::SeqCst);
     let res = catch_unwind(AssertUnwindSafe(|| {
@@ -80,21 +80,21 @@ fn run_all(d: &[u8], label: &str) {
     assert!(res.is_ok() && PANICS.load(std::sync::atomic::Ordering::SeqCst) == before, "panic: {label}");
 }
 
-/// Seconds the whole sweep may take before it counts as a hang (override: FILMCRAFT_HOSTILE_TIMEOUT_SECS).
+/// Seconds the whole sweep may take before it counts as a hang (override: EPSICUT_HOSTILE_TIMEOUT_SECS).
 const DEADLINE_SECS: u64 = 600;
 
-/// CI runs a rotating share of every part of the sweep; `FILMCRAFT_FUZZ_ITERS=2500` runs all of it (see [`Depth`]).
+/// CI runs a rotating share of every part of the sweep; `EPSICUT_FUZZ_ITERS=2500` runs all of it (see [`Depth`]).
 #[test]
 fn hostile_streams_never_panic() {
-    filmcraft_testkit::with_deadline(DEADLINE_SECS, sweep);
+    epsicut_testkit::with_deadline(DEADLINE_SECS, sweep);
 }
 
 fn sweep() {
-    let Some(ff) = filmcraft_testkit::ffmpeg_or_skip("mpeg2v fuzz") else { return };
+    let Some(ff) = epsicut_testkit::ffmpeg_or_skip("mpeg2v fuzz") else { return };
     let depth = Depth::from_env();
     for spec in &SPECS {
-        if !filmcraft_testkit::ffmpeg_has_encoder(&ff, "mpeg2video") {
-            filmcraft_testkit::skip("mpeg2v fuzz", &format!("this ffmpeg has no mpeg2video encoder (seed {})", spec.name));
+        if !epsicut_testkit::ffmpeg_has_encoder(&ff, "mpeg2video") {
+            epsicut_testkit::skip("mpeg2v fuzz", &format!("this ffmpeg has no mpeg2video encoder (seed {})", spec.name));
             continue;
         }
         let Some(path) = common::make(&ff, spec) else {
@@ -149,11 +149,11 @@ fn fuzz(depth: &Depth, name: &str, seed: &[u8]) {
 
 const VALUES: [u8; 4] = [0, 0xff, 0x80, 0x01];
 
-/// How much of the sweep runs. `FILMCRAFT_FUZZ_ITERS=N` runs all of it (about 600 truncation
+/// How much of the sweep runs. `EPSICUT_FUZZ_ITERS=N` runs all of it (about 600 truncation
 /// points spread over each seed, every header byte, overwrite value and bit flip) plus N random
 /// rounds per seed: 2500 is the full depth, more hunts longer. Unset, CI runs a third of the
 /// truncation points and of the full depth's random rounds and, for each header byte, one value
-/// and two bits. A rotation offset shifts which share runs (`FILMCRAFT_FUZZ_SEED`, else the UTC
+/// and two bits. A rotation offset shifts which share runs (`EPSICUT_FUZZ_SEED`, else the UTC
 /// day number), so every case of the full sweep runs within a few days, and a random round's
 /// mutations match the same round of a full run.
 struct Depth {
@@ -165,11 +165,11 @@ struct Depth {
 
 impl Depth {
     fn from_env() -> Self {
-        match std::env::var("FILMCRAFT_FUZZ_ITERS").ok().and_then(|s| s.parse().ok()) {
+        match std::env::var("EPSICUT_FUZZ_ITERS").ok().and_then(|s| s.parse().ok()) {
             Some(rounds) => Depth { full: true, truncations: 600, rounds, rotation: 0 },
             None => {
                 let rotation = rotation();
-                eprintln!("fuzz subset rotation {rotation} (FILMCRAFT_FUZZ_SEED={rotation} replays it; FILMCRAFT_FUZZ_ITERS=2500 runs everything)");
+                eprintln!("fuzz subset rotation {rotation} (EPSICUT_FUZZ_SEED={rotation} replays it; EPSICUT_FUZZ_ITERS=2500 runs everything)");
                 Depth { full: false, truncations: 600, rounds: 2500, rotation }
             }
         }
@@ -191,9 +191,9 @@ impl Depth {
     }
 }
 
-/// The default subset's rotation offset: `FILMCRAFT_FUZZ_SEED`, else days since the Unix epoch (UTC).
+/// The default subset's rotation offset: `EPSICUT_FUZZ_SEED`, else days since the Unix epoch (UTC).
 fn rotation() -> usize {
-    std::env::var("FILMCRAFT_FUZZ_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
+    std::env::var("EPSICUT_FUZZ_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
         usize::try_from(secs / 86_400).unwrap_or(0)
     })

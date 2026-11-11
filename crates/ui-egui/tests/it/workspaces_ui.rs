@@ -3,21 +3,21 @@
 //! it, rename and delete in the Edit Workspaces dialog, and the saved workspaces (and the one in use)
 //! surviving a restart through `workspaces.json` in the data directory.
 //!
-//! Set `FILMCRAFT_UI_SNAPSHOT_DIR=<dir>` to also render offscreen with wgpu and write
+//! Set `EPSICUT_UI_SNAPSHOT_DIR=<dir>` to also render offscreen with wgpu and write
 //! `workspaces-*.png`.
 
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
-use filmcraft_ui_egui::dock::PanelKind;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
+use epsicut_ui_egui::dock::PanelKind;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     snapshots: Option<PathBuf>,
 }
@@ -29,8 +29,8 @@ impl Driver {
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         session.prefs_path = Some(data.join("preferences.json"));
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
-        let snapshots = std::env::var_os("FILMCRAFT_UI_SNAPSHOT_DIR").map(PathBuf::from);
+        let app = EpsicutApp::new(session).with_control(rx);
+        let snapshots = std::env::var_os("EPSICUT_UI_SNAPSHOT_DIR").map(PathBuf::from);
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000);
         if snapshots.is_some() {
             b = b.wgpu();
@@ -97,7 +97,7 @@ impl Driver {
         v.as_array().unwrap().iter().any(|e| e["id"] == json!(id))
     }
 
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
 
@@ -135,7 +135,7 @@ impl Driver {
 }
 
 fn data_dir(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("filmcraft-workspaces-{name}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("epsicut-workspaces-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -263,7 +263,7 @@ fn save_rename_and_delete_through_the_dialogs() {
     let names = d.app().workspaces.saved.iter().map(|s| s.name.clone()).collect::<Vec<_>>();
     assert_eq!(names, ["Mountain"]);
     let row = |n: &str| {
-        let all = filmcraft_ui_egui::dock::names(&Default::default());
+        let all = epsicut_ui_egui::dock::names(&Default::default());
         let mut all = all;
         all.push("Mountain".into());
         all.sort_by_key(|x| x.to_lowercase());
@@ -292,7 +292,7 @@ fn save_rename_and_delete_through_the_dialogs() {
 /// Workspace, Save as New Workspace… and Edit Workspaces….
 #[test]
 fn the_header_workspace_menu_saves_resets_and_opens_the_dialogs() {
-    use filmcraft_ui_egui::state::WorkspaceDialog;
+    use epsicut_ui_egui::state::WorkspaceDialog;
     let data = data_dir("header");
     let mut d = Driver::launch(&data);
     let ws = d.workspace();

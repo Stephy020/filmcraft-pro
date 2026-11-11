@@ -1,18 +1,18 @@
 use super::layout::Layout;
-use super::{ClipId, FilmcraftApp, Grab, Hit, Pos2, SNAP_PX, Sequence, Tick, Value, grab_at, json};
+use super::{ClipId, EpsicutApp, Grab, Hit, Pos2, SNAP_PX, Sequence, Tick, Value, grab_at, json};
 
 /// Snap `t` to nearby candidates (edits, playhead, markers, in/out). Returns snapped tick.
-pub(in super::super) fn snap(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, t: Tick, exclude: &[ClipId]) -> Tick {
+pub(in super::super) fn snap(app: &mut EpsicutApp, seq: &Sequence, layout: &Layout, t: Tick, exclude: &[ClipId]) -> Tick {
     snap_to(app, seq, layout, t, exclude, true)
 }
 
 /// Where a dragged playhead lands: [`snap`], but not onto itself, or it would stick where it is
 /// and only move in jumps of `SNAP_PX` (#164).
-pub(super) fn snap_playhead(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, t: Tick) -> Tick {
+pub(super) fn snap_playhead(app: &mut EpsicutApp, seq: &Sequence, layout: &Layout, t: Tick) -> Tick {
     snap_to(app, seq, layout, t, &[], false)
 }
 
-fn snap_to(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, t: Tick, exclude: &[ClipId], to_playhead: bool) -> Tick {
+fn snap_to(app: &mut EpsicutApp, seq: &Sequence, layout: &Layout, t: Tick, exclude: &[ClipId], to_playhead: bool) -> Tick {
     if !app.session.state.snapping {
         return t;
     }
@@ -51,7 +51,7 @@ fn snap_to(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, t: Tick, exc
 
 /// Where a dragged caption edge lands (#2192): [`snap`], or the nearest edge of a caption not in
 /// `exclude` (the captions being dragged) when that is closer.
-pub(in super::super) fn snap_caption(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, t: Tick, exclude: &[ClipId]) -> Tick {
+pub(in super::super) fn snap_caption(app: &mut EpsicutApp, seq: &Sequence, layout: &Layout, t: Tick, exclude: &[ClipId]) -> Tick {
     if !app.session.state.snapping {
         return t;
     }
@@ -84,7 +84,7 @@ pub(in super::super) fn snap_caption(app: &mut FilmcraftApp, seq: &Sequence, lay
 
 /// What the Timeline shows at `pos` for the control channel's `ui.timeline.hit`, with `kind`: the
 /// trim a press of the current tool with `mods` starts there (null when it would not trim).
-pub fn hit_json(app: &FilmcraftApp, pos: Pos2, mods: egui::Modifiers) -> Value {
+pub fn hit_json(app: &EpsicutApp, pos: Pos2, mods: egui::Modifiers) -> Value {
     let (Some(layout), Some(seq)) = (app.tl.layout.as_ref(), app.session.active_sequence()) else { return json!({"hit": "none"}) };
     let t = layout.tick_at(pos.x);
     let grab = grab_at(seq, layout, pos, app.ui.tool, mods, app.session.prefs.trim.selection_tool_roll_ripple);
@@ -106,7 +106,7 @@ pub fn hit_json(app: &FilmcraftApp, pos: Pos2, mods: egui::Modifiers) -> Value {
 }
 
 /// Screen point of a clip (centre, or its in/out edge).
-pub fn locate(app: &FilmcraftApp, clip: u64, edge: Option<&str>) -> Option<(f32, f32)> {
+pub fn locate(app: &EpsicutApp, clip: u64, edge: Option<&str>) -> Option<(f32, f32)> {
     let layout = app.tl.layout.as_ref()?;
     let seq = app.session.active_sequence()?;
     let (tid, it) = seq.find_item(ClipId(clip))?;

@@ -9,10 +9,10 @@ nextest-version = "0.9.150"
 nvenc = { max-threads = 1 }
 
 [[profile.default.overrides]]
-filter = "package(filmcraft-platform) and (binary(/nvenc/) or test(/nvenc/))"
+filter = "package(epsicut-platform) and (binary(/nvenc/) or test(/nvenc/))"
 test-group = "nvenc"
 
 # A throughput gate: it measures one core's speed, so nothing else runs beside it.
 [[profile.default.overrides]]
-filter = "package(filmcraft-render) and binary(mixer_perf)"
+filter = "package(epsicut-render) and binary(mixer_perf)"
 threads-required = "num-test-threads"

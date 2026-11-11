@@ -1,4 +1,4 @@
-use filmcraft_tts_text::{Lang, Token, normalize};
+use epsicut_tts_text::{Lang, Token, normalize};
 
 fn spoken(text: &str) -> String {
     let words: Vec<String> = normalize(text, Lang::EnUs).unwrap().into_iter().filter_map(|t| if let Token::Word(w) = t { Some(w) } else { None }).collect();

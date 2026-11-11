@@ -6,11 +6,11 @@
 //! and rasterises it into a small premultiplied linear-light RGBA [`Overlay`] positioned in the
 //! frame. Renderers composite overlays over the finished picture.
 
-use filmcraft_color::srgb_to_linear;
-use filmcraft_project::{Caption, CaptionAlign, CaptionAnchor, CaptionStyle, CaptionTrack, Sequence};
-use filmcraft_time::Tick;
+use epsicut_color::srgb_to_linear;
+use epsicut_project::{Caption, CaptionAlign, CaptionAnchor, CaptionStyle, CaptionTrack, Sequence};
+use epsicut_time::Tick;
 
-use filmcraft_text::{ParagraphStyle, TextStyle, layout, render};
+use epsicut_text::{ParagraphStyle, TextStyle, layout, render};
 
 /// Caption overlays are transient render resources, not source images. Keep one cue from
 /// materialising an unbounded mask or RGBA buffer.
@@ -58,7 +58,7 @@ impl Overlay {
 /// The caption face: the track's font family (Inter when empty or not installed) in the track's
 /// font style (SemiBold when empty) at `px`.
 fn caption_style(font: &str, font_style: &str, px: f32) -> TextStyle {
-    let family = if font.trim().is_empty() { filmcraft_text::fonts::DEFAULT_FAMILY } else { font.trim() };
+    let family = if font.trim().is_empty() { epsicut_text::fonts::DEFAULT_FAMILY } else { font.trim() };
     let style = if font_style.trim().is_empty() { "SemiBold" } else { font_style.trim() };
     TextStyle { family: family.into(), style: style.into(), size: px, ..Default::default() }
 }
@@ -74,7 +74,7 @@ fn wrap(line: &str, ts: &TextStyle, max_w: f32) -> Vec<String> {
     let mut cur = String::new();
     for word in line.split(' ') {
         let cand = if cur.is_empty() { word.to_string() } else { format!("{cur} {word}") };
-        if !cur.is_empty() && filmcraft_text::measure(&cand, ts) > max_w {
+        if !cur.is_empty() && epsicut_text::measure(&cand, ts) > max_w {
             out.push(std::mem::take(&mut cur));
             cur = word.to_string();
         } else {
@@ -130,7 +130,7 @@ pub fn render_caption(c: &Caption, style: &CaptionStyle, w: usize, h: usize) -> 
     if lines.is_empty() {
         return None;
     }
-    let vm = filmcraft_text::fonts::face(filmcraft_text::resolve(&ts.family, &ts.style).face).metrics(px);
+    let vm = epsicut_text::fonts::face(epsicut_text::resolve(&ts.family, &ts.style).face).metrics(px);
     let (asc, desc) = (vm.ascent, vm.descent);
     let lh = px * style.line_spacing.clamp(0.8, 4.0);
     let pad_x = (px * 0.3).round();
@@ -147,7 +147,7 @@ pub fn render_caption(c: &Caption, style: &CaptionStyle, w: usize, h: usize) -> 
     .max(0.0)
     .round();
     let side = w as f32 * 0.05;
-    let widths: Vec<f32> = lines.iter().map(|l| filmcraft_text::measure(l, &ts)).collect();
+    let widths: Vec<f32> = lines.iter().map(|l| epsicut_text::measure(l, &ts)).collect();
     let xs: Vec<f32> = widths
         .iter()
         .map(|&lw| match align {
@@ -192,7 +192,7 @@ pub fn render_caption(c: &Caption, style: &CaptionStyle, w: usize, h: usize) -> 
         }
         let baseline = lt + (lh - (asc + desc)) / 2.0 + asc;
         let l = layout(line, &ts, &ParagraphStyle::default());
-        let mut m = filmcraft_text::Mask { w: ow, h: oh, a: std::mem::take(&mut cover) };
+        let mut m = epsicut_text::Mask { w: ow, h: oh, a: std::mem::take(&mut cover) };
         render::draw(&l, &render::at(xs[i], baseline.round()), &mut m, (ox, oy));
         cover = m.a;
     }
@@ -287,7 +287,7 @@ pub fn sequence_overlays(seq: &Sequence, t: Tick, w: usize, h: usize) -> Vec<Ove
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmcraft_project::{CaptionFormat, ClipId, TrackId};
+    use epsicut_project::{CaptionFormat, ClipId, TrackId};
 
     fn cap(text: &str) -> Caption {
         Caption { id: ClipId(1), start: Tick(0), duration: Tick(100), text: text.into(), speaker: None, cue_id: None, settings: String::new() }
@@ -469,7 +469,7 @@ mod tests {
         let scale = h as f32 / 1080.0;
         let px = (style.size.clamp(4.0, MAX_CAPTION_SIZE_1080) * scale).clamp(4.0, h as f32);
         let max_w = w as f32 * 0.9;
-        let family = if style.font.trim().is_empty() { filmcraft_text::fonts::DEFAULT_FAMILY } else { style.font.trim() };
+        let family = if style.font.trim().is_empty() { epsicut_text::fonts::DEFAULT_FAMILY } else { style.font.trim() };
         let ts = TextStyle { family: family.into(), style: "SemiBold".into(), size: px, ..Default::default() };
         let mut lines: Vec<String> = Vec::new();
         // (speaker names are metadata; like Premiere, they are not burned in)
@@ -480,7 +480,7 @@ mod tests {
         if lines.is_empty() {
             return None;
         }
-        let vm = filmcraft_text::fonts::face(filmcraft_text::resolve(&ts.family, &ts.style).face).metrics(px);
+        let vm = epsicut_text::fonts::face(epsicut_text::resolve(&ts.family, &ts.style).face).metrics(px);
         let (asc, desc) = (vm.ascent, vm.descent);
         let lh = px * style.line_spacing.clamp(0.8, 4.0);
         let pad_x = (px * 0.3).round();
@@ -497,7 +497,7 @@ mod tests {
         .max(0.0)
         .round();
         let side = w as f32 * 0.05;
-        let widths: Vec<f32> = lines.iter().map(|l| filmcraft_text::measure(l, &ts)).collect();
+        let widths: Vec<f32> = lines.iter().map(|l| epsicut_text::measure(l, &ts)).collect();
         let xs: Vec<f32> = widths
             .iter()
             .map(|&lw| match align {
@@ -542,7 +542,7 @@ mod tests {
             }
             let baseline = lt + (lh - (asc + desc)) / 2.0 + asc;
             let l = layout(line, &ts, &ParagraphStyle::default());
-            let mut m = filmcraft_text::Mask { w: ow, h: oh, a: std::mem::take(&mut cover) };
+            let mut m = epsicut_text::Mask { w: ow, h: oh, a: std::mem::take(&mut cover) };
             render::draw(&l, &render::at(xs[i], baseline.round()), &mut m, (ox, oy));
             cover = m.a;
         }

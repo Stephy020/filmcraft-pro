@@ -3,7 +3,7 @@
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use filmcraft_apv::*;
+use epsicut_apv::*;
 
 struct Rng(u64);
 impl Rng {
@@ -41,7 +41,7 @@ fn seeds() -> Vec<Vec<u8>> {
 }
 
 fn run(d: &[u8], label: &str) {
-    filmcraft_testkit::set_progress(label);
+    epsicut_testkit::set_progress(label);
     let res = catch_unwind(AssertUnwindSafe(|| {
         for depth in [None, Some(8), Some(16)] {
             let _ = decode_frame_with(d, &DecodeOptions { bit_depth: depth, threads: depth.is_none() });
@@ -52,12 +52,12 @@ fn run(d: &[u8], label: &str) {
     assert!(res.is_ok(), "panic: {label}");
 }
 
-/// Seconds the whole sweep may take before it counts as a hang (override: FILMCRAFT_HOSTILE_TIMEOUT_SECS).
+/// Seconds the whole sweep may take before it counts as a hang (override: EPSICUT_HOSTILE_TIMEOUT_SECS).
 const DEADLINE_SECS: u64 = 600;
 
 #[test]
 fn hostile_frames_never_panic() {
-    filmcraft_testkit::with_deadline(DEADLINE_SECS, sweep);
+    epsicut_testkit::with_deadline(DEADLINE_SECS, sweep);
 }
 
 fn sweep() {
@@ -91,7 +91,7 @@ fn sweep() {
             }
         }
         let mut rng = Rng(0x9e3779b97f4a7c15 ^ si as u64);
-        let iters = std::env::var("FILMCRAFT_FUZZ_ITERS").ok().and_then(|s| s.parse().ok()).unwrap_or(1000);
+        let iters = std::env::var("EPSICUT_FUZZ_ITERS").ok().and_then(|s| s.parse().ok()).unwrap_or(1000);
         for i in 0..iters {
             let mut d = seed.clone();
             for _ in 0..1 + rng.below(8) {

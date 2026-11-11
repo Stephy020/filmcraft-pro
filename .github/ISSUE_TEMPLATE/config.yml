@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/storytold/filmcraft/blob/main/SECURITY.md
+    url: https://github.com/Stephy020/epsicut/blob/main/SECURITY.md
     about: Read the reporting guidance before sharing sensitive details or malicious files.
   - name: Community help
     url: https://discord.gg/artcraft
-    about: Ask usage questions and discuss FilmCraft workflows with the community.
+    about: Ask usage questions and discuss EpsiCut workflows with the community.

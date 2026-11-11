@@ -4,7 +4,7 @@ use super::{Deserialize, Serialize, TICKS_PER_SECOND, Tick};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProjectSettings {
     pub renderer: String,
-    pub video_display: filmcraft_time::TimeDisplay,
+    pub video_display: epsicut_time::TimeDisplay,
     pub audio_display_samples: bool,
     /// Kept for file compatibility; the editor uses Settings ▸ Timeline (user preferences) for
     /// still and transition default durations, as Premiere does.
@@ -19,7 +19,7 @@ pub struct ProjectSettings {
     pub title_safe: (f64, f64),
     #[serde(default = "action_safe_default")]
     pub action_safe: (f64, f64),
-    /// Project Settings ▸ General ▸ Capture Format (`DV` or `HDV`; informational, FilmCraft has no
+    /// Project Settings ▸ General ▸ Capture Format (`DV` or `HDV`; informational, EpsiCut has no
     /// tape capture). Schema v11.
     #[serde(default = "capture_format_default")]
     pub capture_format: String,
@@ -84,8 +84,8 @@ pub enum IngestAction {
 impl Default for ProjectSettings {
     fn default() -> Self {
         Self {
-            renderer: "FilmCraft GPU Acceleration (wgpu)".into(),
-            video_display: filmcraft_time::TimeDisplay::Timecode,
+            renderer: "EpsiCut GPU Acceleration (wgpu)".into(),
+            video_display: epsicut_time::TimeDisplay::Timecode,
             audio_display_samples: true,
             default_still_duration: Tick(5 * TICKS_PER_SECOND),
             default_transition_duration_frames: 24,

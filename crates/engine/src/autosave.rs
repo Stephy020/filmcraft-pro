@@ -5,7 +5,7 @@
 //! project as `<name>-YYYY-MM-DD_HH-MM-SS.fcproj`, keeping at most *Maximum Project Versions* files.
 //! Optionally the project file itself is saved too.
 //!
-//! **Recovery journal** (FilmCraft addition): while the project has unsaved changes, a snapshot is
+//! **Recovery journal** (EpsiCut addition): while the project has unsaved changes, a snapshot is
 //! written to `<data dir>/Recovery/<session>/snapshot.fcproj` shortly after each change (debounced,
 //! and at least every *N* seconds while edits keep coming). Each running app holds an OS lock on
 //! `<session>/lock`; when the process dies (crash, `kill -9`, power cut) the lock is released, so on
@@ -25,8 +25,8 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use filmcraft_format::autosave as names;
-use filmcraft_project::Project;
+use epsicut_format::autosave as names;
+use epsicut_project::Project;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use web_time::{Instant, SystemTime, UNIX_EPOCH};
@@ -97,8 +97,8 @@ pub struct PlaybackPrefs {
     /// a paused frame. Off by default.
     pub draft_decode: bool,
     /// "Hardware decoding": `auto` (default: the system's hardware decoder for streams it
-    /// supports, e.g. VideoToolbox H.264 / HEVC on macOS, falling back to FilmCraft's own decoder)
-    /// or `off` (always FilmCraft's own decoders). Media already open keeps its decoder until it
+    /// supports, e.g. VideoToolbox H.264 / HEVC on macOS, falling back to EpsiCut's own decoder)
+    /// or `off` (always EpsiCut's own decoders). Media already open keeps its decoder until it
     /// is reopened.
     pub hardware_decoding: String,
 }
@@ -294,7 +294,7 @@ impl Default for MediaPrefs {
 }
 
 /// Essential Sound: user presets saved from the panel (built-in presets live in
-/// `filmcraft_project::essential`).
+/// `epsicut_project::essential`).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct EssentialSoundPrefs {
@@ -304,7 +304,7 @@ pub struct EssentialSoundPrefs {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UserSoundPreset {
     pub name: String,
-    pub settings: filmcraft_project::EssentialSound,
+    pub settings: epsicut_project::EssentialSound,
 }
 
 /// Preferences ▸ Audio (the mixer-automation part) and the Track Mixer panel-menu toggle.
@@ -373,12 +373,12 @@ impl Default for AudioPrefs {
 
 impl AudioPrefs {
     /// Auto-Match target for an audio type.
-    pub fn loudness_target(&self, t: filmcraft_project::AudioType) -> f64 {
+    pub fn loudness_target(&self, t: epsicut_project::AudioType) -> f64 {
         match t {
-            filmcraft_project::AudioType::Dialogue => self.dialogue_target_lufs,
-            filmcraft_project::AudioType::Music => self.music_target_lufs,
-            filmcraft_project::AudioType::Sfx => self.sfx_target_lufs,
-            filmcraft_project::AudioType::Ambience => self.ambience_target_lufs,
+            epsicut_project::AudioType::Dialogue => self.dialogue_target_lufs,
+            epsicut_project::AudioType::Music => self.music_target_lufs,
+            epsicut_project::AudioType::Sfx => self.sfx_target_lufs,
+            epsicut_project::AudioType::Ambience => self.ambience_target_lufs,
         }
     }
     fn clamp(&mut self) {
@@ -487,7 +487,7 @@ impl Preferences {
         if let Some(d) = path.parent() {
             fs::create_dir_all(d)?;
         }
-        filmcraft_format::atomic_write(path, &serde_json::to_vec_pretty(self).unwrap_or_default())
+        epsicut_format::atomic_write(path, &serde_json::to_vec_pretty(self).unwrap_or_default())
     }
 }
 
@@ -500,25 +500,45 @@ pub fn portable_data_dir(exe_dir: &Path) -> Option<PathBuf> {
     exe_dir.join(PORTABLE_MARKER).is_file().then(|| exe_dir.join("data"))
 }
 
-/// The data directory. `FILMCRAFT_DATA_DIR` overrides; a portable install ([`PORTABLE_MARKER`] next
+/// The data directory. `EPSICUT_DATA_DIR` overrides; a portable install ([`PORTABLE_MARKER`] next
 /// to the executable) uses `<exe dir>/data`; otherwise the per-user directory:
-/// macOS `~/Library/Application Support/FilmCraft`, Windows `%APPDATA%\FilmCraft`,
-/// elsewhere `$XDG_DATA_HOME/filmcraft` or `~/.local/share/filmcraft`.
+/// macOS `~/Library/Application Support/EpsiCut`, Windows `%APPDATA%\EpsiCut`,
+/// elsewhere `$XDG_DATA_HOME/epsicut` or `~/.local/share/epsicut`.
 pub fn default_data_dir() -> Option<PathBuf> {
     let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
-    if let Some(d) = env("FILMCRAFT_DATA_DIR") {
+    if let Some(d) = env("EPSICUT_DATA_DIR") {
         return Some(d);
     }
     if let Some(d) = std::env::current_exe().ok().and_then(|exe| exe.parent().and_then(portable_data_dir)) {
         return Some(d);
     }
-    if cfg!(target_os = "macos") {
-        return env("HOME").map(|h| h.join("Library/Application Support/FilmCraft"));
+    let (dir, legacy) = if cfg!(target_os = "macos") {
+        let base = env("HOME")?.join("Library/Application Support");
+        (base.join("EpsiCut"), base.join(LEGACY_DIR_NAME))
+    } else if cfg!(windows) {
+        let base = env("APPDATA")?;
+        (base.join("EpsiCut"), base.join(LEGACY_DIR_NAME))
+    } else {
+        let base = env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share")))?;
+        (base.join("epsicut"), base.join(LEGACY_DIR_NAME.to_ascii_lowercase()))
+    };
+    Some(adopt_legacy_dir(dir, &legacy))
+}
+
+/// The per-user directory's name before the app was renamed.
+const LEGACY_DIR_NAME: &str = "FilmCraft";
+
+/// `dir`, after moving the pre-rename directory `legacy` there when only that one exists (settings,
+/// recovery journal, logs and downloaded speech models carry over). When the move fails (the old
+/// directory is in use by a running copy, or on another volume), `legacy` itself is used.
+pub fn adopt_legacy_dir(dir: PathBuf, legacy: &Path) -> PathBuf {
+    if dir.exists() || !legacy.is_dir() {
+        return dir;
     }
-    if cfg!(windows) {
-        return env("APPDATA").map(|h| h.join("FilmCraft"));
+    match std::fs::rename(legacy, &dir) {
+        Ok(()) => dir,
+        Err(_) => legacy.to_path_buf(),
     }
-    env("XDG_DATA_HOME").map(|d| d.join("filmcraft")).or_else(|| env("HOME").map(|h| h.join(".local/share/filmcraft")))
 }
 
 pub fn unix_now() -> i64 {
@@ -601,9 +621,9 @@ pub fn scan_candidates(data_dir: &Path, skip: Option<&Path>) -> Vec<RecoveryCand
 }
 
 /// Load a candidate's snapshot.
-pub fn load_candidate(c: &RecoveryCandidate) -> Result<filmcraft_format::Loaded, String> {
+pub fn load_candidate(c: &RecoveryCandidate) -> Result<epsicut_format::Loaded, String> {
     let b = fs::read(c.dir.join(SNAPSHOT)).map_err(|e| format!("{}: {e}", c.dir.display()))?;
-    filmcraft_format::decode(&b).map_err(|e| e.to_string())
+    epsicut_format::decode(&b).map_err(|e| e.to_string())
 }
 
 pub fn discard_candidate(c: &RecoveryCandidate) -> io::Result<()> {
@@ -763,11 +783,11 @@ impl Persistence {
             first_pending: None,
             last_change: Instant::now(),
             next_autosave: Instant::now(),
-            meta: JournalMeta { pid, started_unix: started, generator: filmcraft_format::generator(), ..Default::default() },
+            meta: JournalMeta { pid, started_unix: started, generator: epsicut_format::generator(), ..Default::default() },
         };
         w.next_autosave = Instant::now() + w.autosave_interval();
         let worker_failure = failure.clone();
-        let thread = std::thread::Builder::new().name("filmcraft-autosave".into()).spawn(move || {
+        let thread = std::thread::Builder::new().name("epsicut-autosave".into()).spawn(move || {
             if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| w.run(rx))).is_err() {
                 worker_failure.report();
             }
@@ -877,7 +897,7 @@ impl Persistence {
         if snap.is_file() {
             if let Some(mut m) = fs::read(self.session_dir.join(META)).ok().and_then(|b| serde_json::from_slice::<JournalMeta>(&b).ok()) {
                 m.clean_exit = true;
-                let _ = filmcraft_format::atomic_write(&self.session_dir.join(META), &serde_json::to_vec_pretty(&m).unwrap_or_default());
+                let _ = epsicut_format::atomic_write(&self.session_dir.join(META), &serde_json::to_vec_pretty(&m).unwrap_or_default());
             }
         } else {
             let _ = fs::remove_dir_all(&self.session_dir);
@@ -1033,7 +1053,7 @@ impl Worker {
     fn write_journal(&mut self) -> Result<u64, String> {
         let Some(s) = &self.latest else { return Err("no unsaved recovery state to write".into()) };
         let t0 = Instant::now();
-        let bytes = filmcraft_format::encode(&s.project, false);
+        let bytes = epsicut_format::encode(&s.project, false);
         let serialize_ms = t0.elapsed().as_secs_f64() * 1000.0;
         let t1 = Instant::now();
         let unix = unix_now();
@@ -1044,8 +1064,8 @@ impl Worker {
         meta.project_path = s.path.clone();
         meta.bytes = bytes.len();
         // Snapshot first, then the meta that makes it a candidate.
-        let r = filmcraft_format::atomic_write(&self.session_dir.join(SNAPSHOT), &bytes)
-            .and_then(|_| filmcraft_format::atomic_write(&self.session_dir.join(META), &serde_json::to_vec_pretty(&meta).unwrap_or_default()));
+        let r = epsicut_format::atomic_write(&self.session_dir.join(SNAPSHOT), &bytes)
+            .and_then(|_| epsicut_format::atomic_write(&self.session_dir.join(META), &serde_json::to_vec_pretty(&meta).unwrap_or_default()));
         let write_ms = t1.elapsed().as_secs_f64() * 1000.0;
         match r {
             Ok(()) => {
@@ -1087,7 +1107,7 @@ impl Worker {
             (None, _) => (self.data_dir.join(names::AUTO_SAVE_DIR), s.project.name.clone()),
         };
         let t0 = Instant::now();
-        let bytes = filmcraft_format::encode(&s.project, false);
+        let bytes = epsicut_format::encode(&s.project, false);
         let serialize_ms = t0.elapsed().as_secs_f64() * 1000.0;
         let t1 = Instant::now();
         let unix = unix_now();
@@ -1100,7 +1120,7 @@ impl Worker {
                 if self.prefs.save_current_project
                     && let Some(p) = &s.path
                 {
-                    match filmcraft_format::atomic_write(Path::new(p), &bytes) {
+                    match epsicut_format::atomic_write(Path::new(p), &bytes) {
                         Ok(()) => {
                             let _ = self.events.send(WorkerEvent::SavedProject { path: p.clone(), revision: s.revision });
                         }
@@ -1128,7 +1148,7 @@ mod durability_tests {
         let _ = fs::remove_dir_all(&d);
         let old_dir = recovery_root(&d).join("1-1");
         fs::create_dir_all(&old_dir).unwrap();
-        let bytes = filmcraft_format::encode(&Project::default(), false);
+        let bytes = epsicut_format::encode(&Project::default(), false);
         let original = old_dir.join(SNAPSHOT);
         fs::write(&original, &bytes).unwrap();
         let mut session = crate::Session::default();
@@ -1187,7 +1207,7 @@ mod worker_failure_tests {
         let path = dir.join("manual.fcproj");
         s.execute("file.saveAs", json!({"path": path.to_string_lossy()})).unwrap();
         assert!(!s.is_dirty());
-        let loaded = filmcraft_format::decode(&fs::read(&path).unwrap()).unwrap();
+        let loaded = epsicut_format::decode(&fs::read(&path).unwrap()).unwrap();
         assert_eq!(loaded.project, *s.project);
         s.poll_persistence();
         assert_eq!(failure_toasts(s), 0);

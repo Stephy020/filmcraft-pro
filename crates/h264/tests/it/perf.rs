@@ -1,9 +1,9 @@
 //! Decode speed on a 1080p High-profile stream (ignored by default; run with
-//! `cargo test --release -p filmcraft-h264 --test it perf:: -- --ignored --nocapture`).
+//! `cargo test --release -p epsicut-h264 --test it perf:: -- --ignored --nocapture`).
 
 use crate::common;
 
-use filmcraft_h264::Decoder;
+use epsicut_h264::Decoder;
 use std::time::Instant;
 
 fn bench(data: &[u8], threads: usize, iters: usize) -> (usize, f64) {

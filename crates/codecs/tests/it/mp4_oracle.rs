@@ -12,11 +12,11 @@ use common::*;
 /// an export does) equals the 48 kHz decode interpolated at the same times.
 #[test]
 fn aac_mp4_resampled_reads_follow_the_edit_list() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     let Some(f) = fixture(&ff, "tone_aac_48k.mp4", &["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:d=3", "-c:a", "aac", "-b:a", "128k"]) else {
         panic!("could not write the AAC fixture")
     };
-    let src = filmcraft_codecs::open_bytes("tone_aac_48k.mp4", bytes(&f)).unwrap();
+    let src = epsicut_codecs::open_bytes("tone_aac_48k.mp4", bytes(&f)).unwrap();
     let native = src.audio(0, 2 * 48_000, 48_000).unwrap().channels[0].clone();
     let ratio = 48_000.0 / 44_100.0;
     // 30 fps at 44.1 kHz, starting mid-file and off the 48 kHz grid
@@ -42,7 +42,7 @@ fn aac_mp4_resampled_reads_follow_the_edit_list() {
 /// one frame past what plays. The clip must be as long as ffmpeg decodes it: 60 frames, not 61.
 #[test]
 fn bframe_mp4_duration_is_the_decoded_frame_count() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     let args = ["-f", "lavfi", "-i", "testsrc2=size=160x96:rate=30:duration=2", "-c:v", "libx264", "-bf", "2", "-pix_fmt", "yuv420p"];
     let Some(f) = fixture(&ff, "bframes_x264.mp4", &args) else {
         eprintln!("SKIPPED: ffmpeg without libx264");
@@ -50,8 +50,8 @@ fn bframe_mp4_duration_is_the_decoded_frame_count() {
     };
     let n = ffmpeg_frames(&ff, &f, "yuv420p").len() / (160 * 96 * 3 / 2);
     assert_eq!(n, 60);
-    let src = filmcraft_codecs::open_bytes("bframes_x264.mp4", bytes(&f)).unwrap();
-    assert_eq!(src.info().duration, filmcraft_time::FrameRate::FPS_30.tick_of(n as i64));
+    let src = epsicut_codecs::open_bytes("bframes_x264.mp4", bytes(&f)).unwrap();
+    assert_eq!(src.info().duration, epsicut_time::FrameRate::FPS_30.tick_of(n as i64));
 }
 
 /// ffmpeg writes the edit list in milliseconds, so a clip that is not a whole number of them
@@ -60,8 +60,8 @@ fn bframe_mp4_duration_is_the_decoded_frame_count() {
 /// last one is ffmpeg's last picture.
 #[test]
 fn bframe_mp4_with_a_rounded_edit_keeps_the_last_frame() {
-    use filmcraft_time::FrameRate;
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    use epsicut_time::FrameRate;
+    let ff = epsicut_testkit::require_ffmpeg!();
     let (w, h) = (64usize, 48usize);
     let cases = [
         ("24", FrameRate::FPS_24, 25),
@@ -82,10 +82,10 @@ fn bframe_mp4_with_a_rounded_edit_keeps_the_last_frame() {
         let pic = w * h * 3 / 2;
         let n = yuv.len() / pic;
         assert_eq!(n, frames, "{name}: ffmpeg decodes every frame");
-        let src = filmcraft_codecs::open_bytes(&name, bytes(&f)).unwrap();
+        let src = epsicut_codecs::open_bytes(&name, bytes(&f)).unwrap();
         assert_eq!(src.info().duration, fr.tick_of(n as i64), "{name}");
         assert_eq!(fr.frame_at(src.info().duration), n as i64, "{name}");
-        let last = src.video_frame(filmcraft_media::FrameRequest::full(fr.tick_of(n as i64 - 1))).unwrap();
+        let last = src.video_frame(epsicut_media::FrameRequest::full(fr.tick_of(n as i64 - 1))).unwrap();
         assert_eq!(last.luma8(), yuv[(n - 1) * pic..][..w * h], "{name}: the last picture is ffmpeg's last");
     }
 }
@@ -132,7 +132,7 @@ fn with_clap(mp4: &[u8], (w, h, dx, dy): (u32, u32, i32, i32)) -> Vec<u8> {
 /// applied after it.
 #[test]
 fn cropped_pictures_match_ffmpeg() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     let src = ["-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30:duration=1,noise=alls=10:allf=t", "-c:v", "libx264", "-bf", "2", "-pix_fmt", "yuv420p"];
     let Some(plain) = fixture(&ff, "crop_plain_x264.mp4", &src) else {
         eprintln!("SKIPPED: ffmpeg without libx264");
@@ -173,7 +173,7 @@ fn cropped_pictures_match_ffmpeg() {
         cases.push((name, path, size));
     }
     for (name, path, (w, h)) in cases {
-        let src = filmcraft_codecs::open_bytes(path.file_name().unwrap().to_str().unwrap(), bytes(&path)).unwrap();
+        let src = epsicut_codecs::open_bytes(path.file_name().unwrap().to_str().unwrap(), bytes(&path)).unwrap();
         let v = src.info().video.clone().unwrap();
         assert_eq!((v.width, v.height), (w, h), "{name}: reported size");
         let (cw, ch) = (w.div_ceil(2) as usize, h.div_ceil(2) as usize);
@@ -193,7 +193,7 @@ fn cropped_pictures_match_ffmpeg() {
         let n = raw.len() / frame_bytes;
         assert_eq!(n, 30, "{name}");
         for (i, want) in raw.chunks(frame_bytes).enumerate() {
-            let f = src.video_frame(filmcraft_media::FrameRequest::full(v.frame_rate.tick_of(i as i64))).unwrap();
+            let f = src.video_frame(epsicut_media::FrameRequest::full(v.frame_rate.tick_of(i as i64))).unwrap();
             assert_eq!((f.width, f.height), (w, h), "{name}: frame {i} size");
             assert!(planes(&f) == raw_planes(want, w as usize, h as usize, cw, ch, 1), "{name}: frame {i} differs from ffmpeg's");
         }
@@ -208,7 +208,7 @@ fn cropped_pictures_match_ffmpeg() {
 /// and from Matroska.
 #[test]
 fn open_gop_leading_pictures_decode_alone() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     let args = [
         "-f",
         "lavfi",
@@ -234,10 +234,10 @@ fn open_gop_leading_pictures_decode_alone() {
     assert_eq!(want.len(), 60);
     for path in [&mp4, &mkv] {
         let name = path.file_name().unwrap().to_str().unwrap();
-        let open = || filmcraft_codecs::open_bytes(name, bytes(path)).unwrap();
+        let open = || epsicut_codecs::open_bytes(name, bytes(path)).unwrap();
         let rate = open().info().frame_rate();
-        let frame = |src: &filmcraft_media::SharedSource, i: usize| {
-            let f = src.video_frame(filmcraft_media::FrameRequest::full(rate.tick_of(i as i64))).unwrap_or_else(|e| panic!("{name}: frame {i}: {e}"));
+        let frame = |src: &epsicut_media::SharedSource, i: usize| {
+            let f = src.video_frame(epsicut_media::FrameRequest::full(rate.tick_of(i as i64))).unwrap_or_else(|e| panic!("{name}: frame {i}: {e}"));
             assert!(planes(&f) == want[i], "{name}: frame {i} differs from ffmpeg's");
         };
         for i in 0..want.len() {
@@ -258,14 +258,14 @@ fn open_gop_leading_pictures_decode_alone() {
 /// used to go to the layer III decoder (MP4: silence) or not decode at all (MOV).
 #[test]
 fn mp2_in_mp4_and_mov_matches_ffmpeg() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     for (name, rate) in [("mp2_stereo_224k_48k.mp4", 48_000u32), ("mp2_stereo_224k_44k.mov", 44_100)] {
         let input = format!("anoisesrc=d=1:c=pink:r={rate}:a=0.3");
         let Some(f) = fixture(&ff, name, &["-f", "lavfi", "-i", &input, "-ac", "2", "-c:a", "mp2", "-b:a", "224k"]) else {
             eprintln!("SKIPPED ({name}): this ffmpeg can't encode it");
             continue;
         };
-        let src = filmcraft_codecs::open_bytes(name, bytes(&f)).unwrap();
+        let src = epsicut_codecs::open_bytes(name, bytes(&f)).unwrap();
         let a = src.info().audio().cloned().unwrap();
         assert_eq!((a.sample_rate, a.channels, a.codec.as_str()), (rate, 2, "MPEG Audio"), "{name}");
         let want = ffmpeg_audio_f32(&ff, &f, &[]);

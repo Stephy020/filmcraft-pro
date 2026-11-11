@@ -4,7 +4,7 @@
 //! floating-point effect colors and their alpha handling are outside this editor.
 use crate::{HostHooks, automation::Registry};
 use egui::{Color32, Sense, Stroke, vec2};
-use filmcraft_project::HexColor;
+use epsicut_project::HexColor;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
@@ -128,7 +128,7 @@ pub fn show(ui: &mut egui::Ui, auto: &mut Registry, hooks: &mut HostHooks, prefi
     if let Some(error) = &draft.native_error {
         ui.colored_label(ui.visuals().error_fg_color, crate::i18n::fmt(tl!("System color picker unavailable: {error}"), &[("error", error)]));
     }
-    // Match FilmCraft's other opaque sRGB controls without converting label bytes
+    // Match EpsiCut's other opaque sRGB controls without converting label bytes
     // through the linear floating-point representation used by effect parameters.
     let [r, g, b] = draft.preview_rgb();
     let mut color = Color32::from_rgb(r, g, b);

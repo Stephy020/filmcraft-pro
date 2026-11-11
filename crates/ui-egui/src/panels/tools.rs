@@ -4,7 +4,7 @@
 
 use egui::{Rect, Sense, pos2, vec2};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::icons;
 use crate::state::Tool;
 
@@ -34,11 +34,11 @@ fn button_pos(rect: Rect, i: usize, n: usize) -> Option<egui::Pos2> {
     Some(if horizontal { pos2(rect.min.x + a, rect.min.y + c) } else { pos2(rect.min.x + c, rect.min.y + a) })
 }
 
-fn shortcut_text(app: &FilmcraftApp, tool: Tool) -> Option<String> {
+fn shortcut_text(app: &EpsicutApp, tool: Tool) -> Option<String> {
     tool.command_id().and_then(|id| app.session.shortcuts.primary(id)).map(|keys| crate::menus::shortcut_text(&keys))
 }
 
-fn tooltip(app: &FilmcraftApp, tool: Tool) -> String {
+fn tooltip(app: &EpsicutApp, tool: Tool) -> String {
     let label = app.ui.language.tr(tool.label());
     match shortcut_text(app, tool) {
         Some(keys) => format!("{label} ({keys})"),
@@ -46,7 +46,7 @@ fn tooltip(app: &FilmcraftApp, tool: Tool) -> String {
     }
 }
 
-fn flyout_label(app: &FilmcraftApp, tool: Tool) -> String {
+fn flyout_label(app: &EpsicutApp, tool: Tool) -> String {
     let label = app.ui.language.tr(tool.label());
     match shortcut_text(app, tool) {
         Some(keys) => format!("{label}   {keys}"),
@@ -54,7 +54,7 @@ fn flyout_label(app: &FilmcraftApp, tool: Tool) -> String {
     }
 }
 
-pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let held_id = egui::Id::unique("tools-held");
     if ui.input(|i| i.pointer.any_pressed()) {
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn tool_hints_follow_the_active_shortcut_and_hide_cleared_keys() {
-        let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
+        let mut app = EpsicutApp::new(epsicut_engine::Session::default());
         let modified = if cfg!(target_os = "macos") { "⇧⌘K" } else { "Ctrl+Shift+K" };
         for (tool, command, default, keys, display) in
             [(Tool::Razor, "tool.razor", "C", "S", "S"), (Tool::TrackSelectBackward, "tool.trackSelectBackward", "Shift+A", "Cmd+Shift+K", modified)]
@@ -154,7 +154,7 @@ mod tests {
         }
     }
 
-    fn frame(app: &mut FilmcraftApp, ctx: &egui::Context, time: f64, events: Vec<egui::Event>) {
+    fn frame(app: &mut EpsicutApp, ctx: &egui::Context, time: f64, events: Vec<egui::Event>) {
         app.auto.begin_frame();
         let mut out = ctx.run_ui(
             egui::RawInput { time: Some(time), events, screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(1000.0, 800.0))), ..Default::default() },
@@ -163,7 +163,7 @@ mod tests {
         out.textures_delta.clear();
     }
 
-    fn center_of(app: &FilmcraftApp, id: &str) -> Option<egui::Pos2> {
+    fn center_of(app: &EpsicutApp, id: &str) -> Option<egui::Pos2> {
         let [x, y, w, h] = app.auto.elements.iter().find(|w| w.id == id)?.rect;
         Some(egui::pos2(x + w / 2.0, y + h / 2.0))
     }
@@ -174,8 +174,8 @@ mod tests {
 
     /// The panel shown twice, then the button pressed on the Type tool group and dragged by `by`
     /// within 0.1 s, well before a long press.
-    fn press_and_drag_type(by: egui::Vec2) -> (FilmcraftApp, egui::Context) {
-        let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
+    fn press_and_drag_type(by: egui::Vec2) -> (EpsicutApp, egui::Context) {
+        let mut app = EpsicutApp::new(epsicut_engine::Session::default());
         let ctx = egui::Context::default();
         crate::theme::install(&ctx, &app.tokens);
         frame(&mut app, &ctx, 0.0, vec![]);
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn a_right_click_on_a_grouped_tool_still_opens_its_flyout() {
-        let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
+        let mut app = EpsicutApp::new(epsicut_engine::Session::default());
         let ctx = egui::Context::default();
         crate::theme::install(&ctx, &app.tokens);
         frame(&mut app, &ctx, 0.0, vec![]);
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn long_press_type_selects_vertical_without_selecting_on_release() {
-        let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
+        let mut app = EpsicutApp::new(epsicut_engine::Session::default());
         let ctx = egui::Context::default();
         crate::theme::install(&ctx, &app.tokens);
         frame(&mut app, &ctx, 0.0, vec![]);
@@ -320,10 +320,10 @@ mod tests {
         }
         let edit = app.ui.gfx_edit.as_ref().unwrap();
         let sequence = app.session.active_sequence().unwrap();
-        let (_, item) = sequence.find_item(filmcraft_project::ClipId(edit.clip)).unwrap();
-        let effect_index = filmcraft_project::graphic::layer_indices(&item.effects)[edit.layer];
-        let layer = filmcraft_project::graphic::eval_layer(&item.effects[effect_index], filmcraft_time::Tick::ZERO, (1920, 1080)).unwrap();
-        let filmcraft_project::graphic::LayerContent::Text(text) = layer.content else { panic!("text layer expected") };
+        let (_, item) = sequence.find_item(epsicut_project::ClipId(edit.clip)).unwrap();
+        let effect_index = epsicut_project::graphic::layer_indices(&item.effects)[edit.layer];
+        let layer = epsicut_project::graphic::eval_layer(&item.effects[effect_index], epsicut_time::Tick::ZERO, (1920, 1080)).unwrap();
+        let epsicut_project::graphic::LayerContent::Text(text) = layer.content else { panic!("text layer expected") };
         assert!(text.vertical, "the actual monitor click dispatches the existing vertical text command");
     }
 }

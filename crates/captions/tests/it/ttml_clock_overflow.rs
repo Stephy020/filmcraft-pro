@@ -1,8 +1,8 @@
 //! TTML / DFXP export must not overflow for cue times near `i64::MAX` (e.g. from an MCC with a
 //! huge timecode).
 
-use filmcraft_captions::{Cue, Document, Format, WriteOptions, write};
-use filmcraft_time::Tick;
+use epsicut_captions::{Cue, Document, Format, WriteOptions, write};
+use epsicut_time::Tick;
 
 fn doc(end: Tick) -> Document {
     Document { cues: vec![Cue { start: Tick(0), end, text: "x".into(), ..Cue::default() }], ..Document::default() }

@@ -22,7 +22,7 @@ fn subclip_plan(s: &Session, p: &Value) -> Result<(ItemId, TimeRange, String, La
         let pi = s.project.item(item).ok_or_else(|| EngineError::Other("no such item".into()))?;
         let rate = m.frame_rate();
         let still = s.prefs.timeline.still_duration(rate);
-        let is_still = matches!(m.info.kind, filmcraft_media::MediaKind::Still);
+        let is_still = matches!(m.info.kind, epsicut_media::MediaKind::Still);
         let full = sub.unwrap_or(TimeRange::new(Tick::ZERO, if m.info.duration.0 > 0 && !is_still { m.info.duration } else { still }));
         let range = if sub.is_some() {
             full

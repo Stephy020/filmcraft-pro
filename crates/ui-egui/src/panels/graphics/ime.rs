@@ -1,7 +1,7 @@
 use super::layer_identity::{current_layer_fingerprint, current_layer_layout_fingerprint, current_layer_text, current_layer_uid, layer_fingerprint};
 use super::overlay::TEXT_EDIT_ID;
 use super::text_edit::{char_boundary_floor, text_of};
-use super::{ClipId, Color32, FilmcraftApp, GfxEdit, ImeTarget, LayerView, Pos2, Rect, Session, Stroke, layer_indices, pos2, vec2};
+use super::{ClipId, Color32, EpsicutApp, GfxEdit, ImeTarget, LayerView, Pos2, Rect, Session, Stroke, layer_indices, pos2, vec2};
 
 /// The Program monitor editor drawn in one pass, remembered so the end-of-pass IME check can run
 /// after that pass's control requests have been drained. It holds only geometry, never a copy of
@@ -91,7 +91,7 @@ fn ime_text_stamp(text: &str) -> u64 {
 
 /// Remember the focused Program monitor editor drawn in this pass, for [`finish_graphics_ime`]
 /// after the pass's control requests have run, and put the candidate window at its caret.
-pub(crate) fn note_graphics_ime_editor(app: &mut FilmcraftApp, ui: &egui::Ui, v: &LayerView, cursor_rect: Rect) {
+pub(crate) fn note_graphics_ime_editor(app: &mut EpsicutApp, ui: &egui::Ui, v: &LayerView, cursor_rect: Rect) {
     let ctx = ui.ctx();
     app.ime_composer.set_caret(ctx, cursor_rect);
     let viewport = ctx.viewport_id();
@@ -123,7 +123,7 @@ pub(crate) fn note_graphics_ime_editor(app: &mut FilmcraftApp, ui: &egui::Ui, v:
 /// The composer's descriptor goes only with the editor's current target: a document, sequence,
 /// target, text or layout replaced since the overlay drew turns it off for this pass instead of
 /// pairing the old caret with the new model.
-pub(crate) fn finish_graphics_ime(app: &mut FilmcraftApp, ctx: &egui::Context, last: bool) -> bool {
+pub(crate) fn finish_graphics_ime(app: &mut EpsicutApp, ctx: &egui::Context, last: bool) -> bool {
     let viewport = ctx.viewport_id();
     let drawn = match app.ime_drawn_editor {
         Some(drawn) if drawn.viewport != viewport => return false,
@@ -147,7 +147,7 @@ pub(crate) fn finish_graphics_ime(app: &mut FilmcraftApp, ctx: &egui::Context, l
 }
 
 /// Whether the editor drawn in this pass is still the one being edited, unchanged since it drew.
-fn graphics_ime_eligible(app: &mut FilmcraftApp, ctx: &egui::Context, drawn: &DrawnImeEditor) -> bool {
+fn graphics_ime_eligible(app: &mut EpsicutApp, ctx: &egui::Context, drawn: &DrawnImeEditor) -> bool {
     // A picker or in-app modal opened after the overlay drew owns input for the rest of this
     // pass, so this editor cannot attach an already queued reset under the modal. Core may still
     // carry that un-taken request to a later stock descriptor (the accepted attachment
@@ -225,7 +225,7 @@ fn resolve_gfx_edit(session: &Session, ed: &GfxEdit) -> Option<(usize, u64, u64)
 /// Keep `gfx_edit` on the layer it started on. Called before the overlay draws, so a command run
 /// between two passes (arrange/delete/undo or a control edit) cannot shift the caret into another
 /// layer.
-pub(super) fn reconcile_gfx_edit(app: &mut FilmcraftApp) {
+pub(super) fn reconcile_gfx_edit(app: &mut EpsicutApp) {
     let Some(ed) = app.ui.gfx_edit.clone() else { return };
     match resolve_gfx_edit(&app.session, &ed) {
         Some((layer, uid, fingerprint)) => {
@@ -253,19 +253,19 @@ pub(super) fn graphics_ime_target(sequence: u64, clip: u64, layer: usize, uid: u
     // only component identity available.
     let component_uid = (uid != 0).then_some(uid);
     let component_index = (uid == 0).then_some(layer as u64);
-    ImeTarget::new(egui::Id::unique(("filmcraft.graphics.ime", sequence, clip, component_uid, component_index)), replacement_epoch)
+    ImeTarget::new(egui::Id::unique(("epsicut.graphics.ime", sequence, clip, component_uid, component_index)), replacement_epoch)
 }
 
 /// Current editor owner for the layer, using its live uid and the app's replacement epoch;
 /// `None` when there is no active sequence or the layer is unavailable.
-pub(super) fn current_graphics_ime_target(app: &FilmcraftApp, clip: u64, layer: usize) -> Option<ImeTarget> {
+pub(super) fn current_graphics_ime_target(app: &EpsicutApp, clip: u64, layer: usize) -> Option<ImeTarget> {
     let sequence = app.session.state.active_sequence?.0;
     let uid = current_layer_uid(&app.session, clip, layer)?;
     Some(graphics_ime_target(sequence, clip, layer, uid, app.ime_replacement_epoch))
 }
 
 /// Outside the keyboard reducer the actual engine/UI edit state is authoritative.
-pub(crate) fn current_reset_destination(app: &FilmcraftApp) -> Option<crate::ime_reset::Destination> {
+pub(crate) fn current_reset_destination(app: &EpsicutApp) -> Option<crate::ime_reset::Destination> {
     let ed = app.ui.gfx_edit.as_ref()?;
     let target = current_graphics_ime_target(app, ed.clip, ed.layer)?;
     let text = current_layer_text(&app.session, ed.clip, ed.layer)?;
@@ -274,14 +274,14 @@ pub(crate) fn current_reset_destination(app: &FilmcraftApp) -> Option<crate::ime
 
 /// Build the admission destination from the local edit and current document epoch, stamping
 /// the committed `text` while carrying the caret and anchor separately.
-pub(super) fn local_reset_destination(app: &FilmcraftApp, ed: &GfxEdit, text: &str, target: ImeTarget) -> crate::ime_reset::Destination {
+pub(super) fn local_reset_destination(app: &EpsicutApp, ed: &GfxEdit, text: &str, target: ImeTarget) -> crate::ime_reset::Destination {
     crate::ime_reset::Destination { document: app.session.document_epoch, target, caret: ed.caret, anchor: ed.anchor, text: ime_text_stamp(text) }
 }
 
 /// Is this IME commit/delete left over from a composition whose target or caret/focus was
 /// interrupted? A terminal-pending composition still owns its pending commit/delete after an empty
 /// preedit. `None` (no preedit was seen) still accepts a direct commit.
-pub(super) fn ime_event_is_stale(app: &FilmcraftApp, target: ImeTarget) -> bool {
+pub(super) fn ime_event_is_stale(app: &EpsicutApp, target: ImeTarget) -> bool {
     match app.ime_composition {
         Some(crate::ImeComposition::Stale) => true,
         Some(crate::ImeComposition::Active(active) | crate::ImeComposition::TerminalPending(active)) => active != target,

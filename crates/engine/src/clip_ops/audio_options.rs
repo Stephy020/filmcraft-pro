@@ -86,7 +86,7 @@ pub(super) fn extract_audio(s: &mut Session, p: &Value) -> Result<Value> {
                 inter.push(buf.channels.get(c).and_then(|x| x.get(i)).copied().unwrap_or(0.0));
             }
         }
-        let bytes = filmcraft_media::wav::write_wav16(&inter, ch as u16, sr);
+        let bytes = epsicut_media::wav::write_wav16(&inter, ch as u16, sr);
         let mut path = std::path::Path::new(&dir).join(format!("{stem} Audio Extracted.wav"));
         let mut k = 2;
         while s.services.file_size(&path.to_string_lossy()).is_ok() {

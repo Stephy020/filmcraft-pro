@@ -13,7 +13,7 @@ use rmcp::model::{CallToolResult, ContentBlock as Content, ProgressNotificationP
 use rmcp::service::{Peer, RequestContext};
 use serde_json::{Value, json};
 
-use crate::server::FilmcraftMcp;
+use crate::server::EpsicutMcp;
 
 /// Engine commands that block until a render is written when called with `wait: true`
 /// (`workflow.run` when the recipe ends with an export).
@@ -57,7 +57,7 @@ impl Reporter {
     }
 }
 
-impl FilmcraftMcp {
+impl EpsicutMcp {
     /// Run `id` (a [`LONG_COMMANDS`] entry, `wait: true`) as a job, reporting progress and
     /// honouring cancellation.
     pub(crate) async fn run_long(&self, id: &str, mut params: Value, context: &RequestContext<RoleServer>) -> CallToolResult {
@@ -205,7 +205,7 @@ fn is_export_output(name: &str, out: &Output) -> bool {
 /// `.jpeg` is one too: a JPEG sequence keeps that extension, though `jpeg` as a format name is
 /// Motion-JPEG (a `.mov`).
 fn is_sequence_extension(ext: &str) -> bool {
-    use filmcraft_engine::export::Format;
+    use epsicut_engine::export::Format;
     ext.eq_ignore_ascii_case("jpeg") || Format::from_name(ext).is_some_and(Format::is_image_sequence)
 }
 
@@ -341,7 +341,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let started = SystemTime::now();
-        let mut s = filmcraft_engine::Session::default();
+        let mut s = epsicut_engine::Session::default();
         s.execute("file.openDemoProject", json!({})).unwrap();
         let path = dir.join("a.png").to_string_lossy().to_string();
         let p = json!({"path": path, "format": "png", "range": "custom", "startSeconds": 0, "endSeconds": 0.1, "scale": 0.125, "wait": true});

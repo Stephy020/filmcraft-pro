@@ -1,4 +1,4 @@
-# Contributing to FilmCraft
+# Contributing to EpsiCut
 
 Thanks for helping. Before you start:
 

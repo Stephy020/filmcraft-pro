@@ -78,7 +78,7 @@ pub(crate) fn item_range(p: &Project, id: ItemId, still: Tick) -> Option<TimeRan
     let rate = item_rate(p, id);
     Some(match &it.kind {
         ItemKind::Media(m) => {
-            let is_still = matches!(m.info.kind, filmcraft_media::MediaKind::Still);
+            let is_still = matches!(m.info.kind, epsicut_media::MediaKind::Still);
             let full = if m.info.duration.0 > 0 && !is_still { m.info.duration } else { still };
             let a = m.mark_in.unwrap_or(Tick::ZERO);
             let b = m.mark_out.map(|o| o + rate.frame_duration()).unwrap_or(full);
@@ -120,7 +120,7 @@ pub(super) fn bin_from_selection(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"bin": bin.0, "moved": items.len()}))
 }
 
-fn bin_names(b: &filmcraft_project::Bin, out: &mut Vec<String>) {
+fn bin_names(b: &epsicut_project::Bin, out: &mut Vec<String>) {
     for c in &b.children {
         if let BinEntry::Bin(x) = c {
             out.push(x.name.clone());
@@ -152,11 +152,11 @@ pub(super) fn offline_file(s: &mut Session, p: &Value) -> Result<Value> {
         .map(str::to_string)
         .unwrap_or_else(|| "Offline.mov".into());
     let name = str_p(p, "name").map(str::to_string).filter(|n| !n.is_empty()).unwrap_or_else(|| file_name.clone());
-    let info = filmcraft_media::MediaInfo {
+    let info = epsicut_media::MediaInfo {
         name: file_name.clone(),
-        kind: if has_v { filmcraft_media::MediaKind::Movie } else { filmcraft_media::MediaKind::AudioOnly },
+        kind: if has_v { epsicut_media::MediaKind::Movie } else { epsicut_media::MediaKind::AudioOnly },
         duration,
-        video: has_v.then(|| filmcraft_media::VideoStreamInfo {
+        video: has_v.then(|| epsicut_media::VideoStreamInfo {
             width,
             height,
             frame_rate: rate,
@@ -170,7 +170,7 @@ pub(super) fn offline_file(s: &mut Session, p: &Value) -> Result<Value> {
             color_assumed: None,
         }),
         audio_streams: has_a
-            .then(|| filmcraft_media::AudioStreamInfo {
+            .then(|| epsicut_media::AudioStreamInfo {
                 sample_rate: u64_p(p, "sampleRate").unwrap_or(48_000) as u32,
                 channels: u64_p(p, "channels").unwrap_or(2).max(1) as u32,
                 codec: String::new(),

@@ -5,9 +5,9 @@
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 /// The tests run one at a time: fault injection (`inject_job_panics`) is process-wide, so frame
@@ -19,17 +19,17 @@ fn serial() -> std::sync::MutexGuard<'static, ()> {
 }
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
 }
 
 impl Driver {
     fn demo() -> Self {
-        filmcraft_ui_egui::crash::install(None);
+        epsicut_ui_egui::crash::install(None);
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
+        let app = EpsicutApp::new(session).with_control(rx);
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000).build_eframe(move |_cc| app);
         let mut d = Driver { harness, tx };
         d.frames(4);
@@ -89,7 +89,7 @@ fn frame_worker_survives_a_panicking_job_and_keeps_rendering() {
     let faults = workers + 2;
     let jobs = |st: &Value| st["jobs"].as_u64().unwrap_or(0);
     // more faults than there are workers: before the fix every worker died and nothing rendered
-    filmcraft_ui_egui::frames::inject_job_panics(faults as u32);
+    epsicut_ui_egui::frames::inject_job_panics(faults as u32);
     // Each new position needs a frame not rendered yet: the first jobs take the injected panics,
     // later ones must render. `settle` waits for the queue, not for running jobs, so up to one job
     // per worker may still finish after the last panic having started before it: more than
@@ -149,11 +149,11 @@ fn a_ui_panic_shows_an_error_window_and_the_app_keeps_running() {
 #[test]
 fn tiny_windows_and_squeezed_panels_do_not_panic() {
     let _serial = serial();
-    filmcraft_ui_egui::crash::install(None);
+    epsicut_ui_egui::crash::install(None);
     for (w, h) in [(120.0, 80.0), (300.0, 200.0), (60.0, 40.0), (900.0, 560.0)] {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
-        let app = FilmcraftApp::new(session);
+        let app = EpsicutApp::new(session);
         let mut harness = Harness::builder().with_size(egui::vec2(w, h)).with_max_steps(10_000).build_eframe(move |_cc| app);
         for ws in ["Editing", "Color", "Audio", "Effects", "Captions and Graphics", "Assembly"] {
             harness.state_mut().set_workspace(ws);

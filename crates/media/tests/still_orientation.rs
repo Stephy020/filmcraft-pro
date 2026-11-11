@@ -10,10 +10,10 @@
 
 use std::sync::Arc;
 
-use filmcraft_media::sequence::{FrameLoader, ImageSequenceSource};
-use filmcraft_media::still::{Raster, decode_raster};
-use filmcraft_media::{FrameRequest, MediaSource, open_bytes};
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_media::sequence::{FrameLoader, ImageSequenceSource};
+use epsicut_media::still::{Raster, decode_raster};
+use epsicut_media::{FrameRequest, MediaSource, open_bytes};
+use epsicut_time::{FrameRate, Tick};
 use image::ImageEncoder;
 
 const W: u32 = 3;
@@ -211,7 +211,7 @@ fn opened_still_reports_the_upright_size() {
     assert_eq!((v.width, v.height), (H * 8, W * 8));
     let f = s.video_frame(FrameRequest::full(Tick::ZERO)).unwrap();
     assert_eq!((f.width, f.height), (v.width, v.height));
-    let filmcraft_frame::PixelData::Rgba8(p) = &f.data else { panic!("not RGBA8") };
+    let epsicut_frame::PixelData::Rgba8(p) = &f.data else { panic!("not RGBA8") };
     assert_oriented(&Raster { width: f.width, height: f.height, rgba: p.to_vec(), has_alpha: false }, 6, 8, 8, "opened JPEG");
 }
 
@@ -224,7 +224,7 @@ fn image_sequence_frames_are_upright() {
     assert_eq!((v.width, v.height), (H, W));
     for i in 0..2 {
         let f = s.video_frame(FrameRequest::full(FrameRate::FPS_24.tick_of(i))).unwrap();
-        let filmcraft_frame::PixelData::Rgba8(p) = &f.data else { panic!("not RGBA8") };
+        let epsicut_frame::PixelData::Rgba8(p) = &f.data else { panic!("not RGBA8") };
         assert_oriented(&Raster { width: f.width, height: f.height, rgba: p.to_vec(), has_alpha: false }, 8, 1, 0, &format!("sequence frame {i}"));
     }
 }
@@ -241,7 +241,7 @@ fn sequence_frames_with_different_orientations_each_decode_upright() {
     assert_eq!((v.width, v.height), (W, H));
     for (i, o) in [(0, 1), (1, 6)] {
         let f = s.video_frame(FrameRequest::full(FrameRate::FPS_24.tick_of(i))).unwrap();
-        let filmcraft_frame::PixelData::Rgba8(p) = &f.data else { panic!("not RGBA8") };
+        let epsicut_frame::PixelData::Rgba8(p) = &f.data else { panic!("not RGBA8") };
         assert_oriented(&Raster { width: f.width, height: f.height, rgba: p.to_vec(), has_alpha: false }, o, 1, 0, &format!("sequence frame {i}"));
     }
 }

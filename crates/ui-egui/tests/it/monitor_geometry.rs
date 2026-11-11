@@ -3,24 +3,24 @@
 use egui::{Event, Modifiers, PointerButton, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::{
-    FilmcraftApp,
+use epsicut_engine::Session;
+use epsicut_ui_egui::{
+    EpsicutApp,
     panels::monitor::{self, Which},
     theme::{self, ThemeKind},
 };
 use serde_json::json;
 
-fn harness(width: f32, kind: ThemeKind, which: Which) -> Harness<'static, FilmcraftApp> {
+fn harness(width: f32, kind: ThemeKind, which: Which) -> Harness<'static, EpsicutApp> {
     harness_at_scale(width, kind, which, 1.0)
 }
 
-fn harness_at_scale(width: f32, kind: ThemeKind, which: Which, scale: f32) -> Harness<'static, FilmcraftApp> {
+fn harness_at_scale(width: f32, kind: ThemeKind, which: Which, scale: f32) -> Harness<'static, EpsicutApp> {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
     session.execute("source.open", json!({"item":5})).unwrap();
     let mut h = Harness::builder().with_size(vec2(width, 340.0)).with_pixels_per_point(scale).build_ui_state(
-        move |ui, app: &mut FilmcraftApp| {
+        move |ui, app: &mut EpsicutApp| {
             app.set_theme(ui.ctx(), kind);
             app.auto.begin_frame();
             // A stand-in for the docked frame: the themed panel background, with the body below
@@ -29,23 +29,23 @@ fn harness_at_scale(width: f32, kind: ThemeKind, which: Which, scale: f32) -> Ha
             ui.painter().rect_filled(frame, 0.0, app.tokens.panel_bg);
             let content = egui::Rect::from_min_max(egui::pos2(frame.min.x, frame.min.y + app.tokens.tab_h), frame.max);
             monitor::show(app, ui, content, which);
-            let source = filmcraft_ui_egui::panels::dragged_source(ui);
+            let source = epsicut_ui_egui::panels::dragged_source(ui);
             ui.ctx().data_mut(|data| data.insert_temp(egui::Id::unique("observed-source-drag"), source));
         },
-        FilmcraftApp::new(session),
+        EpsicutApp::new(session),
     );
     theme::install(&h.ctx, &h.state().tokens);
     h.run_steps(4);
     h
 }
 
-fn element(h: &Harness<'_, FilmcraftApp>, id: &str) -> Rect {
+fn element(h: &Harness<'_, EpsicutApp>, id: &str) -> Rect {
     let element = h.state().auto.elements.iter().find(|element| element.id == id).unwrap_or_else(|| panic!("missing {id}"));
     let [x, y, w, h] = element.rect;
     Rect::from_min_size(pos2(x, y), vec2(w, h))
 }
 
-fn click(h: &mut Harness<'_, FilmcraftApp>, id: &str) {
+fn click(h: &mut Harness<'_, EpsicutApp>, id: &str) {
     let pos = element(h, id).center();
     h.event(Event::PointerMoved(pos));
     for pressed in [true, false] {
@@ -181,7 +181,7 @@ fn transport_editor_keeps_its_own_space_and_customizes_compact_controls() {
             assert!(reset.top() < reset_before.top(), "real wheel moves clipped editor controls");
             assert!(scroll.contains(reset.center()), "Reset is visible after scrolling: {reset:?}, {scroll:?}");
             click(&mut h, "program.transport.editor.reset");
-            assert_eq!(h.state().ui.program.transport_hidden, filmcraft_ui_egui::state::MonitorView::default().transport_hidden);
+            assert_eq!(h.state().ui.program.transport_hidden, epsicut_ui_egui::state::MonitorView::default().transport_hidden);
         }
     }
 }
@@ -221,7 +221,7 @@ fn compact_source_overflow_keeps_source_navigation_routing() {
 #[test]
 fn program_transport_edit_point_buttons_come_from_the_button_editor() {
     let mut h = harness(720.0, ThemeKind::Dark, Which::Program);
-    let has = |h: &Harness<'_, FilmcraftApp>, id: &str| h.state().auto.elements.iter().any(|e| e.id == id);
+    let has = |h: &Harness<'_, EpsicutApp>, id: &str| h.state().auto.elements.iter().any(|e| e.id == id);
     for command in ["playhead.prevEdit", "playhead.nextEdit"] {
         assert!(!has(&h, &format!("program.transport.{command}")), "{command} is off the default bar");
         click(&mut h, "program.transport.editor");
@@ -257,7 +257,7 @@ fn source_drag_choices(width: f32) {
         h.run_steps(2);
         let source = h
             .ctx
-            .data(|data| data.get_temp::<Option<filmcraft_ui_egui::panels::source_drag::SourceDrag>>(egui::Id::unique("observed-source-drag")))
+            .data(|data| data.get_temp::<Option<epsicut_ui_egui::panels::source_drag::SourceDrag>>(egui::Id::unique("observed-source-drag")))
             .flatten()
             .expect("drag must create the production Source payload");
         assert_eq!((source.video, source.audio), (video, audio));
@@ -276,7 +276,7 @@ fn source_drag_choices_remain_reachable_at_250_pixels() {
     source_drag_choices(250.0);
 }
 
-fn drag(h: &mut Harness<'_, FilmcraftApp>, from: egui::Pos2, to: egui::Pos2, button: PointerButton) {
+fn drag(h: &mut Harness<'_, EpsicutApp>, from: egui::Pos2, to: egui::Pos2, button: PointerButton) {
     h.event(Event::PointerMoved(from));
     h.step();
     h.event(Event::PointerButton { pos: from, button, pressed: true, modifiers: Modifiers::NONE });
@@ -294,7 +294,7 @@ fn only_the_primary_button_scrubs_the_monitor() {
     for which in [Which::Source, Which::Program] {
         let prefix = if which == Which::Source { "source" } else { "program" };
         let playhead =
-            |h: &Harness<'_, FilmcraftApp>| if which == Which::Source { h.state().session.state.source_playhead } else { h.state().session.playhead() };
+            |h: &Harness<'_, EpsicutApp>| if which == Which::Source { h.state().session.state.source_playhead } else { h.state().session.playhead() };
         let mut h = harness(600.0, ThemeKind::Dark, which);
         let bar = element(&h, &format!("{prefix}.scrubBar"));
         let handle = element(&h, &format!("{prefix}.playhead"));

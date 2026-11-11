@@ -103,7 +103,7 @@ impl VideoSamples for Samples {
             intra: self.intra,
             held: VecDeque::new(),
             draft: false,
-            limited: filmcraft_media::cancel::background(),
+            limited: epsicut_media::cancel::background(),
             resets: self.resets.clone(),
             decodes: self.decodes.clone(),
         }))
@@ -116,7 +116,7 @@ fn samples(n: usize, gop: usize, delay: usize, intra: bool) -> Samples {
 
 fn index_of(f: &VideoFrame) -> usize {
     match &f.data {
-        filmcraft_frame::PixelData::Rgba8(d) => d[0] as usize | (d[1] as usize) << 8,
+        epsicut_frame::PixelData::Rgba8(d) => d[0] as usize | (d[1] as usize) << 8,
         _ => unreachable!(),
     }
 }
@@ -331,7 +331,7 @@ fn catching_up_skips_late_non_reference_samples_only() {
 
 fn is_draft(f: &VideoFrame) -> bool {
     match &f.data {
-        filmcraft_frame::PixelData::Rgba8(d) => d[2] == 1,
+        epsicut_frame::PixelData::Rgba8(d) => d[2] == 1,
         _ => unreachable!(),
     }
 }
@@ -343,7 +343,7 @@ fn draft_frames_are_served_to_draft_requests_only() {
     let before = gop_stats().draft;
     // reduced-resolution playback: odd (non-reference) pictures come out as drafts
     for i in 0..12usize {
-        let f = filmcraft_media::cancel::with_draft(true, || c.frame(&s, i as i64 * 1000)).expect("frame");
+        let f = epsicut_media::cancel::with_draft(true, || c.frame(&s, i as i64 * 1000)).expect("frame");
         assert_eq!(index_of(&f), i);
         assert_eq!(is_draft(&f), i % 2 == 1, "frame {i}");
     }
@@ -358,7 +358,7 @@ fn draft_frames_are_served_to_draft_requests_only() {
     assert!(!is_draft(&f) && index_of(&f) == 5);
     assert_eq!(s.resets.load(Ordering::Relaxed), 2, "re-decoded from the sync sample");
     // and a draft request takes the exact frame now cached
-    let f = filmcraft_media::cancel::with_draft(true, || c.frame(&s, 5_000)).expect("frame");
+    let f = epsicut_media::cancel::with_draft(true, || c.frame(&s, 5_000)).expect("frame");
     assert!(!is_draft(&f));
     // without the hint nothing is ever a draft
     let s2 = samples(300, 250, 3, false);
@@ -372,11 +372,11 @@ fn cancelled_request_stops_decoding_and_keeps_state() {
     let c = GopCache::new(None);
     assert_eq!(index_of(&c.frame(&s, 5_000).expect("frame")), 5);
     let flag = Arc::new(std::sync::atomic::AtomicBool::new(true));
-    let r = filmcraft_media::cancel::with_cancel(&flag, || c.frame(&s, 200_000));
+    let r = epsicut_media::cancel::with_cancel(&flag, || c.frame(&s, 200_000));
     assert!(matches!(r, Err(CodecError::Cancelled)));
     assert_eq!(s.decodes.load(Ordering::Relaxed), 6);
     // cached frames are still served, and the decoder carries on from where it was
-    let r = filmcraft_media::cancel::with_cancel(&flag, || c.frame(&s, 3_000));
+    let r = epsicut_media::cancel::with_cancel(&flag, || c.frame(&s, 3_000));
     assert_eq!(index_of(&r.expect("cached")), 3);
     assert_eq!(index_of(&c.frame(&s, 7_000).expect("frame")), 7);
     assert_eq!(s.resets.load(Ordering::Relaxed), 1);
@@ -452,7 +452,7 @@ fn a_burst_of_single_requests_does_not_keep_every_decoder_and_frame() {
 /// clips used to hold 6+ GB at once.
 #[test]
 fn background_requests_leave_no_decoders_behind() {
-    use filmcraft_media::cancel::with_background;
+    use epsicut_media::cancel::with_background;
     let pool = Arc::new(Pool::new(MAX_LIVE_DECODERS, IDLE, FRAME_BUDGET).tiered(RECENT, HARD_DECODERS));
     let n = 24;
     let s: Vec<Samples> = (0..n).map(|_| samples(300, 250, 3, false)).collect();
@@ -482,7 +482,7 @@ fn background_requests_leave_no_decoders_behind() {
 
 #[test]
 fn a_monitor_replaces_a_decoder_made_for_a_thumbnail() {
-    use filmcraft_media::cancel::with_background;
+    use epsicut_media::cancel::with_background;
     let pool = Arc::new(Pool::new(MAX_LIVE_DECODERS, IDLE, FRAME_BUDGET).tiered(RECENT, HARD_DECODERS));
     let (s, c) = (samples(300, 250, 3, false), GopCache::in_pool(None, pool.clone()));
     assert_eq!(index_of(&with_background(true, || c.frame(&s, 10_000)).expect("frame")), 10);
@@ -575,7 +575,7 @@ const BIG: (u32, u32) = (200, 101);
 
 impl VideoDecoder for Big {
     fn decode(&mut self, _sample: &[u8], pts: i64) -> crate::Result<Vec<DecodedFrame>> {
-        let mut px = filmcraft_frame::pool::take_u8((BIG.0 * BIG.1 * 4) as usize);
+        let mut px = epsicut_frame::pool::take_u8((BIG.0 * BIG.1 * 4) as usize);
         px.resize((BIG.0 * BIG.1 * 4) as usize, (pts / 1000) as u8);
         Ok(vec![DecodedFrame { pts, frame: VideoFrame::rgba8(BIG.0, BIG.1, px), draft: false }])
     }
@@ -627,7 +627,7 @@ fn evicted_frames_are_decoded_into_again() {
     // room for MIN_FRAMES pictures only
     let mut c = GopCache::new(None);
     c.budget = 0;
-    let reused = || filmcraft_frame::pool::stats().reused;
+    let reused = || epsicut_frame::pool::stats().reused;
     let before = reused();
     // the cache holds MIN_FRAMES pictures: none is evicted yet, every plane is new
     for i in 0..MIN_FRAMES as i64 {
@@ -638,7 +638,7 @@ fn evicted_frames_are_decoded_into_again() {
     let more = 40;
     for i in MIN_FRAMES as i64..MIN_FRAMES as i64 + more {
         let f = c.frame(&s, i * 1000).expect("frame");
-        assert!(matches!(&f.data, filmcraft_frame::PixelData::Rgba8(d) if d.iter().all(|&b| b == i as u8)), "frame {i} has its own pixels");
+        assert!(matches!(&f.data, epsicut_frame::PixelData::Rgba8(d) if d.iter().all(|&b| b == i as u8)), "frame {i} has its own pixels");
     }
     assert!(reused() - before >= more as u64 - 2, "{} of {more} planes recycled", reused() - before);
 }

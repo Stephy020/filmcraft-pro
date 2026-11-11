@@ -1,20 +1,20 @@
 //! Headless UI tests of the Sequence / Markers menu additions: the Add Tracks and Delete Tracks dialogs, the
 //! through-edit marks and duplicate frame markers on the timeline, the Markers panel colour filter and the Shift+; gap key.
-//! The real `FilmcraftApp` under `egui_kittest`, driven over the control channel by automation id.
+//! The real `EpsicutApp` under `egui_kittest`, driven over the control channel by automation id.
 //!
-//! Set `FILMCRAFT_UI_SNAPSHOT_DIR=<dir>` to also render the window offscreen with wgpu and write
+//! Set `EPSICUT_UI_SNAPSHOT_DIR=<dir>` to also render the window offscreen with wgpu and write
 //! `sequence-settings-*.png` there; without it no GPU is needed.
 
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     snapshots: Option<std::path::PathBuf>,
 }
@@ -88,7 +88,7 @@ fn high_frame_rate_marker_duration_starts_at_one_valid_frame() {
     assert_eq!(marker_draft_text(&d, "duration"), "00:00:00:001");
     assert_eq!(d.ok("ui.elements", json!({"prefix":"markerProperties.apply"}))[0]["enabled"], true);
     d.click("markerProperties.apply");
-    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].duration, filmcraft_time::FrameRate::FPS_120.tick_of(1));
+    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].duration, epsicut_time::FrameRate::FPS_120.tick_of(1));
 }
 
 #[test]
@@ -163,9 +163,9 @@ fn marker_navigation_saves_one_edit_skips_noops_and_orders_coincident_markers() 
     let second = d.exec("markers.add", json!({"frame":30}))["marker"].as_u64().unwrap();
     let before = d.app().session.project.to_json();
     let history = d.app().session.history.undo.len();
-    let owner = filmcraft_ui_egui::panels::marker_properties::Owner::current(d.app(), false).unwrap();
+    let owner = epsicut_ui_egui::panels::marker_properties::Owner::current(d.app(), false).unwrap();
     let marker = owner.details(d.app()).unwrap().3.into_iter().find(|m| m.id.0 == first).unwrap();
-    filmcraft_ui_egui::panels::marker_properties::open_owned(d.app(), &marker, owner);
+    epsicut_ui_egui::panels::marker_properties::open_owned(d.app(), &marker, owner);
     d.frames(3);
     let previous = d.ok("ui.elements", json!({"prefix":"markerProperties.previous"}));
     assert_eq!(previous[0]["enabled"], false);
@@ -179,8 +179,8 @@ fn marker_navigation_saves_one_edit_skips_noops_and_orders_coincident_markers() 
     assert_eq!(d.app().ui.marker_properties.as_ref().unwrap().marker, second);
     let marker = d.app().session.active_sequence().unwrap().markers.iter().find(|m| m.id.0 == first).unwrap().clone();
     assert_eq!((&*marker.name, &*marker.author, &*marker.comment), ("Reviewed", "BENJI", "Keep this note"));
-    assert_eq!(marker.color, filmcraft_project::Label::Mango);
-    assert_eq!(marker.kind, filmcraft_project::MarkerKind::Chapter);
+    assert_eq!(marker.color, epsicut_project::Label::Mango);
+    assert_eq!(marker.kind, epsicut_project::MarkerKind::Chapter);
     assert_eq!(d.app().session.history.undo.len(), history + 1);
     let saved = d.app().session.project.to_json();
     d.click("markerProperties.previous");
@@ -249,20 +249,20 @@ fn marker_navigation_keeps_the_original_source_owner_after_source_switch() {
     d.exec("markers.clearAll", json!({"target":"source"}));
     let first = d.exec("markers.add", json!({"target":"source","time":0}))["marker"].as_u64().unwrap();
     let second = d.exec("markers.add", json!({"target":"source","time":254016000000_i64}))["marker"].as_u64().unwrap();
-    let owner = filmcraft_ui_egui::panels::marker_properties::Owner::Source(5);
+    let owner = epsicut_ui_egui::panels::marker_properties::Owner::Source(5);
     let marker = owner.details(d.app()).unwrap().3.into_iter().find(|m| m.id.0 == first).unwrap();
-    filmcraft_ui_egui::panels::marker_properties::open_owned(d.app(), &marker, owner);
+    epsicut_ui_egui::panels::marker_properties::open_owned(d.app(), &marker, owner);
     d.frames(3);
     d.exec("source.open", json!({"item":6}));
-    let unrelated = d.app().session.project.item(filmcraft_project::ItemId(6)).unwrap().clone();
+    let unrelated = d.app().session.project.item(epsicut_project::ItemId(6)).unwrap().clone();
     d.set_text("markerProperties.name", "Original source edit");
     d.click("markerProperties.next");
     let draft = d.app().ui.marker_properties.as_ref().unwrap();
     assert_eq!(draft.owner, owner);
     assert_eq!(draft.marker, second);
     assert_eq!(owner.details(d.app()).unwrap().3.iter().find(|m| m.id.0 == first).unwrap().name, "Original source edit");
-    assert_eq!(d.app().session.project.item(filmcraft_project::ItemId(6)).unwrap(), &unrelated);
-    assert_eq!(d.app().session.state.source_item, Some(filmcraft_project::ItemId(6)));
+    assert_eq!(d.app().session.project.item(epsicut_project::ItemId(6)).unwrap(), &unrelated);
+    assert_eq!(d.app().session.state.source_item, Some(epsicut_project::ItemId(6)));
     d.click("markerProperties.cancel");
 }
 
@@ -272,7 +272,7 @@ fn marker_navigation_keeps_the_original_sequence_after_sequence_switch() {
     d.exec("markers.clearAll", json!({}));
     let first = d.exec("markers.add", json!({"frame":30}))["marker"].as_u64().unwrap();
     let second = d.exec("markers.add", json!({"frame":90}))["marker"].as_u64().unwrap();
-    let owner = filmcraft_ui_egui::panels::marker_properties::Owner::current(d.app(), false).unwrap();
+    let owner = epsicut_ui_egui::panels::marker_properties::Owner::current(d.app(), false).unwrap();
     d.double_click(&format!("timeline.marker.{first}"));
     d.exec("file.newSequence", json!({"name":"Unrelated sequence"}));
     let active = d.app().session.state.active_sequence;
@@ -467,12 +467,12 @@ fn marker_type_uses_the_existing_editor_and_one_undo_step() {
     d.click("markerProperties.kind.chapter");
     d.set_text("markerProperties.name", "Chapter saved");
     d.click("markerProperties.apply");
-    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].kind, filmcraft_project::MarkerKind::Chapter);
+    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].kind, epsicut_project::MarkerKind::Chapter);
     assert_eq!(d.app().session.history.undo.len(), history + 1);
     d.exec("edit.undo", json!({}));
     assert_eq!(d.app().session.project.to_json(), before);
     d.exec("edit.redo", json!({}));
-    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].kind, filmcraft_project::MarkerKind::Chapter);
+    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].kind, epsicut_project::MarkerKind::Chapter);
 }
 
 #[test]
@@ -513,7 +513,7 @@ fn custom_marker_properties_preserve_presets_and_commit_once() {
     let history = d.app().session.history.undo.len();
     d.right_marker(id, false);
     d.click("timeline.markerMenu.label");
-    assert_eq!(d.ids("timeline.markerMenu.color.").len(), filmcraft_project::Label::ALL.len());
+    assert_eq!(d.ids("timeline.markerMenu.color.").len(), epsicut_project::Label::ALL.len());
     d.click("timeline.markerMenu.customColor");
     assert!(!d.ids("markerColor.picker").is_empty());
     d.click("markerColor.hex");
@@ -523,9 +523,9 @@ fn custom_marker_properties_preserve_presets_and_commit_once() {
     assert_eq!(d.app().session.project.to_json(), before, "color preview is only a draft");
     d.snapshot("marker-color-picker", "markerColor.");
     d.click("markerColor.add");
-    assert_eq!(d.app().session.project.custom_colors, vec![filmcraft_project::HexColor([255, 128, 192])]);
+    assert_eq!(d.app().session.project.custom_colors, vec![epsicut_project::HexColor([255, 128, 192])]);
     assert!(d.ids("markerColor.picker").is_empty(), "the picker is not embedded in the marker window");
-    assert_eq!(d.ids("markerProperties.preset.").len(), filmcraft_project::Label::ALL.len());
+    assert_eq!(d.ids("markerProperties.preset.").len(), epsicut_project::Label::ALL.len());
     let with_palette = d.app().session.project.to_json();
     d.click("markerProperties.author");
     d.ok("ui.type", json!({"text":"BENJI"}));
@@ -546,7 +546,7 @@ fn custom_marker_properties_preserve_presets_and_commit_once() {
     let second = d.exec("markers.add", json!({"frame":90,"name":"Another"}))["marker"].as_u64().unwrap();
     d.right_marker(second, false);
     d.click("timeline.markerMenu.label");
-    assert_eq!(d.ids("timeline.markerMenu.color.").len(), filmcraft_project::Label::ALL.len());
+    assert_eq!(d.ids("timeline.markerMenu.color.").len(), epsicut_project::Label::ALL.len());
     assert!(!d.ids("timeline.markerMenu.custom.#FF80C0").is_empty());
     d.snapshot("marker-custom-menu", "timeline.markerMenu.");
     d.click("timeline.markerMenu.custom.#FF80C0");
@@ -599,7 +599,7 @@ fn custom_clip_picker_reuses_the_project_palette_and_is_undoable() {
     assert_eq!(d.app().session.project.to_json(), before);
     d.snapshot("clip-color-picker", "labelColor.");
     d.click("labelColor.apply");
-    let expected = filmcraft_project::HexColor::parse("#12ABCD");
+    let expected = epsicut_project::HexColor::parse("#12ABCD");
     assert_eq!(d.app().session.active_sequence().unwrap().find_item(clip).unwrap().1.custom_label_color, expected);
     assert_eq!(d.app().session.project.custom_colors, vec![expected.unwrap()]);
     d.exec("edit.undo", json!({}));
@@ -696,7 +696,7 @@ fn marker_editor_time_range_delete_and_source_owner() {
     assert_eq!(marker_draft_text(&d, "duration"), "00:00:01:00", "rechecking restores the draft value");
     d.click("markerProperties.range");
     d.click("markerProperties.apply");
-    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].duration, filmcraft_time::Tick::ZERO);
+    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].duration, epsicut_time::Tick::ZERO);
     let second = d.exec("markers.add", json!({"frame":60}))["marker"].as_u64().unwrap();
     d.right_marker(second, false);
     d.click("timeline.markerMenu.properties");
@@ -708,11 +708,11 @@ fn marker_editor_time_range_delete_and_source_owner() {
     d.ok("ui.click", json!({"id":format!("source.marker.{source}"),"button":"right"}));
     d.frames(3);
     d.click("monitor.markerMenu.properties");
-    assert_eq!(d.app().ui.marker_properties.as_ref().unwrap().owner, filmcraft_ui_egui::panels::marker_properties::Owner::Source(5));
+    assert_eq!(d.app().ui.marker_properties.as_ref().unwrap().owner, epsicut_ui_egui::panels::marker_properties::Owner::Source(5));
     d.exec("source.open", json!({"item":6}));
     d.set_text("markerProperties.author", "BENJI");
     d.click("markerProperties.apply");
-    let view = filmcraft_engine::clip_ops::source_view(&d.app().session, filmcraft_project::ItemId(5)).unwrap();
+    let view = epsicut_engine::clip_ops::source_view(&d.app().session, epsicut_project::ItemId(5)).unwrap();
     assert_eq!(view.markers[0].author, "BENJI");
 }
 
@@ -743,7 +743,7 @@ fn marker_panel_search_selection_filters_and_palette_manager() {
     d.click("markers.bulkColor");
     d.click("markers.bulkColor.Blue");
     assert_eq!(d.app().session.history.undo.len(), history + 1);
-    assert!(d.app().session.active_sequence().unwrap().markers.iter().all(|m| m.color == filmcraft_project::Label::Blue && m.custom_color.is_none()));
+    assert!(d.app().session.active_sequence().unwrap().markers.iter().all(|m| m.color == epsicut_project::Label::Blue && m.custom_color.is_none()));
     d.exec("edit.undo", json!({}));
     d.frames(2);
     d.click("markers.filter.#123456");
@@ -763,14 +763,14 @@ fn marker_panel_search_selection_filters_and_palette_manager() {
     d.set_text("paletteColor.hex", "12ABCD");
     d.snapshot("palette-color-editor", "palette");
     d.click("palette.save");
-    let color = filmcraft_project::HexColor::parse("12ABCD").unwrap();
+    let color = epsicut_project::HexColor::parse("12ABCD").unwrap();
     assert_eq!(d.app().session.project.custom_color_names[&color], "Review");
     d.snapshot("project-palette-manager", "palette.");
     d.click("palette.edit.#12ABCD");
     d.set_text("palette.name", "Approved");
     d.set_text("paletteColor.hex", "123456");
     d.click("palette.save");
-    assert_eq!(d.app().session.project.custom_color_names[&filmcraft_project::HexColor::parse("123456").unwrap()], "Approved");
+    assert_eq!(d.app().session.project.custom_color_names[&epsicut_project::HexColor::parse("123456").unwrap()], "Approved");
     d.click("palette.remove.#123456");
     assert!(d.app().session.project.custom_colors.is_empty());
     d.click("palette.close");
@@ -785,15 +785,15 @@ fn marker_panel_search_selection_filters_and_palette_manager() {
 
 #[derive(Debug)]
 struct NativeProbeSession {
-    state: std::rc::Rc<std::cell::Cell<filmcraft_ui_egui::widgets::color_picker::NativeColorState>>,
+    state: std::rc::Rc<std::cell::Cell<epsicut_ui_egui::widgets::color_picker::NativeColorState>>,
     drops: std::rc::Rc<std::cell::Cell<usize>>,
 }
-impl filmcraft_ui_egui::widgets::color_picker::NativeColorSession for NativeProbeSession {
-    fn poll(&self) -> Result<filmcraft_ui_egui::widgets::color_picker::NativeColorState, String> {
+impl epsicut_ui_egui::widgets::color_picker::NativeColorSession for NativeProbeSession {
+    fn poll(&self) -> Result<epsicut_ui_egui::widgets::color_picker::NativeColorState, String> {
         Ok(self.state.get())
     }
     fn set_color(&self, color: [u8; 3]) -> Result<(), String> {
-        self.state.set(filmcraft_ui_egui::widgets::color_picker::NativeColorState { color: Some(color), open: true });
+        self.state.set(epsicut_ui_egui::widgets::color_picker::NativeColorState { color: Some(color), open: true });
         Ok(())
     }
 }
@@ -803,13 +803,13 @@ impl Drop for NativeProbeSession {
     }
 }
 struct NativeProbe {
-    state: std::rc::Rc<std::cell::Cell<filmcraft_ui_egui::widgets::color_picker::NativeColorState>>,
+    state: std::rc::Rc<std::cell::Cell<epsicut_ui_egui::widgets::color_picker::NativeColorState>>,
     drops: std::rc::Rc<std::cell::Cell<usize>>,
     opens: std::rc::Rc<std::cell::Cell<usize>>,
 }
 impl NativeProbe {
     fn install(d: &mut Driver) -> Self {
-        use filmcraft_ui_egui::widgets::color_picker::{NativeColorSession, NativeColorState};
+        use epsicut_ui_egui::widgets::color_picker::{NativeColorSession, NativeColorState};
         use std::{cell::Cell, rc::Rc};
         let probe =
             Self { state: Rc::new(Cell::new(NativeColorState { color: None, open: false })), drops: Rc::new(Cell::new(0)), opens: Rc::new(Cell::new(0)) };
@@ -822,7 +822,7 @@ impl NativeProbe {
         probe
     }
     fn choose(&self, color: [u8; 3]) {
-        self.state.set(filmcraft_ui_egui::widgets::color_picker::NativeColorState { color: Some(color), open: true });
+        self.state.set(epsicut_ui_egui::widgets::color_picker::NativeColorState { color: Some(color), open: true });
     }
 }
 
@@ -863,7 +863,7 @@ fn shared_picker_preserves_exact_hex_and_incomplete_input_until_confirmation() {
     assert_eq!(d.app().session.project.to_json(), before);
     d.set_text("markerColor.hex", "12ABCD");
     d.frames(12);
-    assert_eq!(d.app().ui.marker_properties.as_ref().unwrap().color_editor.as_ref().unwrap().value(), Some(filmcraft_project::HexColor([18, 171, 205])));
+    assert_eq!(d.app().ui.marker_properties.as_ref().unwrap().color_editor.as_ref().unwrap().value(), Some(epsicut_project::HexColor([18, 171, 205])));
     d.click("markerColor.cancel");
     d.click("markerProperties.cancel");
     assert_eq!(d.app().session.project.to_json(), before);
@@ -873,7 +873,7 @@ fn shared_picker_preserves_exact_hex_and_incomplete_input_until_confirmation() {
 fn marker_and_palette_controls_translate_without_changing_automation_ids() {
     let mut d = Driver::demo();
     let marker = d.exec("markers.add", json!({"frame":30}))["marker"].as_u64().unwrap();
-    d.harness.state_mut().ui.language = filmcraft_ui_egui::i18n::Language::Es;
+    d.harness.state_mut().ui.language = epsicut_ui_egui::i18n::Language::Es;
     d.frames(3);
     d.right_marker(marker, false);
     d.click("timeline.markerMenu.properties");
@@ -892,7 +892,7 @@ fn marker_and_palette_controls_translate_without_changing_automation_ids() {
     assert_eq!(labels[0]["label"], "Guardar color");
     d.click("palette.cancelEdit");
     d.click("palette.close");
-    d.harness.state_mut().ui.language = filmcraft_ui_egui::i18n::Language::En;
+    d.harness.state_mut().ui.language = epsicut_ui_egui::i18n::Language::En;
     d.frames(1);
 }
 
@@ -938,7 +938,7 @@ fn native_marker_color_preview_cancel_and_undo_preserve_project_ownership() {
     d.click("markerColor.add");
     assert_eq!(probe.drops.get(), 3);
     d.click("markerProperties.apply");
-    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].custom_color, Some(filmcraft_project::HexColor([18, 171, 205])));
+    assert_eq!(d.app().session.active_sequence().unwrap().markers[0].custom_color, Some(epsicut_project::HexColor([18, 171, 205])));
     assert_eq!(d.app().session.history.undo.len(), history + 2, "one palette add and one marker apply");
     d.exec("edit.undo", json!({}));
     d.exec("edit.undo", json!({}));
@@ -968,7 +968,7 @@ fn native_clip_and_palette_colors_keep_confirmation_and_close_the_panel() {
     assert_eq!(d.app().session.project.to_json(), before);
     d.click("labelColor.apply");
     assert_eq!(probe.drops.get(), 1);
-    assert_eq!(d.app().session.active_sequence().unwrap().find_item(clip).unwrap().1.custom_label_color, Some(filmcraft_project::HexColor([18, 171, 205])));
+    assert_eq!(d.app().session.active_sequence().unwrap().find_item(clip).unwrap().1.custom_label_color, Some(epsicut_project::HexColor([18, 171, 205])));
     d.exec("edit.undo", json!({}));
     assert_eq!(d.app().session.project.to_json(), before);
     d.ok("ui.panel.show", json!({"panel":"Markers"}));
@@ -986,14 +986,14 @@ fn native_clip_and_palette_colors_keep_confirmation_and_close_the_panel() {
     d.set_text("palette.name", "Review");
     d.click("palette.save");
     assert_eq!(probe.drops.get(), 3);
-    assert_eq!(d.app().session.project.custom_color_names[&filmcraft_project::HexColor([17, 34, 51])], "Review");
+    assert_eq!(d.app().session.project.custom_color_names[&epsicut_project::HexColor([17, 34, 51])], "Review");
     d.exec("edit.undo", json!({}));
     assert_eq!(d.app().session.project.to_json(), before);
 }
 
 #[test]
 fn native_panel_hiding_keeps_its_draft_until_confirmation_or_cancel() {
-    use filmcraft_ui_egui::widgets::color_picker::NativeColorState;
+    use epsicut_ui_egui::widgets::color_picker::NativeColorState;
     let mut d = Driver::demo();
     let probe = NativeProbe::install(&mut d);
     let marker = d.exec("markers.add", json!({"frame":30}))["marker"].as_u64().unwrap();
@@ -1029,7 +1029,7 @@ fn failed_native_picker_keeps_the_shared_color_editor_available() {
     d.click("markerProperties.apply");
     assert_eq!(
         d.app().session.active_sequence().unwrap().markers.iter().find(|m| m.id.0 == marker).unwrap().custom_color,
-        Some(filmcraft_project::HexColor([18, 52, 86]))
+        Some(epsicut_project::HexColor([18, 52, 86]))
     );
 }
 
@@ -1038,8 +1038,8 @@ impl Driver {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
-        let snapshots = std::env::var_os("FILMCRAFT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+        let app = EpsicutApp::new(session).with_control(rx);
+        let snapshots = std::env::var_os("EPSICUT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_step_dt(1.0 / 60.0).with_max_steps(10_000);
         if snapshots.is_some() {
             b = b.wgpu();
@@ -1128,7 +1128,7 @@ impl Driver {
         self.frames(2);
     }
 
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
 
@@ -1144,7 +1144,7 @@ impl Driver {
         e["label"].as_str().unwrap_or_default().to_string()
     }
 
-    /// With `FILMCRAFT_UI_SNAPSHOT_DIR` set, render the window offscreen and write `<name>.png`,
+    /// With `EPSICUT_UI_SNAPSHOT_DIR` set, render the window offscreen and write `<name>.png`,
     /// cropped to the elements whose ids start with `prefix`.
     fn snapshot(&mut self, name: &str, prefix: &str) {
         let Some(dir) = self.snapshots.clone() else { return };
@@ -1260,7 +1260,7 @@ fn add_tracks_dialog_offers_amount_placement_and_type() {
     let [v, a, s] = d.tracks();
     assert_eq!((v.len(), a.len(), s.len()), (4, 4, 0));
     assert_eq!((v[3].as_str(), a[3].as_str()), ("Video 4", "Audio 4"));
-    assert_eq!(d.app().session.active_sequence().unwrap().audio_tracks[3].channels, filmcraft_engine::project::AudioChannels::Stereo);
+    assert_eq!(d.app().session.active_sequence().unwrap().audio_tracks[3].channels, epsicut_engine::project::AudioChannels::Stereo);
     // one undo step for the whole dialog
     d.exec("edit.undo", json!({}));
     assert_eq!(d.tracks(), before);
@@ -1310,7 +1310,7 @@ fn add_tracks_dialog_places_and_types_the_new_tracks() {
     let q = d.app().session.active_sequence().unwrap().clone();
     assert!(q.video_tracks[1].items.is_empty() && q.video_tracks[2].items.is_empty(), "the new tracks are after Video 1");
     assert_eq!(q.video_tracks[3].items[0].id, on_v2, "what was on Video 2 moved up to Video 4");
-    use filmcraft_engine::project::AudioChannels;
+    use epsicut_engine::project::AudioChannels;
     assert_eq!((q.audio_tracks[0].channels, q.audio_tracks[0].items.len()), (AudioChannels::Mono, 0));
     assert_eq!(q.submix_tracks[0].channels, AudioChannels::Surround51);
 
@@ -1420,7 +1420,7 @@ fn duplicate_frame_markers_are_drawn_on_repeated_clips() {
     d.app()
         .session
         .edit_sequence("test", |q, _, _| {
-            q.find_item_mut(filmcraft_project::ClipId(copy)).unwrap().1.speed = 2.0;
+            q.find_item_mut(epsicut_project::ClipId(copy)).unwrap().1.speed = 2.0;
             Ok(())
         })
         .unwrap();
@@ -1429,7 +1429,7 @@ fn duplicate_frame_markers_are_drawn_on_repeated_clips() {
     assert!(runs > 4, "{listed}");
     // only the stripes in view are drawn: scrolled to the middle of the clip, the first is not
     let (scroll, pps) = (d.app().ui.timeline.scroll, d.app().ui.timeline.pps);
-    let middle = (start + duration / 2) as f64 / filmcraft_time::TICKS_PER_SECOND as f64;
+    let middle = (start + duration / 2) as f64 / epsicut_time::TICKS_PER_SECOND as f64;
     (d.app().ui.timeline.scroll, d.app().ui.timeline.target_scroll) = (middle, middle);
     let scrolled = |m: &[String]| !m.is_empty() && !m.contains(&format!("timeline.duplicateFrames.{first}.0"));
     let marks = d.ids_once(&format!("timeline.duplicateFrames.{first}."), scrolled);
@@ -1630,7 +1630,7 @@ fn ctrl_x_cuts_clips() {
 }
 
 /// Sequence ▸ Sequence Settings… opens Premiere Pro's dialog (it used to do nothing, #172): the
-/// General tab shows the sequence's settings, the ones FilmCraft can't change yet are shown (greyed
+/// General tab shows the sequence's settings, the ones EpsiCut can't change yet are shown (greyed
 /// out), and the Color Management and VR Properties tabs are there. Opening and cancelling change
 /// nothing.
 #[test]
@@ -1700,7 +1700,7 @@ fn sequence_settings_dialog_applies_in_one_undo_step() {
         let q = d.app().session.active_sequence().unwrap();
         let m = q.video_tracks.iter().flat_map(|t| &t.items).find_map(|i| i.effect("motion")).unwrap().clone();
         match (&m.param("position").unwrap().value, &m.param("scale").unwrap().value) {
-            (filmcraft_engine::project::ParamValue::Vec2(p), filmcraft_engine::project::ParamValue::Float(s)) => (p.x, p.y, *s),
+            (epsicut_engine::project::ParamValue::Vec2(p), epsicut_engine::project::ParamValue::Float(s)) => (p.x, p.y, *s),
             _ => panic!("Motion has a point and a number"),
         }
     };
@@ -1722,7 +1722,7 @@ fn sequence_settings_dialog_applies_in_one_undo_step() {
     d.click("sequenceSettings.ok");
     assert!(d.ids("sequenceSettings.").is_empty(), "dialog closed");
     let st = d.app().session.active_sequence().unwrap().settings.clone();
-    assert_eq!((st.width, st.height, st.frame_rate), (1280, 720, filmcraft_engine::time::FrameRate::FPS_29_97));
+    assert_eq!((st.width, st.height, st.frame_rate), (1280, 720, epsicut_engine::time::FrameRate::FPS_29_97));
     assert!(st.drop_frame && st.max_render_quality);
     let (x1, y1, s1) = motion(&mut d);
     let k = 2.0 / 3.0;
@@ -1782,7 +1782,7 @@ fn project_panel_sequence_menu_opens_its_settings() {
     d.frames(3);
     d.click("project.itemMenu.sequenceSettings");
     d.frames(3);
-    assert!(matches!(d.app().dialog, Some(filmcraft_ui_egui::Dialog::SequenceSettings)));
+    assert!(matches!(d.app().dialog, Some(epsicut_ui_egui::Dialog::SequenceSettings)));
     assert_eq!(d.label("sequenceSettings.name"), "Vertical");
     assert_eq!((d.label("sequenceSettings.width"), d.label("sequenceSettings.height")), ("1080".into(), "1920".into()));
     assert_eq!(d.app().session.state.active_sequence.map(|i| i.0), Some(vertical));
@@ -1823,7 +1823,7 @@ fn new_sequence_opens_its_dialog() {
     let id = d.app().session.state.active_sequence.unwrap();
     assert_eq!(d.app().session.project.item(id).unwrap().name, "Shorts", "the new sequence is the open one");
     let q = d.app().session.active_sequence().unwrap().clone();
-    assert_eq!((q.settings.width, q.settings.height, q.settings.frame_rate), (1080, 1920, filmcraft_engine::time::FrameRate::FPS_30));
+    assert_eq!((q.settings.width, q.settings.height, q.settings.frame_rate), (1080, 1920, epsicut_engine::time::FrameRate::FPS_30));
     assert_eq!((q.video_tracks.len(), q.audio_tracks.len()), (2, 4));
     d.exec("edit.undo", json!({}));
     assert_eq!(sequences(&mut d), n0, "one undo step");
@@ -1857,11 +1857,11 @@ fn timeline_marker_label_edits_only_the_clicked_marker_and_is_undoable() {
     d.right_marker(target, false);
     assert!(d.ids("timeline.markerMenu.").contains(&"timeline.markerMenu.label".into()), "a marker needs its own Label menu");
     d.click("timeline.markerMenu.label");
-    assert_eq!(d.ids("timeline.markerMenu.color.").len(), filmcraft_project::Label::ALL.len());
+    assert_eq!(d.ids("timeline.markerMenu.color.").len(), epsicut_project::Label::ALL.len());
     d.snapshot("marker-colour-menu", "timeline.markerMenu.");
     d.click("timeline.markerMenu.color.Blue");
     let mut expected = before.clone();
-    expected.markers.iter_mut().find(|m| m.id.0 == target).unwrap().color = filmcraft_project::Label::Blue;
+    expected.markers.iter_mut().find(|m| m.id.0 == target).unwrap().color = epsicut_project::Label::Blue;
     let actual = d.app().session.active_sequence().unwrap().clone();
     assert_eq!(serde_json::to_value(&actual).unwrap(), serde_json::to_value(&expected).unwrap(), "only the chosen marker changes, not a selected clip");
     assert_eq!(d.app().session.history.undo.len(), undo + 1);
@@ -1898,7 +1898,7 @@ fn range_marker_end_flags_keep_their_owner_in_timeline_and_monitors() {
     assert!(!d.ids(&format!("program.markerEnd.{range}")).is_empty());
     d.snapshot("range-marker-program-clipped", "program.scrubBar");
     d.exec("source.open", json!({"item":5}));
-    let source = d.exec("markers.add", json!({"target":"source","time":filmcraft_time::TICKS_PER_SECOND,"durationFrames":48,"name":"Source range"}))["marker"]
+    let source = d.exec("markers.add", json!({"target":"source","time":epsicut_time::TICKS_PER_SECOND,"durationFrames":48,"name":"Source range"}))["marker"]
         .as_u64()
         .unwrap();
     d.frames(3);
@@ -1908,7 +1908,7 @@ fn range_marker_end_flags_keep_their_owner_in_timeline_and_monitors() {
     d.click("monitor.markerMenu.properties");
     let draft = d.app().ui.marker_properties.as_ref().unwrap();
     assert_eq!(draft.marker, source);
-    assert_eq!(draft.owner, filmcraft_ui_egui::panels::marker_properties::Owner::Source(5));
+    assert_eq!(draft.owner, epsicut_ui_egui::panels::marker_properties::Owner::Source(5));
 }
 
 #[test]
@@ -1928,9 +1928,9 @@ fn a_range_marker_band_opens_its_menu_and_keeps_the_marker_identity() {
     d.click("timeline.markerMenu.label");
     d.click("timeline.markerMenu.color.Yellow");
     let mut expected = before;
-    expected.markers.iter_mut().find(|m| m.id.0 == target).unwrap().color = filmcraft_project::Label::Yellow;
+    expected.markers.iter_mut().find(|m| m.id.0 == target).unwrap().color = epsicut_project::Label::Yellow;
     let actual = d.app().session.active_sequence().unwrap();
-    assert_eq!(actual.markers.iter().find(|m| m.id.0 == other).unwrap().color, filmcraft_project::Label::Rose);
+    assert_eq!(actual.markers.iter().find(|m| m.id.0 == other).unwrap().color, epsicut_project::Label::Rose);
     assert_eq!(
         serde_json::to_value(actual).unwrap(),
         serde_json::to_value(&expected).unwrap(),
@@ -1952,11 +1952,11 @@ fn markers_panel_label_refreshes_the_colour_filter_in_both_themes() {
         d.ok("ui.click", json!({"id":format!("markers.row.{target}"),"button":"right"}));
         d.frames(3);
         d.click("markers.menu.label");
-        assert_eq!(d.ids("markers.menu.color.").len(), filmcraft_project::Label::ALL.len());
+        assert_eq!(d.ids("markers.menu.color.").len(), epsicut_project::Label::ALL.len());
         d.snapshot(&format!("marker-panel-label-{theme}"), "markers.menu.");
         let undo = d.app().session.history.undo.len();
         d.click("markers.menu.color.Blue");
-        assert_eq!(d.app().session.active_sequence().unwrap().markers[0].color, filmcraft_project::Label::Blue);
+        assert_eq!(d.app().session.active_sequence().unwrap().markers[0].color, epsicut_project::Label::Blue);
         assert_eq!(d.app().session.history.undo.len(), undo + 1);
         assert!(d.ids("markers.row.").is_empty(), "the newly blue marker follows the existing filter");
         d.exec("edit.undo", json!({}));
@@ -1992,7 +1992,7 @@ fn timeline_clip_label_is_disabled_without_a_selected_clip() {
     assert_eq!(enabled(&mut d), json!(true));
     d.click("timeline.clipMenu.edit.label");
     d.click("timeline.clipMenu.label.Blue");
-    assert_eq!(d.app().session.active_sequence().unwrap().find_item(clip).unwrap().1.label, filmcraft_project::Label::Blue);
+    assert_eq!(d.app().session.active_sequence().unwrap().find_item(clip).unwrap().1.label, epsicut_project::Label::Blue);
     assert!(d.app().session.active_sequence().unwrap().markers.is_empty());
 }
 

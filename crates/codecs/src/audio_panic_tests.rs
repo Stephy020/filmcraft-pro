@@ -122,7 +122,7 @@ fn ordinary_packet_error_does_not_quarantine_decoder() {
 }
 
 fn wav() -> Arc<[u8]> {
-    filmcraft_media::wav::write_wav16(&[0.25; 32_768], 2, 48_000).into()
+    epsicut_media::wav::write_wav16(&[0.25; 32_768], 2, 48_000).into()
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn standalone_ordinary_corrupt_packet_keeps_existing_recovery() {
 
 #[test]
 fn standalone_mutated_headers_never_unwind() {
-    let seed = filmcraft_media::wav::write_wav16(&[0.25; 64], 2, 48_000);
+    let seed = epsicut_media::wav::write_wav16(&[0.25; 64], 2, 48_000);
     let check = |bytes: Vec<u8>| {
         assert!(std::panic::catch_unwind(|| AudioFileSource::decode("hostile.wav", bytes.into())).is_ok());
     };

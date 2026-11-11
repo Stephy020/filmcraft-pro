@@ -1,6 +1,6 @@
 [package]
-name = "filmcraft-project"
-description = "FilmCraft document model: projects, bins, clips, sequences, tracks, effects, keyframes, markers"
+name = "epsicut-project"
+description = "EpsiCut document model: projects, bins, clips, sequences, tracks, effects, keyframes, markers"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,10 +10,10 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-filmcraft-time = { workspace = true }
-filmcraft-geom = { workspace = true }
-filmcraft-color = { workspace = true }
-filmcraft-media = { workspace = true }
+epsicut-time = { workspace = true }
+epsicut-geom = { workspace = true }
+epsicut-color = { workspace = true }
+epsicut-media = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 url = { workspace = true }

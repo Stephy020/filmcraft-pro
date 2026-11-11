@@ -6,21 +6,21 @@ use std::rc::Rc;
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
-use filmcraft_ui_egui::graphics_notice::GraphicsNotice;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
+use epsicut_ui_egui::graphics_notice::GraphicsNotice;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
 }
 
 impl Driver {
     fn new(notice: Option<GraphicsNotice>) -> Self {
         let (tx, rx) = channel();
-        let mut app = FilmcraftApp::new(Session::default()).with_control(rx);
+        let mut app = EpsicutApp::new(Session::default()).with_control(rx);
         app.graphics_notice = notice;
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000).build_eframe(move |_cc| app);
         let mut d = Driver { harness, tx };
@@ -61,7 +61,7 @@ impl Driver {
         assert_eq!(v["ok"], json!(true), "{id}: {v}");
         self.frames(3);
     }
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
 }
@@ -115,11 +115,11 @@ fn a_reset_that_cannot_be_saved_says_why_and_keeps_the_button() {
 fn the_notice_follows_the_interface_language() {
     let notice = GraphicsNotice::new("software rendering", Box::new(|| Ok(())));
     let mut d = Driver::new(Some(notice));
-    let es = filmcraft_ui_egui::i18n::Language::Es;
+    let es = epsicut_ui_egui::i18n::Language::Es;
     d.app().ui.language = es;
     d.frames(3);
-    let title = filmcraft_ui_egui::i18n::fmt(es.tr("Safe graphics mode: {mode}"), &[("mode", es.tr("software rendering"))]);
+    let title = epsicut_ui_egui::i18n::fmt(es.tr("Safe graphics mode: {mode}"), &[("mode", es.tr("software rendering"))]);
     assert_eq!(d.label("graphics.notice"), title);
     assert_eq!(d.label("graphics.notice.reset"), es.tr("Use Default Graphics"));
-    filmcraft_ui_egui::i18n::set_current(filmcraft_ui_egui::i18n::Language::En);
+    epsicut_ui_egui::i18n::set_current(epsicut_ui_egui::i18n::Language::En);
 }

@@ -1,5 +1,5 @@
 use super::{
-    AudioCodec, BitrateMode, ExportSettings, ExrCompression, FieldOrder, FileDialog, FilmcraftApp, Format, FrameRate, GpuRendering, H264Profile,
+    AudioCodec, BitrateMode, EpsicutApp, ExportSettings, ExrCompression, FieldOrder, FileDialog, Format, FrameRate, GpuRendering, H264Profile,
     HardwareEncoding, Multiplexer, MxfVideoCodec, Placement, PresetManager, Rect, Reg, SampleFormat, Sense, TextOverlay, Tokens, apply_preset, is_export_busy,
     pos2, vec2,
 };
@@ -21,7 +21,7 @@ fn row<R>(ui: &mut egui::Ui, t: &Tokens, label: &str, add: impl FnOnce(&mut egui
 
 /// A combo box over `options` (label, enabled); returns the chosen index.
 pub(super) fn combo(ui: &mut egui::Ui, reg: &mut Reg, id: &str, selected: &str, options: &[(String, bool)], width: f32) -> Option<usize> {
-    let why = tl!("Not supported by FilmCraft's encoders yet");
+    let why = tl!("Not supported by EpsiCut's encoders yet");
     let options: Vec<(String, Option<&str>)> = options.iter().map(|(l, on)| (l.clone(), (!on).then_some(why))).collect();
     combo_why(ui, reg, id, selected, &options, width)
 }
@@ -53,15 +53,15 @@ fn combo_why(ui: &mut egui::Ui, reg: &mut Reg, id: &str, selected: &str, options
 /// software encoder: without a hardware one (NVENC on NVIDIA, VideoToolbox on macOS) they are
 /// greyed out with the reason, instead of failing at export time.
 fn unavailable_why(format: Format) -> Option<&'static str> {
-    if filmcraft_engine::export::available(format) {
+    if epsicut_engine::export::available(format) {
         return None;
     }
     Some(match format {
         Format::Hevc => tl!(
-            "H.265 (HEVC) needs a hardware encoder (NVENC on NVIDIA GPUs, VideoToolbox on macOS); none was found on this machine, and FilmCraft has no software H.265 encoder yet. Choose H.264 or ProRes instead."
+            "H.265 (HEVC) needs a hardware encoder (NVENC on NVIDIA GPUs, VideoToolbox on macOS); none was found on this machine, and EpsiCut has no software H.265 encoder yet. Choose H.264 or ProRes instead."
         ),
-        Format::Av1 => tl!("AV1 needs a hardware encoder; none was found on this machine, and FilmCraft has no software AV1 encoder yet."),
-        _ => tl!("Not supported by FilmCraft's encoders yet"),
+        Format::Av1 => tl!("AV1 needs a hardware encoder; none was found on this machine, and EpsiCut has no software AV1 encoder yet."),
+        _ => tl!("Not supported by EpsiCut's encoders yet"),
     })
 }
 
@@ -217,7 +217,7 @@ pub(crate) const PARS: [(&str, Option<(u32, u32)>); 6] = [
     ("Anamorphic 2:1 (2.0)", Some((2, 1))),
 ];
 
-pub(super) fn settings_column(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub(super) fn settings_column(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let mut reg = Reg::default();
     let mut open_manager = false;
@@ -490,7 +490,7 @@ fn video_section(ui: &mut egui::Ui, reg: &mut Reg, s: &mut ExportSettings, t: &T
                     row(ui, t, tl!("Encoder"), |ui| ui.label(tl!("Hardware (AV1 has no software encoder)")));
                 } else {
                     // the hardware encoder writes Main (8-bit 4:2:0), or Main 10 for HDR sequences where it can; level chosen by the encoder
-                    let label = match (filmcraft_engine::export::hdr_available(Format::Hevc), seq_hdr && !s.sdr) {
+                    let label = match (epsicut_engine::export::hdr_available(Format::Hevc), seq_hdr && !s.sdr) {
                         (true, true) => tl!("Main 10 (10-bit, HDR)"),
                         (true, false) => tl!("Main (8-bit; Main 10 for HDR sequences)"),
                         (false, _) => tl!("Main (8-bit)"),
@@ -527,7 +527,7 @@ fn video_section(ui: &mut egui::Ui, reg: &mut Reg, s: &mut ExportSettings, t: &T
             });
             if s.bitrate_mode == BitrateMode::Crf {
                 row(ui, t, tl!("Quality (CRF)"), |ui| {
-                    let mut crf = if s.crf.is_finite() { f64::from(s.crf) } else { f64::from(filmcraft_engine::export::DEFAULT_CRF) };
+                    let mut crf = if s.crf.is_finite() { f64::from(s.crf) } else { f64::from(epsicut_engine::export::DEFAULT_CRF) };
                     if drag(ui, reg, "export.video.crf", &mut crf, DragOptions { range: 0.0..=51.0, speed: 0.1, suffix: "", decimals: 0 }) {
                         s.crf = crf.round() as f32;
                     }
@@ -636,7 +636,7 @@ fn video_section(ui: &mut egui::Ui, reg: &mut Reg, s: &mut ExportSettings, t: &T
         }
         _ => {}
     }
-    // Composite the picture on the GPU (filmcraft-gpu) instead of the CPU reference renderer;
+    // Composite the picture on the GPU (epsicut-gpu) instead of the CPU reference renderer;
     // Auto falls back to the CPU wherever the GPU cannot render the frame.
     row(ui, t, tl!("GPU Rendering"), |ui| {
         let mut on = s.gpu_rendering == GpuRendering::Auto;
@@ -714,7 +714,7 @@ fn audio_section(ui: &mut egui::Ui, reg: &mut Reg, s: &mut ExportSettings, t: &T
                 (true, _) => None,
                 (false, AudioCodec::Flac) => Some(tl!("FLAC stores whole-number samples only")),
                 (false, _) if s.format.is_mxf() => Some(tl!("MXF export writes integer PCM only")),
-                (false, _) => Some(tl!("Not supported by FilmCraft's encoders yet")),
+                (false, _) => Some(tl!("Not supported by EpsiCut's encoders yet")),
             };
             let labels: Vec<(String, Option<&str>)> = SampleFormat::ALL.iter().zip(sizes).map(|(&f, l)| (l.to_string(), why(f))).collect();
             let cur = SampleFormat::ALL.iter().position(|&f| f == s.audio.sample_format()).and_then(|i| sizes.get(i).copied()).unwrap_or(sizes[0]);

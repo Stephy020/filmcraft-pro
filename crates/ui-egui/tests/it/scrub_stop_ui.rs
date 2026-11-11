@@ -12,9 +12,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::control::ControlRequest;
-use filmcraft_ui_egui::{AudioOut, FilmcraftApp};
+use epsicut_engine::Session;
+use epsicut_ui_egui::control::ControlRequest;
+use epsicut_ui_egui::{AudioOut, EpsicutApp};
 use serde_json::{Value, json};
 
 type Fill = Box<dyn FnMut(&mut [f32], usize) + Send>;
@@ -40,7 +40,7 @@ impl AudioOut for Out {
 }
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     stops: Arc<AtomicUsize>,
 }
@@ -53,7 +53,7 @@ impl Driver {
         session.execute("file.newSequence", json!({"name": "Press", "video": 3, "audio": 3})).expect("sequence");
         session.prefs.audio.scrub_audio = true;
         let (tx, rx) = channel();
-        let mut app = FilmcraftApp::new(session).with_control(rx);
+        let mut app = EpsicutApp::new(session).with_control(rx);
         let stops = Arc::new(AtomicUsize::new(0));
         app.audio = Some(Box::new(Out { stops: stops.clone() }));
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_step_dt(1.0 / 60.0).with_max_steps(10_000).build_eframe(move |_cc| app);

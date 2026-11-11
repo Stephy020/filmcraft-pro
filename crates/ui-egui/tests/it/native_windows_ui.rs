@@ -5,9 +5,9 @@
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 /// What the tests give the native windows and what the windows publish. A test drives at most
@@ -56,7 +56,7 @@ fn native_host() {
 }
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
 }
 
@@ -70,9 +70,9 @@ impl Driver {
         s.prefs.timeline.clip_mismatch_warning = false;
         s.execute("source.open", json!({"item": source})).unwrap();
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(s).with_control(rx);
+        let app = EpsicutApp::new(s).with_control(rx);
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000).build_eframe(move |cc| {
-            filmcraft_ui_egui::install_ime_reset_callbacks(&cc.egui_ctx);
+            epsicut_ui_egui::install_ime_reset_callbacks(&cc.egui_ctx);
             app
         });
         let mut d = Driver { harness, tx };
@@ -125,7 +125,7 @@ impl Driver {
         self.elements(id).into_iter().find(|e| e["id"] == id).unwrap_or_else(|| panic!("no element {id}"))
     }
 
-    fn app(&self) -> &FilmcraftApp {
+    fn app(&self) -> &EpsicutApp {
         self.harness.state()
     }
 

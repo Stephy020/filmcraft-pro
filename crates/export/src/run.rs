@@ -63,7 +63,7 @@ fn capped_pool(max_threads: u32) -> Option<rayon::ThreadPool> {
     if cap == 0 || cap >= rayon::current_num_threads() || cfg!(target_arch = "wasm32") {
         return None;
     }
-    rayon::ThreadPoolBuilder::new().num_threads(cap).thread_name(|i| format!("filmcraft-export-{i}")).build().ok()
+    rayon::ThreadPoolBuilder::new().num_threads(cap).thread_name(|i| format!("epsicut-export-{i}")).build().ok()
 }
 
 /// Run an export (blocking; call from a worker thread). With `settings.max_threads` set it runs on
@@ -102,9 +102,9 @@ fn export_here(project: &Arc<Project>, seq: ItemId, settings: &ExportSettings, s
             // the sizes are known up front: refuse an AIFF that cannot hold them before measuring
             let mut writer = match settings.format {
                 Format::Flac => {
-                    let mut cfg = filmcraft_flac::EncoderConfig::new(sr, ch as u8, fmt.bits() as u8);
+                    let mut cfg = epsicut_flac::EncoderConfig::new(sr, ch as u8, fmt.bits() as u8);
                     cfg.level = settings.audio.flac_level.min(8);
-                    AudioWriter::Flac(Box::new(filmcraft_flac::Encoder::new(cfg).map_err(|e| ExportError::Unsupported(format!("FLAC: {e}")))?))
+                    AudioWriter::Flac(Box::new(epsicut_flac::Encoder::new(cfg).map_err(|e| ExportError::Unsupported(format!("FLAC: {e}")))?))
                 }
                 Format::Wav => AudioWriter::Pcm(pcm::PcmContainer::Wav),
                 _ => AudioWriter::Pcm(pcm::PcmContainer::Aiff),
@@ -149,7 +149,7 @@ fn export_here(project: &Arc<Project>, seq: ItemId, settings: &ExportSettings, s
                     out.write_all(&enc.finish()).map_err(io)?;
                     // the frame sizes and MD5 are known now: fill them into STREAMINFO
                     use std::io::{Seek, SeekFrom};
-                    out.seek(SeekFrom::Start(filmcraft_flac::STREAMINFO_OFFSET)).map_err(io)?;
+                    out.seek(SeekFrom::Start(epsicut_flac::STREAMINFO_OFFSET)).map_err(io)?;
                     out.write_all(&enc.streaminfo()).map_err(io)?;
                     out.seek(SeekFrom::End(0)).map_err(io)?;
                 }

@@ -1,6 +1,6 @@
 use super::*;
 
-impl FilmcraftApp {
+impl EpsicutApp {
     fn workspaces_path(&self) -> Option<std::path::PathBuf> {
         self.session.prefs_path.as_ref().and_then(|p| p.parent()).map(|d| d.join(dock::WORKSPACES_FILE))
     }
@@ -78,16 +78,16 @@ impl FilmcraftApp {
 
     /// Reveal in Project: bring the Project panel forward, showing the bin that holds `item` with
     /// the search cleared, so the (already selected) item is on show.
-    pub(super) fn reveal_in_project(&mut self, item: filmcraft_project::ItemId) {
+    pub(super) fn reveal_in_project(&mut self, item: epsicut_project::ItemId) {
         // the bins on the way down to the item (bounded: a project file can nest bins arbitrarily deep)
-        fn path(b: &filmcraft_project::Bin, item: filmcraft_project::ItemId, depth: usize, out: &mut Vec<u64>) -> bool {
+        fn path(b: &epsicut_project::Bin, item: epsicut_project::ItemId, depth: usize, out: &mut Vec<u64>) -> bool {
             if depth > 256 {
                 return false;
             }
             for c in &b.children {
                 match c {
-                    filmcraft_project::BinEntry::Item(i) if *i == item => return true,
-                    filmcraft_project::BinEntry::Bin(inner) => {
+                    epsicut_project::BinEntry::Item(i) if *i == item => return true,
+                    epsicut_project::BinEntry::Bin(inner) => {
                         out.push(inner.id.0);
                         if path(inner, item, depth + 1, out) {
                             return true;
@@ -103,7 +103,7 @@ impl FilmcraftApp {
         let found = path(&self.session.project.root, item, 0, &mut bins);
         // the list shows the whole tree: open the bins on the way. Icons and freeform show one bin
         // at a time: go into the one that holds the item.
-        let list = self.session.prefs.project_panel.view.mode == filmcraft_engine::project_panel::ViewMode::List;
+        let list = self.session.prefs.project_panel.view.mode == epsicut_engine::project_panel::ViewMode::List;
         self.ui.project_panel.bin = if list || !found { None } else { bins.last().copied() };
         if list {
             for b in bins {

@@ -1,7 +1,7 @@
 //! Off-screen GPU export renderer: composite a frame with the same
-//! [`filmcraft_render::plan::plan_frame`] + [`GpuCompositor`] path the monitors use, then read
+//! [`epsicut_render::plan::plan_frame`] + [`GpuCompositor`] path the monitors use, then read
 //! the **linear float accumulator** back (not the sRGB display texture), so the result matches
-//! `filmcraft_render::render_sequence`'s premultiplied linear-light RGBA and the export pipeline's
+//! `epsicut_render::render_sequence`'s premultiplied linear-light RGBA and the export pipeline's
 //! placement, overlays and video limiter see exactly what the CPU renderer would have produced.
 //!
 //! Renderers share one off-screen wgpu device (no window), created by the first and kept for the
@@ -12,10 +12,10 @@
 //! CPU) is returned unchanged — it already is the CPU image.
 
 use crate::{GpuCompositor, prepare};
-use filmcraft_project::{ItemId, Project};
-use filmcraft_render::plan::{FramePlan, plan_frame};
-use filmcraft_render::{Image, RenderOptions, SourceProvider};
-use filmcraft_time::Tick;
+use epsicut_project::{ItemId, Project};
+use epsicut_render::plan::{FramePlan, plan_frame};
+use epsicut_render::{Image, RenderOptions, SourceProvider};
+use epsicut_time::Tick;
 
 /// Where export rendering spends its time (process-wide totals, for the bench).
 pub mod timing {
@@ -105,7 +105,7 @@ impl ExportRenderer {
         static SHARED: std::sync::OnceLock<Option<(wgpu::Instance, wgpu::Device, wgpu::Queue)>> = std::sync::OnceLock::new();
         let (instance, device, queue) = SHARED
             .get_or_init(|| {
-                // A build without a wgpu backend for this platform (`cargo build -p filmcraft-cli`
+                // A build without a wgpu backend for this platform (`cargo build -p epsicut-cli`
                 // alone: this crate asks for none) has no GPU to offer, and `Instance::default()`
                 // panics there.
                 if wgpu::Instance::enabled_backend_features().is_empty() {
@@ -171,12 +171,12 @@ impl ExportRenderer {
 mod tests {
     use super::*;
     use crate::{f16_to_f32, f32_to_f16};
-    use filmcraft_export::FrameRenderer;
-    use filmcraft_media::generators::GeneratorSource;
-    use filmcraft_media::{Generator, MediaSource};
-    use filmcraft_project::{ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
-    use filmcraft_render::SourceMap;
-    use filmcraft_time::{TICKS_PER_SECOND, Tick, TimeRange};
+    use epsicut_export::FrameRenderer;
+    use epsicut_media::generators::GeneratorSource;
+    use epsicut_media::{Generator, MediaSource};
+    use epsicut_project::{ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
+    use epsicut_render::SourceMap;
+    use epsicut_time::{TICKS_PER_SECOND, Tick, TimeRange};
     use std::sync::Arc;
 
     const EPS: f32 = 1e-4;
@@ -185,14 +185,9 @@ mod tests {
     /// fixture-free project helper).
     fn project(transform: bool) -> (Arc<Project>, ItemId, SourceMap) {
         let mut p = Project::new("x");
-        let g = GeneratorSource::new(
-            Generator::ColorMatte { color: [0.2, 0.5, 0.9, 1.0] },
-            320,
-            180,
-            filmcraft_time::FrameRate::FPS_24,
-            Tick(2 * TICKS_PER_SECOND),
-        );
-        let tone = GeneratorSource::new(Generator::Tone { hz: 440.0, db: -6.0 }, 320, 180, filmcraft_time::FrameRate::FPS_24, Tick(2 * TICKS_PER_SECOND));
+        let g =
+            GeneratorSource::new(Generator::ColorMatte { color: [0.2, 0.5, 0.9, 1.0] }, 320, 180, epsicut_time::FrameRate::FPS_24, Tick(2 * TICKS_PER_SECOND));
+        let tone = GeneratorSource::new(Generator::Tone { hz: 440.0, db: -6.0 }, 320, 180, epsicut_time::FrameRate::FPS_24, Tick(2 * TICKS_PER_SECOND));
         let add = |p: &mut Project, g: &GeneratorSource| {
             let info = g.info().clone();
             p.add_item(
@@ -215,8 +210,8 @@ mod tests {
         let red = add(&mut p, &g);
         let t = add(&mut p, &tone);
         let seq =
-            p.new_sequence("s", SequenceSettings { width: 320, height: 180, frame_rate: filmcraft_time::FrameRate::FPS_24, ..Default::default() }, 1, 1, None);
-        let r = filmcraft_time::FrameRate::FPS_24;
+            p.new_sequence("s", SequenceSettings { width: 320, height: 180, frame_rate: epsicut_time::FrameRate::FPS_24, ..Default::default() }, 1, 1, None);
+        let r = epsicut_time::FrameRate::FPS_24;
         let v = p.make_track_item(red, TrackKind::Video, Tick::ZERO, TimeRange::new(Tick::ZERO, r.tick_of(24)), r).unwrap();
         let a = p.make_track_item(t, TrackKind::Audio, Tick::ZERO, TimeRange::new(Tick::ZERO, r.tick_of(24)), r).unwrap();
         p.sequence_mut(seq).unwrap().video_tracks[0].items.push(v);
@@ -225,18 +220,18 @@ mod tests {
             if let Some(clip) = p.sequence_mut(seq).unwrap().video_tracks[0].items.last_mut() {
                 let m = clip.effect_mut("motion").unwrap();
                 if let Some(pm) = m.param_mut("scale") {
-                    pm.value = filmcraft_project::ParamValue::Float(45.0);
+                    pm.value = epsicut_project::ParamValue::Float(45.0);
                 }
                 if let Some(pm) = m.param_mut("rotation") {
-                    pm.value = filmcraft_project::ParamValue::Float(20.0);
+                    pm.value = epsicut_project::ParamValue::Float(20.0);
                 }
                 if let Some(pm) = m.param_mut("position") {
-                    pm.value = filmcraft_project::ParamValue::Vec2(filmcraft_geom::Vec2::new(215.0, 70.0));
+                    pm.value = epsicut_project::ParamValue::Vec2(epsicut_geom::Vec2::new(215.0, 70.0));
                 }
                 if let Some(o) = clip.effect_mut("opacity")
                     && let Some(pm) = o.param_mut("opacity")
                 {
-                    pm.value = filmcraft_project::ParamValue::Float(70.0);
+                    pm.value = epsicut_project::ParamValue::Float(70.0);
                 }
             }
         }
@@ -275,7 +270,7 @@ mod tests {
         };
         let (p, seq, m) = project(false);
         let t = Tick::ZERO;
-        let cpu = filmcraft_render::render_sequence(&p, seq, t, RenderOptions::default(), &m);
+        let cpu = epsicut_render::render_sequence(&p, seq, t, RenderOptions::default(), &m);
         let gpu = r.render(&p, seq, t, RenderOptions::default(), &m).expect("GPU rendered the frame");
         assert!(cpu.px.as_chunks::<4>().0.iter().any(|pixel| pixel[..3].iter().any(|x| *x > 0.1)), "solid fixture must contain a visible picture");
         // The linear premultiplied accumulator should be very close to the CPU float image.
@@ -294,7 +289,7 @@ mod tests {
             eprintln!("SKIPPED (gpu transition export): no adapter");
             return;
         };
-        let rate = filmcraft_time::FrameRate::FPS_24;
+        let rate = epsicut_time::FrameRate::FPS_24;
         let mut p = Project::new("x");
         let mut m = SourceMap::default();
         let mut clips = Vec::new();
@@ -325,9 +320,9 @@ mod tests {
         }
         let opts = RenderOptions::default();
         for (id, reverse) in [("push", false), ("push", true)] {
-            p.sequence_mut(seq).unwrap().video_tracks[0].transitions = vec![filmcraft_project::Transition {
-                id: filmcraft_project::TransitionId(1),
-                effect: filmcraft_project::find_effect(id).unwrap().instance(),
+            p.sequence_mut(seq).unwrap().video_tracks[0].transitions = vec![epsicut_project::Transition {
+                id: epsicut_project::TransitionId(1),
+                effect: epsicut_project::find_effect(id).unwrap().instance(),
                 start: rate.tick_of(18),
                 duration: rate.tick_of(12),
                 from: ids.first().copied(),
@@ -337,16 +332,16 @@ mod tests {
             }];
             for f in [20, 24, 27] {
                 let t = rate.tick_of(f);
-                assert!(!filmcraft_render::plan::is_cpu_frame(&p, seq, t), "{id} takes a GPU renderer");
+                assert!(!epsicut_render::plan::is_cpu_frame(&p, seq, t), "{id} takes a GPU renderer");
                 let before = r.compositor.gpu_transitions;
                 let gpu = r.render(&p, seq, t, opts, &m).expect("GPU transition frame");
                 assert_eq!(r.compositor.gpu_transitions, before + 1, "{id}: drawn on the GPU");
-                assert_parity(&filmcraft_render::render_sequence(&p, seq, t, opts, &m), &gpu, &format!("{id} reverse={reverse} frame {f}"));
+                assert_parity(&epsicut_render::render_sequence(&p, seq, t, opts, &m), &gpu, &format!("{id} reverse={reverse} frame {f}"));
             }
         }
         // Film Dissolve has no GPU stage: the whole frame stays a CPU image
-        p.sequence_mut(seq).unwrap().video_tracks[0].transitions[0].effect = filmcraft_project::find_effect("film_dissolve").unwrap().instance();
-        assert!(filmcraft_render::plan::is_cpu_frame(&p, seq, rate.tick_of(24)));
+        p.sequence_mut(seq).unwrap().video_tracks[0].transitions[0].effect = epsicut_project::find_effect("film_dissolve").unwrap().instance();
+        assert!(epsicut_render::plan::is_cpu_frame(&p, seq, rate.tick_of(24)));
     }
 
     #[test]
@@ -356,8 +351,8 @@ mod tests {
             return;
         };
         let (p, seq, m) = project(true);
-        let t = filmcraft_time::FrameRate::FPS_24.tick_of(10);
-        let cpu = filmcraft_render::render_sequence(&p, seq, t, RenderOptions::default(), &m);
+        let t = epsicut_time::FrameRate::FPS_24.tick_of(10);
+        let cpu = epsicut_render::render_sequence(&p, seq, t, RenderOptions::default(), &m);
         let gpu = r.render(&p, seq, t, RenderOptions::default(), &m).expect("GPU rendered the frame");
         assert!(cpu.px.as_chunks::<4>().0.iter().any(|pixel| pixel[..3].iter().any(|x| *x > 0.1)), "transformed fixture must contain a visible picture");
         assert_parity(&cpu, &gpu, "transformed");
@@ -373,9 +368,9 @@ mod tests {
             let (mut p, inner, mut sources) = project(false);
             let project = Arc::make_mut(&mut p);
             let media = *sources.0.iter().find(|(_, s)| s.info().has_video()).unwrap().0;
-            let rate = filmcraft_time::FrameRate::FPS_24;
+            let rate = epsicut_time::FrameRate::FPS_24;
             if textured {
-                let source = GeneratorSource::new(Generator::Demo(filmcraft_media::DemoScene::OceanSunset), 320, 180, rate, Tick(2 * TICKS_PER_SECOND));
+                let source = GeneratorSource::new(Generator::Demo(epsicut_media::DemoScene::OceanSunset), 320, 180, rate, Tick(2 * TICKS_PER_SECOND));
                 let ItemKind::Media(clip) = &mut project.item_mut(media).unwrap().kind else { panic!("expected generated media") };
                 clip.info = source.info().clone();
                 clip.media = MediaRef::Generator(source.generator.clone());
@@ -384,21 +379,21 @@ mod tests {
             let range = TimeRange::new(Tick::ZERO, rate.tick_of(24));
             // Keep the source partly outside the nest: a future flattened plan must still clip it.
             project.sequence_mut(inner).unwrap().video_tracks[0].items[0].effect_mut("motion").unwrap().param_mut("position").unwrap().value =
-                filmcraft_project::ParamValue::Vec2(filmcraft_geom::Vec2::new(240.0, 90.0));
+                epsicut_project::ParamValue::Vec2(epsicut_geom::Vec2::new(240.0, 90.0));
             let outer = project.new_sequence("outer", project.sequence(inner).unwrap().settings.clone(), 1, 0, None);
             let mut nest = project.make_track_item(inner, TrackKind::Video, Tick::ZERO, range, rate).unwrap();
             let motion = nest.effect_mut("motion").unwrap();
-            motion.param_mut("position").unwrap().value = filmcraft_project::ParamValue::Vec2(filmcraft_geom::Vec2::new(185.0, 75.0));
-            motion.param_mut("scale").unwrap().value = filmcraft_project::ParamValue::Float(60.0);
-            motion.param_mut("uniform_scale").unwrap().value = filmcraft_project::ParamValue::Bool(false);
+            motion.param_mut("position").unwrap().value = epsicut_project::ParamValue::Vec2(epsicut_geom::Vec2::new(185.0, 75.0));
+            motion.param_mut("scale").unwrap().value = epsicut_project::ParamValue::Float(60.0);
+            motion.param_mut("uniform_scale").unwrap().value = epsicut_project::ParamValue::Bool(false);
             project.sequence_mut(outer).unwrap().video_tracks[0].items.push(nest);
             for (rotation, width) in [(0.0, 60.0), (19.0, 60.0), (0.0, 30.0), (0.0, 120.0)] {
                 let motion = Arc::make_mut(&mut p).sequence_mut(outer).unwrap().video_tracks[0].items[0].effect_mut("motion").unwrap();
-                motion.param_mut("rotation").unwrap().value = filmcraft_project::ParamValue::Float(rotation);
-                motion.param_mut("scale_width").unwrap().value = filmcraft_project::ParamValue::Float(width);
+                motion.param_mut("rotation").unwrap().value = epsicut_project::ParamValue::Float(rotation);
+                motion.param_mut("scale_width").unwrap().value = epsicut_project::ParamValue::Float(width);
                 for scale in [1.0, 0.5] {
                     let opts = RenderOptions { scale, ..Default::default() };
-                    let cpu = filmcraft_render::render_sequence(&p, outer, Tick::ZERO, opts, &sources);
+                    let cpu = epsicut_render::render_sequence(&p, outer, Tick::ZERO, opts, &sources);
                     assert!(cpu.px.as_chunks::<4>().0.iter().any(|pixel| pixel[..3].iter().any(|x| *x > 0.1)), "fixture must contain a visible picture");
                     let gpu = renderer.render(&p, outer, Tick::ZERO, opts, &sources).expect("GPU rendered the nest");
                     assert_parity(&cpu, &gpu, "transformed nest");
@@ -422,7 +417,7 @@ mod tests {
         };
         let (p, seq, m) = project(false);
         let gpu = R(r).render(&p, seq, Tick::ZERO, RenderOptions::default(), &m).expect("rendered");
-        let cpu = filmcraft_render::render_sequence(&p, seq, Tick::ZERO, RenderOptions::default(), &m);
+        let cpu = epsicut_render::render_sequence(&p, seq, Tick::ZERO, RenderOptions::default(), &m);
         assert_parity(&cpu, &gpu, "frame renderer");
     }
 

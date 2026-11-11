@@ -3,15 +3,15 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use filmcraft_aac::{Decoder, Encoder, EncoderConfig, EncoderStats, split_adts};
+use epsicut_aac::{Decoder, Encoder, EncoderConfig, EncoderStats, split_adts};
 
-/// ffmpeg (see `filmcraft_testkit::oracle`); `None` after printing `SKIPPED`.
+/// ffmpeg (see `epsicut_testkit::oracle`); `None` after printing `SKIPPED`.
 pub fn ffmpeg() -> Option<PathBuf> {
-    filmcraft_testkit::ffmpeg_or_skip("aac oracle")
+    epsicut_testkit::ffmpeg_or_skip("aac oracle")
 }
 
 pub fn fixtures() -> PathBuf {
-    filmcraft_testkit::fixtures_dir("aac")
+    epsicut_testkit::fixtures_dir("aac")
 }
 
 pub struct Rng(pub u64);

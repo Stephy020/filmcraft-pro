@@ -13,12 +13,12 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use filmcraft_media::Generator;
-use filmcraft_project::{
+use epsicut_media::Generator;
+use epsicut_project::{
     ItemId, ItemKind, Label, Marker, MarkerId, MarkerKind, ParamValue, Project, Sequence, Track, TrackItem, TrackKind, Transition, TransitionAlign,
     TransitionId, find_effect,
 };
-use filmcraft_time::{FrameRate, Tick, fields_to_frames, format_timecode_frames};
+use epsicut_time::{FrameRate, Tick, fields_to_frames, format_timecode_frames};
 
 use crate::common::{
     Builder, MediaSpec, empty_sequence, file_name, file_stem, frames_round, generator_of, item_path, on_frame, overwrite, relative_path, resolve_path,
@@ -368,7 +368,7 @@ impl Ctx<'_> {
     }
 
     /// Put an item for `line` on each of its channels (overwrite). Returns (track, clip) per channel.
-    fn lay(&mut self, line: &Line, spot: Spot, video_base: usize) -> Vec<(TrackKind, usize, filmcraft_project::ClipId)> {
+    fn lay(&mut self, line: &Line, spot: Spot, video_base: usize) -> Vec<(TrackKind, usize, epsicut_project::ClipId)> {
         let Spot { item, name, start, dur, src_in, m2 } = spot;
         let mut out = Vec::new();
         let link = if line.chans.len() > 1 { Some(self.b.link_id()) } else { None };
@@ -432,7 +432,7 @@ pub(crate) fn import(text: &str, opts: &ImportOptions, report: &mut Report) -> R
         let c = &ctx;
         parsed.events.iter().flat_map(|e| e.lines.iter().map(move |l| c.frames(l.tcs[2], e.df))).min().unwrap_or(0)
     };
-    let (_, h, _, _, _) = filmcraft_time::frames_to_fields(first_rec, rate, ctx.seq.settings.drop_frame);
+    let (_, h, _, _, _) = epsicut_time::frames_to_fields(first_rec, rate, ctx.seq.settings.drop_frame);
     ctx.start_tc = fields_to_frames(h, 0, 0, 0, rate, ctx.seq.settings.drop_frame).min(first_rec);
     ctx.seq.start_timecode = ctx.start_tc;
     if source_tc_warning(&parsed) {
@@ -607,10 +607,10 @@ fn lay_cut(ctx: &mut Ctx, ev: &Event, l: &Line, video_base: usize, df: bool, m2:
     ctx.lay(l, Spot { item, name: &name, start: t0, dur: t1 - t0, src_in: src, m2: *m2 }, video_base);
 }
 
-fn transition_for(t: Trans, effect_name: Option<&str>, audio: bool, report: &mut Report) -> filmcraft_project::EffectInstance {
+fn transition_for(t: Trans, effect_name: Option<&str>, audio: bool, report: &mut Report) -> epsicut_project::EffectInstance {
     if let Some(n) = effect_name {
         let effect = transition_effect(n, audio, report);
-        if audio && effect.def().is_some_and(|d| d.kind != filmcraft_project::EffectKind::AudioTransition) {
+        if audio && effect.def().is_some_and(|d| d.kind != epsicut_project::EffectKind::AudioTransition) {
             report.warn(format!("transition \"{n}\" is not an audio transition; imported as Constant Power"));
             return find_effect("constant_power").map(|d| d.instance()).unwrap_or(effect);
         }
@@ -626,7 +626,7 @@ fn transition_for(t: Trans, effect_name: Option<&str>, audio: bool, report: &mut
             match code {
                 1 => {}
                 2 => {
-                    e.params.insert("direction".into(), filmcraft_project::Param::new(ParamValue::Choice(0)));
+                    e.params.insert("direction".into(), epsicut_project::Param::new(ParamValue::Choice(0)));
                 }
                 c => report.warn(format!("SMPTE wipe code {c:03} imported as a plain Wipe")),
             }
@@ -1112,7 +1112,7 @@ fn src_tc(x: &Exp, l: &OutLine, t: Tick) -> i64 {
 }
 
 /// EDL transition code and effect name.
-fn edl_transition(e: &filmcraft_project::EffectInstance, report: &mut Report) -> (String, String) {
+fn edl_transition(e: &epsicut_project::EffectInstance, report: &mut Report) -> (String, String) {
     let name = transition_name(e).to_ascii_uppercase();
     match e.effect.as_str() {
         "cross_dissolve" | "constant_power" | "constant_gain" | "exponential_fade" | "film_dissolve" | "additive_dissolve" | "non_additive_dissolve" => {

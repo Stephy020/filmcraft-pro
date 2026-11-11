@@ -237,7 +237,7 @@ fn recovery_preserves_original(tag: &str, block: Option<&str>, journal_enabled: 
     let old_dir = autosave::recovery_root(&d).join("1-1");
     std::fs::create_dir_all(&old_dir).unwrap();
     let project = (*demo().project).clone();
-    let bytes = filmcraft_format::encode(&project, false);
+    let bytes = epsicut_format::encode(&project, false);
     let original = old_dir.join("snapshot.fcproj");
     std::fs::write(&original, &bytes).unwrap();
 
@@ -285,7 +285,7 @@ fn recovery_can_retry_after_a_failed_journal_write() {
     let old_dir = autosave::recovery_root(&d).join("1-1");
     std::fs::create_dir_all(&old_dir).unwrap();
     let project = (*demo().project).clone();
-    std::fs::write(old_dir.join("snapshot.fcproj"), filmcraft_format::encode(&project, false)).unwrap();
+    std::fs::write(old_dir.join("snapshot.fcproj"), epsicut_format::encode(&project, false)).unwrap();
     let mut s = Session::default();
     let mut cfg = autosave::AutosaveConfig::new(&d);
     cfg.journal_debounce = std::time::Duration::from_secs(60);
@@ -299,7 +299,7 @@ fn recovery_can_retry_after_a_failed_journal_write() {
     assert!(!old_dir.exists());
     assert!(s.recovery_candidates().is_empty());
     let replacement = std::fs::read(&obstruction).unwrap();
-    assert_eq!(filmcraft_format::decode(&replacement).unwrap().project, project);
+    assert_eq!(epsicut_format::decode(&replacement).unwrap().project, project);
     assert_eq!(journaled(&mut s), s.revision);
     s.shutdown();
     std::fs::remove_dir_all(&d).unwrap();
@@ -313,9 +313,9 @@ fn recovery_cleanup_failure_reports_open_project_and_safe_retry() {
     let d = temp_dir("recover-cleanup-failure");
     let old_dir = autosave::recovery_root(&d).join("1-1");
     std::fs::create_dir_all(&old_dir).unwrap();
-    let project = filmcraft_project::Project::default();
+    let project = epsicut_project::Project::default();
     let original = old_dir.join("snapshot.fcproj");
-    std::fs::write(&original, filmcraft_format::encode(&project, false)).unwrap();
+    std::fs::write(&original, epsicut_format::encode(&project, false)).unwrap();
     // Permit the loader's read while denying deletion of this old snapshot.
     let held = std::fs::OpenOptions::new().read(true).share_mode(3).open(&original).unwrap();
     let mut s = Session::default();
@@ -384,7 +384,7 @@ fn scan_keeps_snapshot_when_session_metadata_is_unreadable() {
     let root = autosave::recovery_root(&d);
     let sess = root.join("123-1");
     std::fs::create_dir_all(&sess).unwrap();
-    let snap = filmcraft_format::encode(&filmcraft_project::Project::default(), false);
+    let snap = epsicut_format::encode(&epsicut_project::Project::default(), false);
     std::fs::write(sess.join("snapshot.fcproj"), snap).unwrap();
     std::fs::write(sess.join("session.json"), b"not json {").unwrap();
     let found = autosave::scan_candidates(&d, None);
@@ -458,7 +458,7 @@ fn project_scratch_folders_outside_the_project_are_not_used() {
         s.drain_events().iter().any(|e| matches!(e, crate::Event::Toast { message, .. } if message.contains(&named))),
         "the user is told the folder is not used"
     );
-    assert_eq!(crate::project_tools::previews_dir(&s), Some(show.join("FilmCraft Previews").join("cut")));
+    assert_eq!(crate::project_tools::previews_dir(&s), Some(show.join("EpsiCut Previews").join("cut")));
     s.execute("sequence.addEdit", json!({"seconds": 1.0})).unwrap();
     let r = s.execute("file.autoSaveNow", json!({})).unwrap();
     let written = std::path::PathBuf::from(r["path"].as_str().unwrap());
@@ -524,4 +524,24 @@ fn project_captured_folder_outside_the_project_is_not_used() {
     assert_eq!(crate::voiceover::media_dir(&s, &serde_json::Value::Null, "Captured"), inner);
     assert!(s.execute("file.projectSettings.scratchDisks", json!({"captured": "file://192.0.2.1/s/cap"})).is_err());
     let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn the_pre_rename_data_directory_is_moved_to_the_new_name() {
+    let base = temp_dir("legacy-data");
+    let (dir, legacy) = (base.join("EpsiCut"), base.join("FilmCraft"));
+    // nothing there yet: the new directory, nothing created
+    assert_eq!(autosave::adopt_legacy_dir(dir.clone(), &legacy), dir);
+    assert!(!dir.exists());
+    // only the old one: it moves, contents and all
+    std::fs::create_dir_all(legacy.join("models")).unwrap();
+    std::fs::write(legacy.join("preferences.json"), b"{}").unwrap();
+    assert_eq!(autosave::adopt_legacy_dir(dir.clone(), &legacy), dir);
+    assert!(dir.join("preferences.json").is_file() && dir.join("models").is_dir());
+    assert!(!legacy.exists());
+    // both: the new one wins and the old one is left alone
+    std::fs::create_dir_all(&legacy).unwrap();
+    assert_eq!(autosave::adopt_legacy_dir(dir.clone(), &legacy), dir);
+    assert!(legacy.is_dir());
+    let _ = std::fs::remove_dir_all(&base);
 }

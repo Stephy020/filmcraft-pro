@@ -1,7 +1,7 @@
 //! Frame rates and start timecodes a hostile document carries are bounded on import, so no export
 //! overflows its frame arithmetic. (FCP7 `timebase` and start-timecode cases: `tests/it/fcp7.rs`.)
 
-use filmcraft_interchange::{ExportOptions, Format, export, import};
+use epsicut_interchange::{ExportOptions, Format, export, import};
 
 /// A `frameDuration` of `1/9223372036854775807s` is a rate of 9e18 per second: `frame_at` clamps to
 /// `i64::MAX` and `frames_round` then overflowed adding 1 (a panic in debug builds) as soon as the
@@ -57,9 +57,9 @@ fn clamped_timebase_and_replaced_otio_rate_are_reported() {
 #[test]
 fn aaf_and_omf_start_timecodes_are_bounded() {
     use super::support;
-    use filmcraft_interchange::{ImportOptions, aaf, omf};
-    use filmcraft_project::{Project, TrackKind};
-    use filmcraft_time::FrameRate;
+    use epsicut_interchange::{ImportOptions, aaf, omf};
+    use epsicut_project::{Project, TrackKind};
+    use epsicut_time::FrameRate;
     let r = FrameRate::FPS_25;
     let mut p = Project::new("t");
     let a = support::media(&mut p, "/media/A.mov", true, true, r);

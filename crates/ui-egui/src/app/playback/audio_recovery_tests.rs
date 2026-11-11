@@ -1,6 +1,6 @@
 use super::*;
 use crate::{AudioOut, shuttle_mix_rate};
-use filmcraft_engine::Session;
+use epsicut_engine::Session;
 use serde_json::json;
 use std::sync::{
     Arc,
@@ -20,7 +20,7 @@ impl AudioOut for Device {
     fn channels(&self) -> usize {
         2
     }
-    fn configure(&mut self, hardware: &filmcraft_engine::settings::AudioHardwarePrefs, _: Option<u32>) {
+    fn configure(&mut self, hardware: &epsicut_engine::settings::AudioHardwarePrefs, _: Option<u32>) {
         self.ready = hardware.default_output == "available";
     }
     fn start(&mut self, _: Box<dyn FnMut(&mut [f32], usize) + Send>) -> Result<u32, String> {
@@ -44,7 +44,7 @@ fn forward_shuttle_playback_keeps_audio_enabled() {
 
     let mut session = Session::default();
     session.execute("file.newSequence", json!({"width":16,"height":16})).unwrap();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     let starts = Arc::new(AtomicUsize::new(0));
     app.audio = Some(Box::new(Device { ready: true, starts: starts.clone(), reading: Some(0) }));
     app.play(2.0);
@@ -99,10 +99,10 @@ fn maintain_pitch_shuttling_controls_the_samples_sent_to_the_device() {
     session.execute("file.newSequence", json!({"width":16,"height":16})).unwrap();
     let inter: Vec<f32> =
         (0..48_000 * 8).flat_map(|i| [440.0, 660.0].map(|hz| (0.2 * (std::f64::consts::TAU * hz * i as f64 / 48_000.0).sin()) as f32)).collect();
-    let bytes: Arc<[u8]> = filmcraft_engine::previews::write_wav_f32(&inter, 48_000).into();
-    let item = filmcraft_engine::commands::import_bytes(&mut session, "/shuttle-tone.wav", bytes, None).unwrap();
+    let bytes: Arc<[u8]> = epsicut_engine::previews::write_wav_f32(&inter, 48_000).into();
+    let item = epsicut_engine::commands::import_bytes(&mut session, "/shuttle-tone.wav", bytes, None).unwrap();
     session.execute("timeline.place", json!({"item":item.0,"audioTrack":"A1","seconds":0.0})).unwrap();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     let samples = Arc::new(Mutex::new(Vec::new()));
     app.audio = Some(Box::new(Capture(samples.clone())));
     let mut normal = None;
@@ -136,7 +136,7 @@ fn changing_pitch_preference_restarts_audio_at_the_current_playhead() {
     let mut session = Session::default();
     session.execute("file.newSequence", json!({"width":16,"height":16})).unwrap();
     let ctx = egui::Context::default();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     let starts = Arc::new(AtomicUsize::new(0));
     app.audio = Some(Box::new(Device { ready: true, starts: starts.clone(), reading: Some(0) }));
     app.session.prefs.audio_hardware.default_output = "available".into();
@@ -171,7 +171,7 @@ fn changing_hardware_recovers_wall_clock_playback_without_rewinding() {
     let mut session = Session::default();
     session.execute("file.newSequence", json!({"width":16,"height":16})).unwrap();
     let ctx = egui::Context::default();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     let starts = Arc::new(AtomicUsize::new(0));
     app.audio = Some(Box::new(Device { ready: false, starts: starts.clone(), reading: Some(0) }));
     app.apply_prefs(&ctx);
@@ -193,7 +193,7 @@ fn a_failed_device_clock_resumes_from_the_displayed_frame() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
     let ctx = egui::Context::default();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     app.audio = Some(Box::new(Device { ready: true, starts: Arc::new(AtomicUsize::new(0)), reading: None }));
     let displayed = app.session.sequence_rate().tick_of(48);
     app.session.set_playhead(displayed);
@@ -238,7 +238,7 @@ fn a_restarted_stream_keeps_the_device_clock_and_the_sound() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
     let ctx = egui::Context::default();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     app.audio = Some(Box::new(Restartable { reading: None }));
     app.playback.playing = true;
     app.playback.audio_clock = true;
@@ -283,7 +283,7 @@ fn a_lost_output_is_reopened_and_the_sound_returns() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
     let ctx = egui::Context::default();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     let starts = Arc::new(AtomicUsize::new(0));
     let ticking = Arc::new(AtomicBool::new(true));
     app.audio = Some(Box::new(Reviving { starts: starts.clone(), opens: Arc::new(AtomicBool::new(true)), ticking: ticking.clone() }));
@@ -312,7 +312,7 @@ fn a_device_that_appears_mid_playback_starts_sounding() {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
     let ctx = egui::Context::default();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     let starts = Arc::new(AtomicUsize::new(0));
     let opens = Arc::new(AtomicBool::new(false));
     app.audio = Some(Box::new(Reviving { starts: starts.clone(), opens: opens.clone(), ticking: Arc::new(AtomicBool::new(true)) }));
@@ -335,7 +335,7 @@ fn a_device_that_appears_mid_playback_starts_sounding() {
 fn only_a_running_transport_has_something_to_stop() {
     let mut session = Session::default();
     session.execute("file.newSequence", json!({"width": 16, "height": 16})).unwrap();
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     assert!(!app.transport_running(), "nothing runs in a new project");
     app.playback.playing = true;
     assert!(app.transport_running(), "Program playback runs a transport");
@@ -359,13 +359,13 @@ fn only_a_running_transport_has_something_to_stop() {
     app.session.mcrec.seq = Some(seq);
     assert!(app.transport_running(), "a multicam pass runs one");
     app.session.mcrec.seq = None;
-    app.session.voiceover.rec = Some(filmcraft_engine::voiceover::Recording {
+    app.session.voiceover.rec = Some(epsicut_engine::voiceover::Recording {
         seq,
-        track: filmcraft_project::TrackId(0),
-        record_start: filmcraft_time::Tick::ZERO,
-        capture_start: filmcraft_time::Tick::ZERO,
+        track: epsicut_project::TrackId(0),
+        record_start: epsicut_time::Tick::ZERO,
+        capture_start: epsicut_time::Tick::ZERO,
         punch_out: None,
-        format: filmcraft_engine::voiceover::InputFormat { sample_rate: 48_000, channels: 1 },
+        format: epsicut_engine::voiceover::InputFormat { sample_rate: 48_000, channels: 1 },
         channel: 0,
     });
     assert!(app.transport_running(), "a voice-over take runs one");
@@ -385,7 +385,7 @@ fn a_scrub_stops_a_text_to_speech_preview_but_not_an_idle_output() {
         fn channels(&self) -> usize {
             2
         }
-        fn configure(&mut self, _: &filmcraft_engine::settings::AudioHardwarePrefs, _: Option<u32>) {}
+        fn configure(&mut self, _: &epsicut_engine::settings::AudioHardwarePrefs, _: Option<u32>) {}
         fn start(&mut self, _: Box<dyn FnMut(&mut [f32], usize) + Send>) -> Result<u32, String> {
             Ok(48000)
         }
@@ -398,8 +398,8 @@ fn a_scrub_stops_a_text_to_speech_preview_but_not_an_idle_output() {
     }
     let mut session = Session::default();
     session.execute("file.newSequence", json!({"width":16,"height":16})).unwrap();
-    session.tts_preview = Some(Arc::new(filmcraft_tts::Audio { samples: vec![0.0; 4800], sample_rate: 48_000 }));
-    let mut app = FilmcraftApp::new(session);
+    session.tts_preview = Some(Arc::new(epsicut_tts::Audio { samples: vec![0.0; 4800], sample_rate: 48_000 }));
+    let mut app = EpsicutApp::new(session);
     let stops = Arc::new(AtomicUsize::new(0));
     app.audio = Some(Box::new(Counting(stops.clone())));
     app.stop_for_scrub();

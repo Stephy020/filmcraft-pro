@@ -59,7 +59,7 @@ pub struct Field {
     pub indent: bool,
     /// Only editable while this boolean key is on.
     pub enabled_by: Option<&'static str>,
-    /// Whether FilmCraft acts on the value (false = remembered for parity, no effect yet).
+    /// Whether EpsiCut acts on the value (false = remembered for parity, no effect yet).
     pub wired: bool,
 }
 
@@ -344,7 +344,7 @@ pub(super) static CATEGORIES: &[Category] = &[
                     b("autoSave.recoveryJournal", "Keep a recovery copy of unsaved changes", true),
                     sub("autoSave.recoveryIntervalSeconds", "Update it at least every", int(1.0, 600.0, "second(s)"), "autoSave.recoveryJournal", true),
                     Row::Note(
-                        "Changes are copied in the background a moment after each edit. If FilmCraft quits unexpectedly, they are offered the next time it starts.",
+                        "Changes are copied in the background a moment after each edit. If EpsiCut quits unexpectedly, they are offered the next time it starts.",
                     ),
                     Row::Custom("autoSaveStatus"),
                 ],
@@ -500,7 +500,7 @@ pub(super) static CATEGORIES: &[Category] = &[
                 ],
             ),
             Row::Note(
-                "The media cache holds render previews of unsaved projects and other files FilmCraft can recreate. Deleting them is always safe; FilmCraft rebuilds them as needed.",
+                "The media cache holds render previews of unsaved projects and other files EpsiCut can recreate. Deleting them is always safe; EpsiCut rebuilds them as needed.",
             ),
         ],
     },
@@ -526,7 +526,7 @@ pub(super) static CATEGORIES: &[Category] = &[
             b("playback.draftDecode", "Draft decoding at reduced playback resolution (H.264: faster, some frames less filtered)", true),
             f("playback.hardwareDecoding", "Hardware decoding", Kind::Choice(HW_DECODE), true),
             Row::Note(
-                "Hardware decoding: Auto uses the system's video decoder (VideoToolbox on macOS, Media Foundation on Windows, VA-API or NVDEC for H.264 and HEVC on Linux) for the streams it supports, and FilmCraft's own decoder for everything else or if the hardware fails. Media that is already open keeps its decoder until it is reopened.",
+                "Hardware decoding: Auto uses the system's video decoder (VideoToolbox on macOS, Media Foundation on Windows, VA-API or NVDEC for H.264 and HEVC on Linux) for the streams it supports, and EpsiCut's own decoder for everything else or if the hardware fails. Media that is already open keeps its decoder until it is reopened.",
             ),
         ],
     },
@@ -535,7 +535,7 @@ pub(super) static CATEGORIES: &[Category] = &[
         title: "Plugins",
         rows: &[
             Row::Group("Plugins", &[b("plugins.developerMode", "Enable developer mode", false)]),
-            Row::Note("No plugins are installed. Changes will take effect the next time you start FilmCraft."),
+            Row::Note("No plugins are installed. Changes will take effect the next time you start EpsiCut."),
         ],
     },
     Category {
@@ -730,7 +730,7 @@ impl crate::autosave::Preferences {
     /// Settings ▸ Playback ▸ Hardware decoding as the process-wide switch the hardware decoder
     /// factories consult (new decoders only).
     pub fn apply_hardware_decoding(&self) {
-        filmcraft_codecs::hw::set_hardware_decoding(self.playback.hardware_decoding != "off");
+        epsicut_codecs::hw::set_hardware_decoding(self.playback.hardware_decoding != "off");
     }
 
     /// Values of one category as a JSON object.

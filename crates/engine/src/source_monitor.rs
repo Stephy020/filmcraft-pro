@@ -3,8 +3,8 @@
 use crate::clip_ops::source_view;
 use crate::commands::bad;
 use crate::{EngineError, Result, Session};
-use filmcraft_project::{ClipId, ItemId, ItemKind, Label, Marker, MarkerId, MarkerKind, Project};
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
+use epsicut_project::{ClipId, ItemId, ItemKind, Label, Marker, MarkerId, MarkerKind, Project};
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
 use serde_json::{Value, json};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -140,8 +140,8 @@ pub(crate) fn close(s: &mut Session, all: bool) -> Result<Value> {
 fn marker_list(p: &mut Project, item: ItemId) -> Result<&mut Vec<Marker>> {
     let it = p.item_mut(item).ok_or_else(|| EngineError::Other("Source item is unavailable".into()))?;
     match &mut it.kind {
-        filmcraft_project::ItemKind::Media(m) => Ok(&mut m.markers),
-        filmcraft_project::ItemKind::Sequence(q) => Ok(&mut std::sync::Arc::make_mut(q).markers),
+        epsicut_project::ItemKind::Media(m) => Ok(&mut m.markers),
+        epsicut_project::ItemKind::Sequence(q) => Ok(&mut std::sync::Arc::make_mut(q).markers),
         _ => Err(EngineError::Other("Source marker editing requires media or a sequence".into())),
     }
 }
@@ -263,7 +263,7 @@ pub(crate) fn open_clip(s: &mut Session, clip: ClipId) -> Result<Value> {
 fn text<'a>(p: &'a Value, key: &str, id: &str) -> Result<Option<&'a str>> {
     p.get(key).map(|v| v.as_str().ok_or_else(|| bad(id, format!("{key} must be text")))).transpose()
 }
-fn color(p: &Value, id: &str) -> Result<Option<(Label, Option<filmcraft_project::HexColor>)>> {
+fn color(p: &Value, id: &str) -> Result<Option<(Label, Option<epsicut_project::HexColor>)>> {
     crate::commands::marker_color_p(p, id)
 }
 fn duration(p: &Value, view: &crate::clip_ops::SourceView, id: &str) -> Result<Tick> {

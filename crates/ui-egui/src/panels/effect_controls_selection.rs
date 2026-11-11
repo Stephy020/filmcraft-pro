@@ -1,12 +1,12 @@
 //! Keyframe selection gestures. The project changes only on a completed key drag; a marquee,
 //! modifier click, or cancelled preview only changes the UI selection.
 use egui::{Color32, Id, Pos2, Rect, Response, Sense, Stroke, vec2};
-use filmcraft_project::{Interpolation, TrackItem};
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_project::{Interpolation, TrackItem};
+use epsicut_time::{FrameRate, Tick};
 use serde_json::json;
 
 use crate::{
-    FilmcraftApp,
+    EpsicutApp,
     icons::{self, Icon},
     state::KeyframeRef,
 };
@@ -60,12 +60,12 @@ pub(crate) struct Interaction {
     cancelled: bool,
 }
 
-fn limits(app: &FilmcraftApp, keys: &[KeyframeRef]) -> Option<(i64, i64)> {
+fn limits(app: &EpsicutApp, keys: &[KeyframeRef]) -> Option<(i64, i64)> {
     let q = app.session.active_sequence()?;
     let frame = q.settings.frame_rate.frame_duration();
     let (mut low, mut high) = (i64::MIN, i64::MAX);
     for key in keys {
-        let (_, it) = q.find_item(filmcraft_project::ClipId(key.clip))?;
+        let (_, it) = q.find_item(epsicut_project::ClipId(key.clip))?;
         let speed = it.speed.abs() * if it.reverse { -1.0 } else { 1.0 };
         if !speed.is_finite() || speed == 0.0 || it.duration < frame {
             return None;
@@ -106,7 +106,7 @@ fn update(group: &mut Group, points: &[Point], pos: Pos2, shift: bool, playhead:
 impl Interaction {
     /// Begin keyframe selection for `clip`: reset on a clip change, cancel a gesture on Escape, start a Shift marquee from the existing selection, and keep
     /// gestures as UI-only previews.
-    pub(crate) fn begin(app: &mut FilmcraftApp, ui: &mut egui::Ui, area: Rect, clip: u64) -> Self {
+    pub(crate) fn begin(app: &mut EpsicutApp, ui: &mut egui::Ui, area: Rect, clip: u64) -> Self {
         let mut state = ui.data(|d| d.get_temp::<State>(state_id())).unwrap_or_default();
         if state.clip != clip {
             state = State { clip, ..Default::default() };
@@ -141,7 +141,7 @@ impl Interaction {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn key(
         &mut self,
-        app: &mut FilmcraftApp,
+        app: &mut EpsicutApp,
         ui: &egui::Ui,
         key: KeyframeRef,
         it: &TrackItem,
@@ -206,7 +206,7 @@ impl Interaction {
         rect
     }
 
-    pub(crate) fn finish(mut self, app: &mut FilmcraftApp, ui: &egui::Ui) {
+    pub(crate) fn finish(mut self, app: &mut EpsicutApp, ui: &egui::Ui) {
         if let Some(Gesture::Marquee { origin, end, base }) = &self.state.gesture {
             let rect = Rect::from_two_pos(*origin, *end).intersect(self.area);
             let mut selected = base.clone();
@@ -270,7 +270,7 @@ mod tests {
     use super::*;
     #[test]
     fn keyframe_timeline_coordinates_follow_trim_speed_and_reverse() {
-        let mut session = filmcraft_engine::Session::default();
+        let mut session = epsicut_engine::Session::default();
         session.execute("file.openDemoProject", json!({})).unwrap();
         let mut it = session.active_sequence().unwrap().video_tracks[0].items[0].clone();
         it.start += Tick::from_seconds_f64(4.0);
@@ -296,14 +296,14 @@ mod tests {
                 key: key.clone(),
                 rect: Rect::from_center_size(Pos2::ZERO, vec2(15.0, 15.0)),
                 time: Tick::ZERO,
-                pixels_per_tick: 100.0 / filmcraft_time::TICKS_PER_SECOND as f64,
+                pixels_per_tick: 100.0 / epsicut_time::TICKS_PER_SECOND as f64,
                 interp: Interpolation::Linear,
             },
             Point {
                 key: other,
                 rect: Rect::from_center_size(egui::pos2(95.0, 30.0), vec2(15.0, 15.0)),
                 time: Tick::from_seconds_f64(0.95),
-                pixels_per_tick: 100.0 / filmcraft_time::TICKS_PER_SECOND as f64,
+                pixels_per_tick: 100.0 / epsicut_time::TICKS_PER_SECOND as f64,
                 interp: Interpolation::Linear,
             },
         ];
@@ -312,7 +312,7 @@ mod tests {
             keys: vec![key],
             press: Pos2::ZERO,
             time: Tick::ZERO,
-            ticks_per_pixel: filmcraft_time::TICKS_PER_SECOND as f64 / 100.0,
+            ticks_per_pixel: epsicut_time::TICKS_PER_SECOND as f64 / 100.0,
             low: 0,
             high: Tick::from_seconds_f64(1.0).0,
             delta: Tick::ZERO,

@@ -6,8 +6,8 @@ and `.md` (options and sections: [testing.md](testing.md) §5). Agents read live
 
 ## Interactive builds and redraw work
 
-For interactive editing, build with `cargo build --release -p filmcraft --features whisper` and
-launch `target/release/filmcraft`. The development profile optimizes dependencies and codec hot
+For interactive editing, build with `cargo build --release -p epsicut --features whisper` and
+launch `target/release/epsicut`. The development profile optimizes dependencies and codec hot
 loops, but still builds the editor at optimization level 1; it is not the release performance
 baseline. Keep the same build profile when comparing code changes.
 
@@ -19,7 +19,7 @@ search highlights by query. Playhead movement reuses them; project edits, undo/r
 refresh them. Highlight lookup is constant work per word, including searches with many matches.
 
 To measure a long transcript, run
-`cargo test -p filmcraft-ui-egui --test it transcript_ui::long_transcript_redraw_benchmark -- --ignored --nocapture`
+`cargo test -p epsicut-ui-egui --test it transcript_ui::long_transcript_redraw_benchmark -- --ignored --nocapture`
 alone. It reports median and p95 redraw time for 10,000 words with an empty query and a query matching
 every word. It measures UI update work, not native display presentation, and deliberately has no
 machine-dependent timing assertion. The transcript still lays out every word; list virtualization
@@ -43,7 +43,7 @@ to a 12 GB footprint, 10.8 GB of it live heap in three piles.
 1. **Media files read whole (2.9 GB), MEM1.** The desktop host had no `Services::reader`, so
    `MediaPool::open_file` fell back to `read_file` and every clip's bytes stayed in memory for as
    long as its source was open. `FsServices::reader` now returns a
-   `filmcraft_media::reader::FileReader`: the file stays open and containers read their index and
+   `epsicut_media::reader::FileReader`: the file stays open and containers read their index and
    then single samples with positional reads, as the web host already did through `BlobReader`
    ([web.md](web.md)). Formats decoded in one go (stills, WAV, MPEG elementary streams) are still
    read whole through the reader.
@@ -67,7 +67,7 @@ to a 12 GB footprint, 10.8 GB of it live heap in three piles.
 4. **Freed planes the allocator keeps (2.5 GB), MEM4.** With MEM1–MEM3 the same twelve clips took
    5.1 GB, only 2.5 GB of it live: every decoded picture allocated three planes and every
    eviction freed them, and the system allocator kept the freed pages (`footprint`: 1.7 GB
-   reclaimable). `filmcraft_frame::pool` now keeps the planes of evicted frames (up to 192 MiB per
+   reclaimable). `epsicut_frame::pool` now keeps the planes of evicted frames (up to 192 MiB per
    sample type; a frame something else still holds is left alone) and the H.264 decoder and the
    VideoToolbox path decode into them, so steady-state decoding allocates no planes.
    `perf.stats` reports `decode.planePoolMB` and `decode.planesReused`.
@@ -98,7 +98,7 @@ Apple M2 Max (12 cores, 64 GB, macOS 26.6), 2026-10-23, a shared machine with ot
 builds running (1-minute load average 57–170 across the runs, noted per pair). The timeline is
 the #3030 shape: 60 s 1080p23.976 sequence, a 1080p H.264 clip on V1, a 4K H.264 clip on V2 as a
 40 % picture-in-picture, stereo WAV on A1 (ffmpeg `testsrc2` + noise fixtures), exported to
-H.264 20 Mb/s + AAC through `filmcraft-cli … run`, hardware decoding on. Before / after binaries
+H.264 20 Mb/s + AAC through `epsicut-cli … run`, hardware decoding on. Before / after binaries
 alternated (A/B/A/B/A/B), median of three; `convert`, `encode`, `render`, `wait` are the export's
 own stage timers (render overlaps encode, so they do not add up to the wall time).
 
@@ -152,7 +152,7 @@ path scores 24–29 dB) and not a range or matrix difference. On smooth content 
 37 dB and 0.2 / 0.6 / 0.8 codes).
 
 Sessions: under LLDB with auto-continuing breakpoints on `VTCompressionSessionCreate` and
-`VTCompressionSessionInvalidate`, two consecutive exports in one `filmcraft-cli run` created 3
+`VTCompressionSessionInvalidate`, two consecutive exports in one `epsicut-cli run` created 3
 sessions (the HEVC availability probe and one per export) and invalidated every one (6 hits: ours
 and the framework's at release); the test that exports at other frame rates, cancels an export
 from another thread and exports again created 6 and invalidated 12.
@@ -171,7 +171,7 @@ two builds ran alternately in the same session and the median is reported.
 
 ### Per frame, synthetic 1080p sources
 
-`cargo run --release -p filmcraft-render --example frame_bench`: an 8-bit 4:2:0 camera picture and a
+`cargo run --release -p epsicut-render --example frame_bench`: an 8-bit 4:2:0 camera picture and a
 10-bit 4:4:4 banner with alpha only in its bottom 100 rows; `render_sequence` followed by the
 conversion to 8-bit RGBA, milliseconds per frame (median of 40 frames, 5 alternating rounds):
 
@@ -195,7 +195,7 @@ picture (4.5 ms in the synthetic case) and the conversion to 8 bits (2 ms).
 
 ## Results (GPU3: GPU export rendering, Off → Auto, #30)
 
-Export ▸ GPU Rendering composites the exported frames on the GPU (`filmcraft-gpu`'s off-screen
+Export ▸ GPU Rendering composites the exported frames on the GPU (`epsicut-gpu`'s off-screen
 compositor, a pool of up to four renderers) instead of the CPU reference renderer, which stays the
 fallback for anything the GPU stage does not run. Linux, Ryzen 7 9700X (16 threads) + Radeon
 RX 7900 (Mesa 26.2.2), 2026-10-08 / 09, same build, `cargo xtask bench --sections export --only
@@ -244,7 +244,7 @@ saves (`h264_fx` 14.21 s against 11.57 s on the CPU), but no longer ten times as
 
 ### Memory after an export
 
-The recycled images stay on the shelves of `filmcraft_frame::pool` (up to 320 MiB of them, and
+The recycled images stay on the shelves of `epsicut_frame::pool` (up to 320 MiB of them, and
 192 MiB of each plane type), and nothing else asks for images of an export's size, so a finished
 export left them idle. A standalone export's pipeline now frees the idle float images when it goes
 away, however the export ended (done, failed, cancelled, dropped half way). The plane shelves are
@@ -350,7 +350,7 @@ and an outro.
 
 | encoder | wall time | frames/s | vs real time | file |
 |---|---|---|---|---|
-| built-in (`filmcraft-h264enc`) | 793 s | 17.9 | 1.4× slower | 1445 MB, 20.0 Mb/s |
+| built-in (`epsicut-h264enc`) | 793 s | 17.9 | 1.4× slower | 1445 MB, 20.0 Mb/s |
 | hardware (VideoToolbox) | **311 s** | **45.7** | 1.8× faster | 1417 MB, 19.6 Mb/s |
 
 2.5× faster. The first 134 s of the same timeline, where the overlays are densest (intro, a banner, a
@@ -358,7 +358,7 @@ subscribe bar and the outro in 134 s):
 
 | encoder | wall time | frames/s | vs real time | file |
 |---|---|---|---|---|
-| built-in (`filmcraft-h264enc`) | 395 s | 8.5 | 2.9× slower | 340 MB, 20.0 Mb/s |
+| built-in (`epsicut-h264enc`) | 395 s | 8.5 | 2.9× slower | 340 MB, 20.0 Mb/s |
 | hardware (VideoToolbox) | **84 s** | **39.9** | 1.6× faster | 312 MB, 18.3 Mb/s |
 
 4.7× faster there. The gain depends on what else an export spends its time on: with the encoder
@@ -379,7 +379,7 @@ CPU compositor, the next target of #30 ("GPU export").
 
 ## Export: rendering the next batch while the current one is encoded
 
-Until now a step of the stepped exporter (`filmcraft_export::Exporter`) rendered a batch of frames in
+Until now a step of the stepped exporter (`epsicut_export::Exporter`) rendered a batch of frames in
 parallel and only then encoded, muxed and mixed the audio of that batch on one thread, so the wall
 time was the sum of the stages. Where the sum was large (1080p30, 300 frames, `perf.stats`
 `export.stages`) the stages were: software H.264 render 4257 ms, encode 17845 (RGB to YUV 766 of it),
@@ -477,7 +477,7 @@ while it runs. A monitor playing a different file than the export dropped no fra
 
 ## Results (CPU H.264 export: encoder work and colour conversion, before → after)
 
-`cargo run --release -p filmcraft-engine --example bench_export -- --runs 1`: 10 s of 1080p23.976
+`cargo run --release -p epsicut-engine --example bench_export -- --runs 1`: 10 s of 1080p23.976
 H.264 + AAC (ffmpeg `testsrc2` with noise) exported to H.264 + AAC MP4 on the CPU (software
 encoder, no GPU renderer). Ryzen, 16 threads, Linux, 2026-10-27; 7 rounds with the builds in
 rotating order, one export per run, wall time in seconds:
@@ -513,7 +513,7 @@ compositor and the decoders, not by the encoder, so a different hardware codec d
 
 ### Quality per bit
 
-30 s with a banner (15–45 s of that timeline), exported by FilmCraft as ProRes 422 HQ (the reference)
+30 s with a banner (15–45 s of that timeline), exported by EpsiCut as ProRes 422 HQ (the reference)
 and by each encoder at several bitrates; ffmpeg's `psnr` and `ssim` of the decoded 4:2:0 pictures against
 the reference. Average PSNR over the three planes, and SSIM (higher is better):
 
@@ -539,7 +539,7 @@ with `--hw off` / `--hw auto`, 2026-10-07: Intel Xeon E5-2680 v4 (14 cores / 28 
 NVIDIA GeForce RTX 5060 8 GB (driver 617.14), Windows 11 Pro 26200, idle machine. Two alternating
 rounds; the table gives the range of the two (decode: best of 3 within each). Reproduce with
 `cargo xtask bench --sections decode --only dec_h264 --repeat 3 --hw off|auto` (likewise `dec_hevc`)
-and `--sections playback --only "h264-2160 full" --hw off|auto`; set `FILMCRAFT_FFMPEG` if ffmpeg is not
+and `--sections playback --only "h264-2160 full" --hw off|auto`; set `EPSICUT_FFMPEG` if ffmpeg is not
 on `PATH` for the fixture generator. Pictures are identical either way (bit-exact parity tests,
 `crates/platform/tests/it/media_foundation.rs`). The decoder MFTs were Microsoft's H.264 decoder
 (`Microsoft H264 Video Decoder MFT`) and the `HEVCVideoExtension` decoder, both decoding with DXVA
@@ -1043,7 +1043,7 @@ decode 2642 / 2925 → 2506 / 2064; playback 5246 / 7903 → 3379 / 3121; scrub 
 2. **No redundant plane copies**: H.264 / HEVC / VP9 pictures are moved into `VideoFrame`s instead
    of copied (12 MB per 2160p frame; HEVC 10-bit also lost a per-sample widening pass).
 3. **Catch-up decoding**: frame jobs carry how far before their frame the playhead is
-   (`filmcraft_media::cancel::with_catch_up`); the GOP cache skips non-reference samples of late
+   (`epsicut_media::cancel::with_catch_up`); the GOP cache skips non-reference samples of late
    frames (`VideoDecoder::is_disposable`: H.264 `nal_ref_idc` 0, HEVC sub-layer non-reference
    pictures of the top temporal layer). Scrub requests keep the last 2 s fully decoded so dragging
    back stays cached. The wanted frame is decoded exactly as before; a later request for a skipped
@@ -1102,6 +1102,6 @@ A cold drag went from ~1.5 s of frozen playhead (two opens of 558 + 191 ms) to ~
 558 ms). That last open is still on the UI thread; moving it off is the next step of #2633.
 
 Test: `crates/ui-egui/tests/it/scrub_stop_ui.rs` — a press that only moves the playhead closes no
-stream, and a press while playing still stops the transport. `apps/filmcraft` (`audio::tests`) —
+stream, and a press while playing still stops the transport. `apps/epsicut` (`audio::tests`) —
 the device default rate needs no configuration search.
 

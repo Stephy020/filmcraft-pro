@@ -1,7 +1,7 @@
 //! Single-pass VBR must land near its target bitrate even on a short, high-motion clip.
 
 use crate::common::{self, Yuv};
-use filmcraft_h264enc::*;
+use epsicut_h264enc::*;
 use std::io::Read;
 use std::process::{Command, Stdio};
 

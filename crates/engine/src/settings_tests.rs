@@ -3,8 +3,8 @@
 
 use std::path::Path;
 
-use filmcraft_project::{ItemId, ItemKind, Label, ParamValue};
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_project::{ItemId, ItemKind, Label, ParamValue};
+use epsicut_time::{FrameRate, Tick};
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -325,14 +325,14 @@ fn still_image_default_duration_and_indeterminate_timebase() {
     set(&mut s, "timeline.stillImageDuration", json!(3));
     let end = s.active_sequence().unwrap().duration();
     let r = s.execute("timeline.place", json!({"item": still.0, "track": "V1", "time": end.0})).unwrap();
-    let clip = filmcraft_project::ClipId(r["clips"][0].as_u64().unwrap());
+    let clip = epsicut_project::ClipId(r["clips"][0].as_u64().unwrap());
     let dur = s.active_sequence().unwrap().find_item(clip).unwrap().1.duration;
     assert_eq!(dur, rate.snap_nearest(Tick::from_seconds_f64(3.0)));
     // in frames
     s.execute("prefs.set", json!({"values": {"timeline.stillImageUnit": "frames", "timeline.stillImageDuration": 10}})).unwrap();
     let end = s.active_sequence().unwrap().duration();
     let r = s.execute("timeline.place", json!({"item": still.0, "track": "V1", "time": end.0})).unwrap();
-    let clip = filmcraft_project::ClipId(r["clips"][0].as_u64().unwrap());
+    let clip = epsicut_project::ClipId(r["clips"][0].as_u64().unwrap());
     assert_eq!(s.active_sequence().unwrap().find_item(clip).unwrap().1.duration, rate.tick_of(10));
     // Source monitor insert of a still uses it too
     s.execute("source.open", json!({"item": still.0})).unwrap();
@@ -399,7 +399,7 @@ fn label_defaults_names_and_colours() {
     assert_eq!(s.project.item(seq).unwrap().label, Label::Teal);
     // movie / video-only / audio-only media
     let l = &s.prefs.labels;
-    use filmcraft_media::MediaKind as K;
+    use epsicut_media::MediaKind as K;
     assert_eq!(l.for_media(K::Movie, true, true), Label::Iris);
     assert_eq!(l.for_media(K::Movie, true, false), Label::Violet);
     assert_eq!(l.for_media(K::AudioOnly, false, true), Label::Caribbean);
@@ -420,7 +420,7 @@ fn default_media_scaling() {
     let place = |s: &mut Session| {
         let end = s.active_sequence().unwrap().duration();
         let r = s.execute("timeline.place", json!({"item": big.0, "track": "V1", "time": end.0})).unwrap();
-        let c = filmcraft_project::ClipId(r["clips"][0].as_u64().unwrap());
+        let c = epsicut_project::ClipId(r["clips"][0].as_u64().unwrap());
         s.active_sequence().unwrap().find_item(c).unwrap().1.clone()
     };
     let none = place(&mut s);
@@ -436,7 +436,7 @@ fn default_media_scaling() {
     let fit = import_png(&mut s, &dir, "fit.png", w, h);
     let end = s.active_sequence().unwrap().duration();
     let r = s.execute("timeline.place", json!({"item": fit.0, "track": "V1", "time": end.0})).unwrap();
-    let c = filmcraft_project::ClipId(r["clips"][0].as_u64().unwrap());
+    let c = epsicut_project::ClipId(r["clips"][0].as_u64().unwrap());
     let it = s.active_sequence().unwrap().find_item(c).unwrap().1.clone();
     assert_eq!(it.effect("motion").unwrap().params["scale"].value, ParamValue::Float(100.0));
     let _ = std::fs::remove_dir_all(&dir);
@@ -464,7 +464,7 @@ fn media_cache_location_policy_and_clean() {
     assert_eq!(cache, dir.join("data").join("Media Cache"));
     // unsaved projects keep their previews in the media cache
     assert!(s.previews.dir().unwrap().starts_with(cache.join("Previews")), "{:?}", s.previews.dir());
-    // a custom location moves them, into a folder of FilmCraft's own inside it
+    // a custom location moves them, into a folder of EpsiCut's own inside it
     let location = dir.join("cache2");
     set(&mut s, "mediaCache.location", json!(location.to_string_lossy()));
     let custom = location.join(settings::CUSTOM_CACHE_FOLDER);
@@ -504,7 +504,7 @@ fn media_cache_location_policy_and_clean() {
 }
 
 /// #2772: a custom media cache location is a folder the user picked (the home folder, a footage
-/// folder), so the policy and "Delete…" work in a folder of FilmCraft's own inside it and leave
+/// folder), so the policy and "Delete…" work in a folder of EpsiCut's own inside it and leave
 /// everything else alone; neither a symlink inside the cache nor one in place of it is followed.
 #[test]
 fn media_cache_cleaning_keeps_the_files_of_the_chosen_folder() {
@@ -594,14 +594,14 @@ fn graphics_text_uses_the_text_settings() {
 
 #[test]
 fn auto_transcribe_on_import_and_transcription_defaults() {
-    use filmcraft_project::{Transcript, Word};
+    use epsicut_project::{Transcript, Word};
     let dir = tmp_dir("prefs-transcribe");
     let mov = dir.join("talk.mov");
-    crate::media_test_util::make_movie(&mov, filmcraft_media::DemoScene::OceanSunset, 64, 36, 24);
+    crate::media_test_util::make_movie(&mov, epsicut_media::DemoScene::OceanSunset, 64, 36, 24);
     let mut s = Session::default();
     let mut t = Transcript { language: "en".into(), ..Default::default() };
     t.words.push(Word::new("hello", Tick::ZERO, Tick::from_seconds_f64(0.4)));
-    s.transcriber = Some(std::sync::Arc::new(filmcraft_speech::FixedTranscriber { transcript: t, id: "fixed".into() }));
+    s.transcriber = Some(std::sync::Arc::new(epsicut_speech::FixedTranscriber { transcript: t, id: "fixed".into() }));
     // off by default
     let r = s.execute("file.import", json!({"paths": [mov.to_string_lossy()]})).unwrap();
     let a = ItemId(r["items"][0].as_u64().unwrap());
@@ -623,16 +623,16 @@ fn auto_transcribe_on_import_and_transcription_defaults() {
 
 #[test]
 fn auto_transcribe_sequence_clips_after_insertion() {
-    use filmcraft_project::{Transcript, Word};
+    use epsicut_project::{Transcript, Word};
     let dir = tmp_dir("prefs-sequence-transcribe");
     let mov = dir.join("talk.mov");
-    crate::media_test_util::make_movie(&mov, filmcraft_media::DemoScene::OceanSunset, 64, 36, 24);
+    crate::media_test_util::make_movie(&mov, epsicut_media::DemoScene::OceanSunset, 64, 36, 24);
     let mut missing = Vec::new();
     for (command, audio) in [("source.insert", true), ("source.overwrite", true), ("timeline.place", true), ("timeline.place", false)] {
         let mut s = Session::default();
         let mut t = Transcript { language: "en".into(), ..Default::default() };
         t.words.push(Word::new("hello", Tick::ZERO, Tick::from_seconds_f64(0.4)));
-        s.transcriber = Some(std::sync::Arc::new(filmcraft_speech::FixedTranscriber { transcript: t, id: "fixed".into() }));
+        s.transcriber = Some(std::sync::Arc::new(epsicut_speech::FixedTranscriber { transcript: t, id: "fixed".into() }));
         set(&mut s, "mediaAnalysis.autoTranscribe", json!(true));
         assert_eq!(s.prefs.media_analysis.auto_transcribe_scope, "sequenceClips");
         let r = s.execute("file.import", json!({"paths": [mov.to_string_lossy()]})).unwrap();
@@ -663,23 +663,23 @@ struct SequenceRecognizer {
     outcome: &'static str,
 }
 
-impl filmcraft_speech::Transcriber for SequenceRecognizer {
+impl epsicut_speech::Transcriber for SequenceRecognizer {
     fn id(&self) -> String {
         "sequence-test".into()
     }
     fn transcribe(
         &self,
         audio: &[f32],
-        _: &filmcraft_speech::Options,
-        _: filmcraft_speech::ProgressFn,
-    ) -> Result<filmcraft_project::Transcript, filmcraft_speech::SpeechError> {
+        _: &epsicut_speech::Options,
+        _: epsicut_speech::ProgressFn,
+    ) -> Result<epsicut_project::Transcript, epsicut_speech::SpeechError> {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         assert!(!audio.is_empty(), "the synthetic audio must decode");
         match self.outcome {
-            "error" => Err(filmcraft_speech::SpeechError::Io("test recognizer failed".into())),
+            "error" => Err(epsicut_speech::SpeechError::Io("test recognizer failed".into())),
             "panic" => panic!("test recognizer panicked"),
-            _ => Ok(filmcraft_project::Transcript {
-                words: vec![filmcraft_project::Word::new("hello", Tick::ZERO, Tick::from_seconds_f64(0.4))],
+            _ => Ok(epsicut_project::Transcript {
+                words: vec![epsicut_project::Word::new("hello", Tick::ZERO, Tick::from_seconds_f64(0.4))],
                 source: self.id(),
                 ..Default::default()
             }),
@@ -744,7 +744,7 @@ fn auto_transcribe_sequence_clips_share_undo_and_preserve_existing_transcripts()
         s.execute("source.insert", json!({})).unwrap();
         assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
         let after = s.project.to_json();
-        assert_eq!(filmcraft_project::Project::from_json(&after).unwrap().to_json(), after);
+        assert_eq!(epsicut_project::Project::from_json(&after).unwrap().to_json(), after);
         assert_eq!(s.history.undo.len(), (undo.len() + 1).min(limit));
         if limit > 0 {
             if limit > 1 {
@@ -854,7 +854,7 @@ fn transcription_without_speech_to_text_says_so() {
     }
     let dir = tmp_dir("prefs-no-speech");
     let mov = dir.join("talk.mov");
-    crate::media_test_util::make_movie(&mov, filmcraft_media::DemoScene::OceanSunset, 64, 36, 24);
+    crate::media_test_util::make_movie(&mov, epsicut_media::DemoScene::OceanSunset, 64, 36, 24);
     // off: an import reports nothing
     let r = s.execute("file.import", json!({"paths": [mov.to_string_lossy()]})).unwrap();
     assert_eq!(r["errors"], json!([]));
@@ -865,7 +865,7 @@ fn transcription_without_speech_to_text_says_so() {
     assert!(errors.iter().any(|e| e.as_str().is_some_and(|e| e.starts_with("transcription:") && e.contains("not available in this build"))), "{errors:?}");
     assert!(!s.project.transcripts.contains_key(&ItemId(r["items"][0].as_u64().unwrap())));
     // with a transcriber installed (a host's), the command is enabled again
-    s.transcriber = Some(std::sync::Arc::new(filmcraft_speech::FixedTranscriber { transcript: Default::default(), id: "fixed".into() }));
+    s.transcriber = Some(std::sync::Arc::new(epsicut_speech::FixedTranscriber { transcript: Default::default(), id: "fixed".into() }));
     assert!(s.is_enabled("transcript.generate"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -875,10 +875,10 @@ fn hardware_decoding_setting_drives_the_decoder_switch() {
     let mut s = Session::default();
     assert_eq!(s.prefs.playback.hardware_decoding, "auto", "Auto by default");
     set(&mut s, "playback.hardwareDecoding", json!("off"));
-    assert!(!filmcraft_codecs::hw::hardware_decoding(), "Off reaches the decoder registry");
+    assert!(!epsicut_codecs::hw::hardware_decoding(), "Off reaches the decoder registry");
     assert!(s.execute("prefs.set", json!({"key": "playback.hardwareDecoding", "value": "gpu"})).is_err());
     set(&mut s, "playback.hardwareDecoding", json!("auto"));
-    assert!(filmcraft_codecs::hw::hardware_decoding());
+    assert!(epsicut_codecs::hw::hardware_decoding());
     assert!(settings::field("playback.hardwareDecoding").is_some_and(|f| f.wired && matches!(f.kind, Kind::Choice(_))));
 }
 

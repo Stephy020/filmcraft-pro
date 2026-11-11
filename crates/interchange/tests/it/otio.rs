@@ -1,12 +1,12 @@
 //! OpenTimelineIO: a hand-written plain OTIO document (from the public OTIO schema docs) with gaps,
-//! transitions, markers and legacy `Clip.1`; lossless round trips through `metadata.filmcraft`.
+//! transitions, markers and legacy `Clip.1`; lossless round trips through `metadata.epsicut`.
 
 use crate::support;
 
-use filmcraft_interchange::{ExportOptions, Format, detect, import};
-use filmcraft_media::Generator;
-use filmcraft_project::{Keyframe, Label, Marker, MarkerId, MarkerKind, MediaRef, Param, ParamValue, Project, TrackKind, TransitionAlign};
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick};
+use epsicut_interchange::{ExportOptions, Format, detect, import};
+use epsicut_media::Generator;
+use epsicut_project::{Keyframe, Label, Marker, MarkerId, MarkerKind, MediaRef, Param, ParamValue, Project, TrackKind, TransitionAlign};
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick};
 use proptest::prelude::*;
 use support::*;
 
@@ -140,12 +140,12 @@ fn golden_gaps_and_transitions() {
     assert_eq!(s.markers[0].start, r.tick_of(60));
 }
 
-fn project() -> (Project, filmcraft_project::ItemId) {
+fn project() -> (Project, epsicut_project::ItemId) {
     let r = FrameRate::FPS_23_976;
     let mut p = Project::new("P");
-    p.custom_colors = vec![filmcraft_project::HexColor([18, 171, 205])];
+    p.custom_colors = vec![epsicut_project::HexColor([18, 171, 205])];
     let a = media(&mut p, "/m/a.mov", true, true, r);
-    p.item_mut(a).unwrap().custom_label_color = filmcraft_project::HexColor::parse("#ABCDEF");
+    p.item_mut(a).unwrap().custom_label_color = epsicut_project::HexColor::parse("#ABCDEF");
     if let Some(m) = p.item_mut(a).and_then(|i| i.as_media_mut()) {
         m.info.start_timecode = Some(86_400);
     }
@@ -164,7 +164,7 @@ fn project() -> (Project, filmcraft_project::ItemId) {
         let q = p.sequence_mut(s).unwrap();
         // sub-frame audio position
         let mut ai = q.audio_tracks[0].items[0].clone();
-        ai.id = filmcraft_project::ClipId(9999);
+        ai.id = epsicut_project::ClipId(9999);
         ai.link = None;
         ai.start = Tick(TICKS_PER_SECOND * 3 + TICKS_PER_SECOND / 48_000 * 7);
         ai.duration = Tick(TICKS_PER_SECOND / 48_000 * 33_333);
@@ -172,16 +172,16 @@ fn project() -> (Project, filmcraft_project::ItemId) {
         q.audio_tracks[1].items.push(ai);
         let (_, it) = q.find_item_mut(v1).unwrap();
         it.label = Label::Teal;
-        it.custom_label_color = filmcraft_project::HexColor::parse("#12ABCD");
+        it.custom_label_color = epsicut_project::HexColor::parse("#12ABCD");
         let mut op = Param::new(ParamValue::Float(100.0));
         op.keyframes.push(Keyframe::new(r.tick_of(24), ParamValue::Float(0.0)));
         op.keyframes.push(Keyframe::new(r.tick_of(36), ParamValue::Float(100.0)));
         it.effect_mut("opacity").unwrap().params.insert("opacity".into(), op);
-        it.effects.push(filmcraft_project::find_effect("gaussian_blur").unwrap().instance());
+        it.effects.push(epsicut_project::find_effect("gaussian_blur").unwrap().instance());
         it.markers.push(Marker {
             url: String::new(),
             author: "Editor 日本語".into(),
-            custom_color: filmcraft_project::HexColor::parse("#FF80C0"),
+            custom_color: epsicut_project::HexColor::parse("#FF80C0"),
             id: MarkerId(5),
             start: r.tick_of(30),
             duration: r.tick_of(2),
@@ -198,7 +198,7 @@ fn project() -> (Project, filmcraft_project::ItemId) {
         q.markers.push(Marker {
             url: String::new(),
             author: "Editor 日本語".into(),
-            custom_color: filmcraft_project::HexColor::parse("#FF80C0"),
+            custom_color: epsicut_project::HexColor::parse("#FF80C0"),
             id: MarkerId(6),
             start: r.tick_of(70),
             duration: Tick::ZERO,
@@ -212,7 +212,7 @@ fn project() -> (Project, filmcraft_project::ItemId) {
 }
 
 #[test]
-fn lossless_roundtrip_with_filmcraft_metadata() {
+fn lossless_roundtrip_with_epsicut_metadata() {
     let (p, s) = project();
     let (imp, text, rep) = roundtrip(&p, s, Format::Otio, &ExportOptions::default());
     assert!(!rep.has_warnings(), "{rep}");
@@ -221,7 +221,7 @@ fn lossless_roundtrip_with_filmcraft_metadata() {
     let si = only_seq(&imp);
     let q = &imp.project;
     assert_eq!(q.custom_colors, p.custom_colors);
-    assert!(q.items.values().any(|i| i.custom_label_color == filmcraft_project::HexColor::parse("#ABCDEF")));
+    assert!(q.items.values().any(|i| i.custom_label_color == epsicut_project::HexColor::parse("#ABCDEF")));
     let (qs, ps) = (q.sequence(si).unwrap(), p.sequence(s).unwrap());
     for kind in [TrackKind::Video, TrackKind::Audio] {
         assert_eq!(structure(q, si, kind), structure(&p, s, kind), "{text}");
@@ -238,7 +238,7 @@ fn lossless_roundtrip_with_filmcraft_metadata() {
     let (qa, pa) = (&qs.video_tracks[0].items[0], &ps.video_tracks[0].items[0]);
     assert_eq!(format!("{:?}", qa.effects), format!("{:?}", pa.effects)); // NaN auto points compare unequal
     assert_eq!(qa.label, Label::Teal);
-    assert_eq!(qa.custom_label_color, filmcraft_project::HexColor::parse("#12ABCD"));
+    assert_eq!(qa.custom_label_color, epsicut_project::HexColor::parse("#12ABCD"));
     assert_eq!(
         qa.markers.iter().map(|m| (&m.name, m.start, m.duration, m.custom_color, &m.author)).collect::<Vec<_>>(),
         pa.markers.iter().map(|m| (&m.name, m.start, m.duration, m.custom_color, &m.author)).collect::<Vec<_>>()
@@ -257,7 +257,7 @@ fn lossless_roundtrip_with_filmcraft_metadata() {
     assert_eq!(q.sequence(nested).unwrap().video_tracks[0].items[0].source_in, FrameRate::FPS_23_976.tick_of(5));
     // relative media paths
     let o = ExportOptions { relative_to: Some("/m/otio".into()), ..Default::default() };
-    let (bytes, _) = filmcraft_interchange::export(&p, s, Format::Otio, &o).unwrap();
+    let (bytes, _) = epsicut_interchange::export(&p, s, Format::Otio, &o).unwrap();
     let t = String::from_utf8(bytes.clone()).unwrap();
     assert!(t.contains("\"target_url\": \"../a.mov\""), "{t}");
     let (imp2, _) = import(&bytes, Format::Otio, Some("/m/otio")).unwrap();
@@ -316,14 +316,14 @@ fn items_at_a_sample_rate_do_not_set_the_sequence_rate() {
 
 fn palette_collection(first: serde_json::Value, second: serde_json::Value) -> serde_json::Value {
     serde_json::json!({"OTIO_SCHEMA":"SerializableCollection.1","children":[
-        {"OTIO_SCHEMA":"Timeline.1","name":"First","metadata":{"filmcraft":first},"tracks":{"OTIO_SCHEMA":"Stack.1","children":[]}},
-        {"OTIO_SCHEMA":"Timeline.1","name":"Second","metadata":{"filmcraft":second},"tracks":{"OTIO_SCHEMA":"Stack.1","children":[]}}
+        {"OTIO_SCHEMA":"Timeline.1","name":"First","metadata":{"epsicut":first},"tracks":{"OTIO_SCHEMA":"Stack.1","children":[]}},
+        {"OTIO_SCHEMA":"Timeline.1","name":"Second","metadata":{"epsicut":second},"tracks":{"OTIO_SCHEMA":"Stack.1","children":[]}}
     ]})
 }
 
 #[test]
 fn review_orphan_palette_names_do_not_hide_retained_names() {
-    use filmcraft_project::HexColor;
+    use epsicut_project::HexColor;
     use serde_json::json;
     let mut names = serde_json::Map::new();
     for i in 0..70 {
@@ -347,7 +347,7 @@ fn review_generator_preset_labels_survive_otio_round_trip() {
     let s = sequence(&mut p, "Main", FrameRate::FPS_25, false);
     for (index, (kind, label, custom)) in [
         (Generator::BlackVideo, Label::Teal, None),
-        (Generator::BarsAndTone, Label::Magenta, filmcraft_project::HexColor::parse("#123456")),
+        (Generator::BarsAndTone, Label::Magenta, epsicut_project::HexColor::parse("#123456")),
         (Generator::ColorMatte { color: [0.2, 0.4, 0.6, 1.0] }, Label::Mango, None),
     ]
     .into_iter()
@@ -359,7 +359,7 @@ fn review_generator_preset_labels_survive_otio_round_trip() {
         item.custom_label_color = custom;
         clip(&mut p, s, TrackKind::Video, 0, id, (index as i64 * 25)..(index as i64 * 25 + 25), 0);
     }
-    let (bytes, _) = filmcraft_interchange::export(&p, s, Format::Otio, &ExportOptions::default()).unwrap();
+    let (bytes, _) = epsicut_interchange::export(&p, s, Format::Otio, &ExportOptions::default()).unwrap();
     let (imp, _) = import(&bytes, Format::Otio, None).unwrap();
     for original in p.items.values().filter(|i| i.as_media().is_some()) {
         let restored = imp.project.items.values().find(|i| i.name == original.name).unwrap();
@@ -380,7 +380,7 @@ fn review_distinct_identical_generators_keep_identity_and_shared_references() {
         p.item_mut(first).unwrap().label = Label::Teal;
         let item = p.item_mut(second).unwrap();
         item.label = Label::Mango;
-        item.custom_label_color = filmcraft_project::HexColor::parse("#123456");
+        item.custom_label_color = epsicut_project::HexColor::parse("#123456");
         for (offset, id) in [first, second, first].into_iter().enumerate() {
             clip(&mut p, s, TrackKind::Video, 0, id, ((index * 3 + offset) as i64 * 25)..((index * 3 + offset) as i64 * 25 + 25), 0);
         }
@@ -415,12 +415,12 @@ fn review_generators_without_valid_item_ids_keep_legacy_sharing() {
     for (offset, id) in [first, second, first, bars].into_iter().enumerate() {
         clip(&mut p, s, TrackKind::Video, 0, id, (offset as i64 * 25)..(offset as i64 * 25 + 25), 0);
     }
-    let (bytes, _) = filmcraft_interchange::export(&p, s, Format::Otio, &ExportOptions::default()).unwrap();
+    let (bytes, _) = epsicut_interchange::export(&p, s, Format::Otio, &ExportOptions::default()).unwrap();
     let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     for identity in [None, Some(json!(null)), Some(json!(-1)), Some(json!("invalid")), Some(json!({})), Some(json!([]))] {
         let mut doc = doc.clone();
         for clip in doc["tracks"]["children"][0]["children"].as_array_mut().unwrap() {
-            let meta = clip["media_references"]["DEFAULT_MEDIA"]["metadata"]["filmcraft"].as_object_mut().unwrap();
+            let meta = clip["media_references"]["DEFAULT_MEDIA"]["metadata"]["epsicut"].as_object_mut().unwrap();
             meta.remove("item");
             if let Some(ref identity) = identity {
                 meta.insert("item".into(), identity.clone());
@@ -436,7 +436,7 @@ fn review_generators_without_valid_item_ids_keep_legacy_sharing() {
 
 #[test]
 fn review_collection_palettes_union_distinct_colors_and_preserve_first_names() {
-    use filmcraft_project::HexColor;
+    use epsicut_project::HexColor;
     use serde_json::json;
     let doc = palette_collection(
         json!({"custom_colors":["#112233"],"custom_color_names":{"#112233":"First name"}}),
@@ -448,7 +448,7 @@ fn review_collection_palettes_union_distinct_colors_and_preserve_first_names() {
     assert_eq!(imp.project.custom_color_names[&colors[0]], "First name");
     assert_eq!(imp.project.custom_color_names[&colors[1]], "Second name");
     let mut target = Project::new("Existing");
-    filmcraft_interchange::merge_into(&mut target, imp, None);
+    epsicut_interchange::merge_into(&mut target, imp, None);
     assert_eq!(target.custom_colors, colors);
     assert_eq!(target.custom_color_names[&colors[0]], "First name");
 }
@@ -460,8 +460,8 @@ fn review_collection_empty_or_absent_palettes_do_not_clear_earlier_colors() {
         let doc = palette_collection(json!({"custom_colors":["#112233"],"custom_color_names":{"#112233":"Saved"}}), later);
         let (imp, _) = import(&serde_json::to_vec(&doc).unwrap(), Format::Otio, None).unwrap();
         let mut target = Project::new("Existing");
-        filmcraft_interchange::merge_into(&mut target, imp, None);
-        let color = filmcraft_project::HexColor([0x11, 0x22, 0x33]);
+        epsicut_interchange::merge_into(&mut target, imp, None);
+        let color = epsicut_project::HexColor([0x11, 0x22, 0x33]);
         assert_eq!(target.custom_colors, [color]);
         assert_eq!(target.custom_color_names[&color], "Saved");
     }
@@ -469,7 +469,7 @@ fn review_collection_empty_or_absent_palettes_do_not_clear_earlier_colors() {
 
 #[test]
 fn review_collection_full_palette_keeps_names_with_retained_colors() {
-    use filmcraft_project::HexColor;
+    use epsicut_project::HexColor;
     use serde_json::json;
     let colors: Vec<_> = (0..64).map(|i| HexColor([0, 0, i])).collect();
     let doc = palette_collection(
@@ -486,7 +486,7 @@ fn review_collection_full_palette_keeps_names_with_retained_colors() {
 
 #[test]
 fn review_collection_palette_deduplicates_before_applying_capacity() {
-    use filmcraft_project::HexColor;
+    use epsicut_project::HexColor;
     use serde_json::json;
     let mut entries = vec!["#000000".to_owned(); 70];
     entries.extend((0..70).map(|i| HexColor([0, 0, i]).hex()));
@@ -538,7 +538,7 @@ proptest! {
         let ms = [media(&mut p, "/x/one.mov", true, true, rate), media(&mut p, "/x/two.mov", true, true, rate), media(&mut p, "/y/three four.mxf", true, true, rate)];
         let s = sequence(&mut p, "S", rate, rate == FrameRate::FPS_29_97);
         let mut ends = [0i64; 3];
-        let mut prev: [Option<filmcraft_project::ClipId>; 3] = [None; 3];
+        let mut prev: [Option<epsicut_project::ClipId>; 3] = [None; 3];
         let mut aend = [Tick::ZERO; 3];
         for g in &clips {
             let t = ends[g.track] + g.gap;
@@ -589,7 +589,7 @@ proptest! {
 fn other_export_formats_report_marker_property_loss() {
     let (p, s) = project();
     for format in [Format::Fcp7Xml, Format::Fcpxml, Format::Edl] {
-        let (_, report) = filmcraft_interchange::export(&p, s, format, &ExportOptions::default()).unwrap();
+        let (_, report) = epsicut_interchange::export(&p, s, format, &ExportOptions::default()).unwrap();
         assert!(report.to_string().contains("marker authors or exact custom colors"), "{format:?}: {report}");
     }
 }
@@ -618,7 +618,7 @@ fn marker_urls_roundtrip_in_otio_and_warn_in_other_formats() {
     let (untrusted, _, _) = roundtrip(&p, s, Format::Otio, &ExportOptions::default());
     let retained = &untrusted.project.sequence(only_seq(&untrusted)).unwrap().markers[0].url;
     assert_eq!(retained, unsafe_url);
-    assert!(filmcraft_project::marker_web_url(retained).is_none());
+    assert!(epsicut_project::marker_web_url(retained).is_none());
     p.sequence_mut(s).unwrap().markers[0].url = sequence_url.into();
 
     // URL loss is reported even if there are no authors, custom colors or saved swatches.
@@ -627,7 +627,7 @@ fn marker_urls_roundtrip_in_otio_and_warn_in_other_formats() {
     for item in p.items.values_mut() {
         item.custom_label_color = None;
         match &mut item.kind {
-            filmcraft_project::ItemKind::Sequence(seq) => {
+            epsicut_project::ItemKind::Sequence(seq) => {
                 let seq = std::sync::Arc::make_mut(seq);
                 for marker in &mut seq.markers {
                     marker.author.clear();
@@ -641,7 +641,7 @@ fn marker_urls_roundtrip_in_otio_and_warn_in_other_formats() {
                     }
                 }
             }
-            filmcraft_project::ItemKind::Media(media) => {
+            epsicut_project::ItemKind::Media(media) => {
                 for marker in &mut media.markers {
                     marker.author.clear();
                     marker.custom_color = None;
@@ -651,7 +651,7 @@ fn marker_urls_roundtrip_in_otio_and_warn_in_other_formats() {
         }
     }
     for format in [Format::Fcp7Xml, Format::Fcpxml, Format::Edl, Format::Aaf, Format::Omf] {
-        let (_, report) = filmcraft_interchange::export(&p, s, format, &ExportOptions::default()).unwrap();
+        let (_, report) = epsicut_interchange::export(&p, s, format, &ExportOptions::default()).unwrap();
         assert!(report.to_string().contains("marker URLs"), "{format:?}: {report}");
     }
 }

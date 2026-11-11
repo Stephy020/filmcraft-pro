@@ -3,10 +3,10 @@
 //! An 8-pixel-wide green stripe on black: window 9 (r=4) keeps the centre green; window 17 (r=8)
 //! is majority black, so the stripe disappears. A 4-pixel cap would leave both centres green.
 
-use filmcraft_project::{ParamValue, find_effect};
-use filmcraft_render::effects::{FxCtx, apply};
-use filmcraft_render::image::Image;
-use filmcraft_time::Tick;
+use epsicut_project::{ParamValue, find_effect};
+use epsicut_render::effects::{FxCtx, apply};
+use epsicut_render::image::Image;
+use epsicut_time::Tick;
 
 fn cx() -> FxCtx<'static> {
     FxCtx {
@@ -18,7 +18,7 @@ fn cx() -> FxCtx<'static> {
         project: None,
         env: None,
         frame_rate: 24.0,
-        working: filmcraft_color::WorkingSpace::Rec709,
+        working: epsicut_color::WorkingSpace::Rec709,
     }
 }
 

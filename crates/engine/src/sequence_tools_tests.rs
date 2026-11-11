@@ -1,7 +1,7 @@
 //! Sequence / Markers menu commands (`sequence_tools`).
 
 use super::*;
-use filmcraft_project::{AudioChannels, Label, MarkerKind, TrackKind};
+use epsicut_project::{AudioChannels, Label, MarkerKind, TrackKind};
 use serde_json::json;
 
 fn demo() -> Session {
@@ -149,7 +149,7 @@ fn demo_with_empty_sequence() -> (Session, u64, u64) {
         .project
         .items
         .values()
-        .filter(|i| i.as_media().is_some_and(|m| m.info.kind == filmcraft_media::MediaKind::Movie && m.info.video.is_some()))
+        .filter(|i| i.as_media().is_some_and(|m| m.info.kind == epsicut_media::MediaKind::Movie && m.info.video.is_some()))
         .map(|i| i.id.0)
         .collect();
     movies.sort();
@@ -231,7 +231,7 @@ fn duplicate_frame_markers_follow_speed_reverse_and_holds() {
     // at 200 % from media frame 24, timeline frames 100–112 show media frames 24, 26 … 46
     place(&mut s, forest, "V2", 100, 24, 24);
     let (a, b) = (video_clip_at(&s, 0, 0), video_clip_at(&s, 1, 100));
-    let set = |s: &mut Session, clip: u64, change: fn(&mut filmcraft_project::TrackItem)| {
+    let set = |s: &mut Session, clip: u64, change: fn(&mut epsicut_project::TrackItem)| {
         s.edit_sequence("test", |q, _, _| {
             change(q.find_item_mut(ClipId(clip)).unwrap().1);
             Ok(())
@@ -266,9 +266,9 @@ fn duplicate_frame_markers_follow_speed_reverse_and_holds() {
             .unwrap()
             .params
             .entry("speed".into())
-            .or_insert_with(|| filmcraft_project::Param::new(filmcraft_project::ParamValue::Float(100.0)));
-        p.keyframes.push(filmcraft_project::Keyframe::new(Tick::ZERO, filmcraft_project::ParamValue::Float(100.0)));
-        p.keyframes.push(filmcraft_project::Keyframe::new(Tick(1), filmcraft_project::ParamValue::Float(50.0)));
+            .or_insert_with(|| epsicut_project::Param::new(epsicut_project::ParamValue::Float(100.0)));
+        p.keyframes.push(epsicut_project::Keyframe::new(Tick::ZERO, epsicut_project::ParamValue::Float(100.0)));
+        p.keyframes.push(epsicut_project::Keyframe::new(Tick(1), epsicut_project::ParamValue::Float(50.0)));
     });
     assert!(duplicates(&mut s).is_empty());
     // parameters of the wrong type are ignored: `on` that is not a boolean toggles
@@ -819,14 +819,14 @@ fn selection_follows_playhead() {
 fn go_to_in_out_without_marks_go_to_the_sequence_ends() {
     let mut s = demo();
     let end = s.active_sequence().unwrap().duration();
-    let mid = filmcraft_time::Tick(end.0 / 2);
+    let mid = epsicut_time::Tick(end.0 / 2);
     s.execute("playhead.set", json!({"time": mid.0})).unwrap();
     s.execute("markers.goToIn", json!({})).unwrap();
-    assert_eq!(s.playhead(), filmcraft_time::Tick::ZERO, "the start");
+    assert_eq!(s.playhead(), epsicut_time::Tick::ZERO, "the start");
     s.execute("markers.goToOut", json!({})).unwrap();
     assert_eq!(s.playhead(), end, "the end");
     // with marks, the marks
-    let at = filmcraft_time::Tick(end.0 / 4);
+    let at = epsicut_time::Tick(end.0 / 4);
     s.execute("playhead.set", json!({"time": at.0})).unwrap();
     s.execute("markers.markIn", json!({})).unwrap();
     s.execute("playhead.set", json!({"time": mid.0})).unwrap();

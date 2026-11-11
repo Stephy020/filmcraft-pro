@@ -1,11 +1,11 @@
 //! Development tool: encode synthetic (or lavfi) content and verify against ffmpeg.
 //!
-//! `cargo run --release -p filmcraft-h264enc --example h264enc_synth -- W H FRAMES [profile] [preset] [bframes] [rate] [slices] [src]`
+//! `cargo run --release -p epsicut-h264enc --example h264enc_synth -- W H FRAMES [profile] [preset] [bframes] [rate] [slices] [src]`
 //! profile: baseline|main|high, preset: speed|balanced|quality, rate: qpN | crfN | cbrN | vbrN
 #[path = "../tests/it/common/mod.rs"]
 mod common;
 
-use filmcraft_h264enc::{Encoder, EncoderConfig, Preset, Profile, RateControl};
+use epsicut_h264enc::{Encoder, EncoderConfig, Preset, Profile, RateControl};
 use std::time::Instant;
 
 fn main() {

@@ -3,18 +3,18 @@
 
 use std::sync::Arc;
 
-use filmcraft_media::generators::GeneratorSource;
-use filmcraft_media::{DemoScene, Generator, MediaSource};
-use filmcraft_project::{
+use epsicut_media::generators::GeneratorSource;
+use epsicut_media::{DemoScene, Generator, MediaSource};
+use epsicut_project::{
     BinId, ItemId, ItemKind, Label, Marker, MarkerId, MarkerKind, MediaClip, MediaRef, ParamValue, Project, SequenceSettings, TrackKind, Transition,
     TransitionId, find_effect, resolve_auto_points,
 };
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
 
 use crate::MediaPool;
 
 /// Set the value of effect parameter `name` when the effect has it.
-fn set_param(params: &mut std::collections::BTreeMap<String, filmcraft_project::Param>, name: &str, value: ParamValue) {
+fn set_param(params: &mut std::collections::BTreeMap<String, epsicut_project::Param>, name: &str, value: ParamValue) {
     if let Some(p) = params.get_mut(name) {
         p.value = value;
     }
@@ -48,14 +48,14 @@ pub fn add_generator(p: &mut Project, pool: &MediaPool, src: GeneratorSource, na
 pub fn demo_project(pool: &MediaPool) -> (Project, ItemId) {
     build_demo(pool).unwrap_or_else(|| {
         // Only reachable if the built-in items could not be placed: an empty demo, not a crash.
-        let mut p = Project::new("FilmCraft – Demo Project");
+        let mut p = Project::new("EpsiCut – Demo Project");
         let seq = p.new_sequence("Main Edit", SequenceSettings::default(), 3, 3, None);
         (p, seq)
     })
 }
 
 fn build_demo(pool: &MediaPool) -> Option<(Project, ItemId)> {
-    let mut p = Project::new("FilmCraft – Demo Project");
+    let mut p = Project::new("EpsiCut – Demo Project");
     let footage = p.add_bin("Footage", None);
     let audio_bin = p.add_bin("Audio", None);
     let gfx = p.add_bin("Graphics", None);
@@ -78,7 +78,7 @@ fn build_demo(pool: &MediaPool) -> Option<(Project, ItemId)> {
     // make the "music" item audio-only in its info
     if let Some(ItemKind::Media(m)) = p.item_mut(music).map(|i| &mut i.kind) {
         m.info.video = None;
-        m.info.kind = filmcraft_media::MediaKind::AudioOnly;
+        m.info.kind = epsicut_media::MediaKind::AudioOnly;
         m.info.container = "WAV".into();
     }
     let bars = add_generator(
@@ -142,7 +142,7 @@ fn build_demo(pool: &MediaPool) -> Option<(Project, ItemId)> {
     }
     if let Some(m) = ov.effect_mut("motion") {
         set_param(&mut m.params, "scale", ParamValue::Float(32.0));
-        set_param(&mut m.params, "position", ParamValue::Vec2(filmcraft_geom::Vec2::new(1540.0, 820.0)));
+        set_param(&mut m.params, "position", ParamValue::Vec2(epsicut_geom::Vec2::new(1540.0, 820.0)));
     }
     if let Some(mut ds) = find_effect("drop_shadow").map(|d| d.instance()) {
         set_param(&mut ds.params, "distance", ParamValue::Float(18.0));
@@ -172,7 +172,7 @@ fn build_demo(pool: &MediaPool) -> Option<(Project, ItemId)> {
     s.video_tracks[1].items.push(ov);
     // Transitions: cross dissolve between shots 1-2, dip to black 3-4, push 5-6, fade in at start.
     let tr_len = r.tick_of(24);
-    let mk = |id: u64, eff: &str, from: Option<filmcraft_project::ClipId>, to: Option<filmcraft_project::ClipId>, start: Tick| Transition {
+    let mk = |id: u64, eff: &str, from: Option<epsicut_project::ClipId>, to: Option<epsicut_project::ClipId>, start: Tick| Transition {
         id: TransitionId(id),
         effect: crate::presets::effect_instance(eff),
         start,

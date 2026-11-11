@@ -1,6 +1,6 @@
 use super::*;
 
-impl FilmcraftApp {
+impl EpsicutApp {
     // ---------------------------------------------------------------- textures
 
     /// Upload a rendered frame into a named texture (only when the key changed), opaque: the
@@ -75,17 +75,17 @@ impl FilmcraftApp {
     /// Cache revision of a project item's own frames: media changes only when its file does
     /// (relink, Make Offline, proxies on/off), so its frames survive unrelated edits; other items
     /// (sequences) follow the project revision.
-    pub fn item_revision(&self, item: filmcraft_project::ItemId) -> u64 {
+    pub fn item_revision(&self, item: epsicut_project::ItemId) -> u64 {
         let p = &self.session.project;
         let target = match p.item(item).map(|i| &i.kind) {
-            Some(filmcraft_project::ItemKind::Subclip { parent, .. }) => *parent,
+            Some(epsicut_project::ItemKind::Subclip { parent, .. }) => *parent,
             _ => item,
         };
         match p.item(target).map(|i| &i.kind) {
-            Some(filmcraft_project::ItemKind::Media(m)) => {
+            Some(epsicut_project::ItemKind::Media(m)) => {
                 use std::hash::{Hash, Hasher};
                 let mut h = std::collections::hash_map::DefaultHasher::new();
-                filmcraft_engine::media_pool::media_key(m).hash(&mut h);
+                epsicut_engine::media_pool::media_key(m).hash(&mut h);
                 (m.proxy.is_some() && self.session.media.use_proxies()).hash(&mut h);
                 h.finish()
             }
@@ -93,11 +93,11 @@ impl FilmcraftApp {
         }
     }
 
-    pub fn thumbnail(&mut self, ctx: &egui::Context, item: filmcraft_project::ItemId, t: Tick, width: u32) -> Option<(egui::TextureId, egui::Vec2)> {
+    pub fn thumbnail(&mut self, ctx: &egui::Context, item: epsicut_project::ItemId, t: Tick, width: u32) -> Option<(egui::TextureId, egui::Vec2)> {
         let pi = self.session.project.item(item)?;
         let src_w = match &pi.kind {
-            filmcraft_project::ItemKind::Media(m) => m.info.video.as_ref()?.width,
-            filmcraft_project::ItemKind::Sequence(s) => s.settings.width,
+            epsicut_project::ItemKind::Media(m) => m.info.video.as_ref()?.width,
+            epsicut_project::ItemKind::Sequence(s) => s.settings.width,
             _ => return None,
         };
         let rate = pi.frame_rate();

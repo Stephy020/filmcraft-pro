@@ -30,7 +30,7 @@ pub struct BridgeClient {
 }
 
 impl BridgeClient {
-    /// `addr` such as `127.0.0.1:9876` (loopback only). Reads `FILMCRAFT_CONTROL_TOKEN`
+    /// `addr` such as `127.0.0.1:9876` (loopback only). Reads `EPSICUT_CONTROL_TOKEN`
     /// from the environment; the desktop app requires this credential on every request.
     pub fn new(addr: impl Into<String>) -> Result<Self, AutomationError> {
         let addr = addr.into();
@@ -38,7 +38,7 @@ impl BridgeClient {
         if !matches!(host, "127.0.0.1" | "localhost" | "[::1]" | "::1") {
             return Err(AutomationError::BadRequest(format!("bridge address must be loopback, got `{addr}`")));
         }
-        Ok(Self { addr, token: std::env::var("FILMCRAFT_CONTROL_TOKEN").ok(), idle: Mutex::new(Vec::new()), next_id: AtomicU64::new(1) })
+        Ok(Self { addr, token: std::env::var("EPSICUT_CONTROL_TOKEN").ok(), idle: Mutex::new(Vec::new()), next_id: AtomicU64::new(1) })
     }
 
     /// Run engine command `id` in the app. A blocking export (`file.exportMedia` with
@@ -124,7 +124,7 @@ impl BridgeClient {
             .await
             .map_err(|_| AutomationError::Bridge(format!("timed out connecting to {}", self.addr)))?
             .map_err(|e| AutomationError::Bridge(format!(
-                "cannot connect to {} ({e}); start the app with `filmcraft --control <port>` and set FILMCRAFT_CONTROL_TOKEN to the same 64-hex-character value on both sides (see docs/control-protocol.md)",
+                "cannot connect to {} ({e}); start the app with `epsicut --control <port>` and set EPSICUT_CONTROL_TOKEN to the same 64-hex-character value on both sides (see docs/control-protocol.md)",
                 self.addr
             )))?;
         let (r, w) = s.into_split();
@@ -189,7 +189,7 @@ mod tests {
         let b = BridgeClient::new(addr.as_str()).unwrap();
         let err = b.call("ui.inspect", json!({})).await.unwrap_err().to_string();
         assert!(err.contains("--control"), "{err}");
-        assert!(err.contains("FILMCRAFT_CONTROL_TOKEN"), "{err}");
+        assert!(err.contains("EPSICUT_CONTROL_TOKEN"), "{err}");
     }
 
     /// A blocking bridge export runs as an app job (#91, #92): the app never sees `wait: true` (it

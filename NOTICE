@@ -1,11 +1,11 @@
-FilmCraft
+EpsiCut
+A modified version of FilmCraft (https://github.com/storytold/filmcraft).
 Copyright (c) 2026 ArtCraft Team and the FilmCraft contributors.
+EpsiCut changes copyright (c) 2026 Stephen Abudu.
 Licensed under the MIT License or the Apache License, Version 2.0, at your option
 (LICENSE-MIT, LICENSE-APACHE).
 
-The ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team. They are
-not open source and are not covered by the license above; their terms are in
-docs/brand/LICENSE-brand.txt.
+EpsiCut ships none of the ArtCraft Team's brand marks (name, wordmark or logos).
 
 Third-party material
 

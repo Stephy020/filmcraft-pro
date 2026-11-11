@@ -26,7 +26,7 @@ pub struct SourceView {
     pub rate: FrameRate,
     pub mark_in: Option<Tick>,
     pub mark_out: Option<Tick>,
-    pub markers: Vec<filmcraft_project::Marker>,
+    pub markers: Vec<epsicut_project::Marker>,
     /// For a subclip: its range and whether trims are restricted to it.
     pub subclip: Option<(TimeRange, bool)>,
 }
@@ -55,7 +55,7 @@ impl SourceView {
 /// The Source monitor view of `item` (see [`SourceView`]).
 pub fn source_view(s: &Session, item: ItemId) -> Option<SourceView> {
     let pi = s.project.item(item)?;
-    let still = |m: &MediaClip| matches!(m.info.kind, filmcraft_media::MediaKind::Still) || m.info.duration.0 <= 0;
+    let still = |m: &MediaClip| matches!(m.info.kind, epsicut_media::MediaKind::Still) || m.info.duration.0 <= 0;
     Some(match &pi.kind {
         ItemKind::Media(m) => {
             let rate = m.frame_rate();
@@ -187,7 +187,7 @@ pub(super) fn remove_items(p: &mut Project, ids: &[ItemId]) {
 }
 
 /// Keyframe times of an effect instance shifted / scaled from clip `from` to clip `to` (media time).
-pub(super) fn retime_effect(e: &mut filmcraft_project::EffectInstance, from: &TrackItem, to: &TrackItem, scale: bool) {
+pub(super) fn retime_effect(e: &mut epsicut_project::EffectInstance, from: &TrackItem, to: &TrackItem, scale: bool) {
     let (f0, f1) = (from.source_in, from.source_out());
     let (t0, t1) = (to.source_in, to.source_out());
     let map = |k: Tick| -> Tick {

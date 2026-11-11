@@ -1,7 +1,7 @@
 //! Text burn-ins: Simple Text and Metadata & Timecode Burn-in.
 
-use filmcraft_project::EffectInstance;
-use filmcraft_text::{Align, ParagraphStyle, TextStyle, layout, render};
+use epsicut_project::EffectInstance;
+use epsicut_text::{Align, ParagraphStyle, TextStyle, layout, render};
 
 use super::{FxCtx, Image, Vec2, chv, cv, fv, pv, tv};
 use crate::graphics::paint_mask;
@@ -32,21 +32,16 @@ pub(crate) fn draw_text(img: &mut Image, text: &str, look: TextLook<'_>) {
     };
     let st = TextStyle { family: family.into(), style: "Regular".into(), size: px, ..Default::default() };
     let l = layout(text, &st, &ParagraphStyle { align: al, ..Default::default() });
-    let vm = filmcraft_text::fonts::face(filmcraft_text::resolve(family, "Regular").face).metrics(px);
+    let vm = epsicut_text::fonts::face(epsicut_text::resolve(family, "Regular").face).metrics(px);
     let (bx, by) = (pos.x as f32, pos.y as f32 + vm.cap_height / 2.0);
     let b = l.bounds;
     if box_alpha > 0.0 {
         let pad = px * 0.25;
-        let boxp = filmcraft_text::Path::rect(bx + b[0] - pad, by + b[1] - pad, bx + b[2] + pad, by + b[3] + pad);
+        let boxp = epsicut_text::Path::rect(bx + b[0] - pad, by + b[1] - pad, bx + b[2] + pad, by + b[3] + pad);
         if let Some(bb) = boxp.bounds() {
             let (x0, y0) = (bb.0.floor() as i32, bb.1.floor() as i32);
-            let m = filmcraft_text::raster::fill(
-                &boxp,
-                (bb.2.ceil() as i32 - x0).max(1) as usize,
-                (bb.3.ceil() as i32 - y0).max(1) as usize,
-                -x0 as f32,
-                -y0 as f32,
-            );
+            let m =
+                epsicut_text::raster::fill(&boxp, (bb.2.ceil() as i32 - x0).max(1) as usize, (bb.3.ceil() as i32 - y0).max(1) as usize, -x0 as f32, -y0 as f32);
             paint_mask(img, &m, x0, y0, [0.0, 0.0, 0.0, 1.0], box_alpha.clamp(0.0, 1.0));
         }
     }

@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_time::{FrameRate, Tick};
 
 use super::ids::{META_DICTIONARY, ROOT, cls, ddef, def, path, pid};
 use super::store::{self, Auid, Obj, Value, rational, utf16z};
@@ -35,7 +35,7 @@ pub(crate) fn fnv(s: &[u8], h: u64) -> u64 {
 }
 
 fn timestamp() -> Vec<u8> {
-    // 1970-01-01 00:00:00.00: FilmCraft writes reproducible files
+    // 1970-01-01 00:00:00.00: EpsiCut writes reproducible files
     let mut v = 1970i16.to_le_bytes().to_vec();
     v.extend_from_slice(&[1, 1, 0, 0, 0, 0]);
     v
@@ -109,7 +109,7 @@ type FileMob = ((Option<String>, usize, CKind), [u8; 32], Vec<Obj>, usize);
 struct GroupSlots {
     master_id: [u8; 32],
     tape_id: [u8; 32],
-    timecode: Option<(i64, filmcraft_time::FrameRate)>,
+    timecode: Option<(i64, epsicut_time::FrameRate)>,
     master_slots: Vec<Obj>,
     tape_slots: Vec<Obj>,
     files: Vec<FileMob>,
@@ -350,7 +350,7 @@ fn add_tape_mob(first: &Source, tape_id: [u8; 32], timecode: Option<(i64, FrameR
 }
 
 /// Serialise a composition document.
-pub(crate) fn write(doc: &Document, version: filmcraft_cfb::Version, report: &mut Report) -> Result<Vec<u8>> {
+pub(crate) fn write(doc: &Document, version: epsicut_cfb::Version, report: &mut Report) -> Result<Vec<u8>> {
     let comp = doc.compositions.first().ok_or(Error::Empty)?;
     let mut w = W { report, inexact: false };
     let mut ids = IdGen::for_document(doc, comp);
@@ -449,12 +449,12 @@ pub(crate) fn write(doc: &Document, version: filmcraft_cfb::Version, report: &mu
         content.set(pid::ESSENCE_DATA, Value::StrongSet(essence, pid::ESSENCE_MOB_ID));
     }
     let ident = Obj::new(cls::IDENTIFICATION)
-        .data_prop(pid::COMPANY_NAME, utf16z("FilmCraft"))
-        .data_prop(pid::PRODUCT_NAME, utf16z("FilmCraft"))
+        .data_prop(pid::COMPANY_NAME, utf16z("EpsiCut"))
+        .data_prop(pid::PRODUCT_NAME, utf16z("EpsiCut"))
         .data_prop(pid::PRODUCT_VERSION_STRING, utf16z(env!("CARGO_PKG_VERSION")))
         .data_prop(pid::PRODUCT_ID, super::ids::guid(0x46494C4D, 0x4352, 0x4146, *b"T-AAF-EP").to_vec())
         .data_prop(pid::DATE, timestamp())
-        .data_prop(pid::PLATFORM, utf16z("FilmCraft"))
+        .data_prop(pid::PLATFORM, utf16z("EpsiCut"))
         .data_prop(pid::GENERATION_AUID, mob_id(ids.seed, 0)[16..].to_vec());
     let header = Obj::new(cls::HEADER)
         .data_prop(pid::BYTE_ORDER, 0x4949i16.to_le_bytes().to_vec())
@@ -611,7 +611,7 @@ impl CompositionWriter<'_, '_, '_> {
                             .with(pid::DATA_DEFINITION, weak(path::DATA_DEFS, dd))
                             .data_prop(pid::LENGTH, n.to_le_bytes().to_vec())
                             .with(pid::OPERATION, weak(path::OPERATION_DEFS, op))
-                            .with(pid::COMPONENT_USER_COMMENTS, Value::StrongVec(vec![tagged("FilmCraft Effect", &x.effect)]));
+                            .with(pid::COMPONENT_USER_COMMENTS, Value::StrongVec(vec![tagged("EpsiCut Effect", &x.effect)]));
                         if op == def::VIDEO_DISSOLVE {
                             *uses_varying = true;
                             let pts = [(0, 0), (1, 1)]
@@ -673,8 +673,8 @@ impl CompositionWriter<'_, '_, '_> {
         mob.with(pid::SLOTS, Value::StrongVec(slots)).with(
             pid::MOB_USER_COMMENTS,
             Value::StrongVec(vec![
-                tagged("FilmCraft Frame Size", &format!("{}x{}", comp.width, comp.height)),
-                tagged("FilmCraft Audio Sample Rate", &comp.sample_rate.to_string()),
+                tagged("EpsiCut Frame Size", &format!("{}x{}", comp.width, comp.height)),
+                tagged("EpsiCut Audio Sample Rate", &comp.sample_rate.to_string()),
             ]),
         )
     }

@@ -1,6 +1,6 @@
 use super::layout::Layout;
 use super::{
-    Align2, Color32, Drag, EDGE_PX, FilmcraftApp, Icon, ItemId, Rect, Sense, Sequence, Stroke, ThumbnailMode, Tick, TimeDisplay, TimeRange, Tokens, Value,
+    Align2, Color32, Drag, EDGE_PX, EpsicutApp, Icon, ItemId, Rect, Sense, Sequence, Stroke, ThumbnailMode, Tick, TimeDisplay, TimeRange, Tokens, Value,
     format_time, icons, json, marker_range_rect, marker_rect, pos2, vec2, work_area_rect,
 };
 use crate::panels::timeline_hit::marker_end_rect;
@@ -22,7 +22,7 @@ pub fn ruler_steps(frame_px: f64, base: i64) -> (i64, i64) {
 }
 
 /// Draw editable timecode, the timeline toolbar and ruler. Rejected timecode edits report a status message; toolbar command errors are ignored.
-pub(super) fn draw_top(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, seq: &Sequence, layout: &Layout, t: &Tokens, seq_id: ItemId) {
+pub(super) fn draw_top(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect, seq: &Sequence, layout: &Layout, t: &Tokens, seq_id: ItemId) {
     let p = ui.painter().clone();
     let rate = seq.settings.frame_rate;
     let hw = app.ui.timeline.header_w;
@@ -127,7 +127,7 @@ pub(super) fn draw_top(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, se
     let rb = Rect::from_min_max(pos2(ruler.min.x, ruler.max.y - 2.0), ruler.max);
     let bar = app.session.previews.bar(&app.session.project, seq_id);
     for (i, span) in bar.iter().enumerate() {
-        use filmcraft_engine::previews::BarState;
+        use epsicut_engine::previews::BarState;
         let (c, what) = match span.state {
             BarState::None => continue,
             BarState::Yellow => (t.render_yellow, tl!("Unrendered: should play back in real time")),
@@ -175,7 +175,7 @@ pub(super) fn draw_top(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, se
 
 /// The ruler's marker row: one pentagon per marker in its colour, its range band behind it and,
 /// on hover, its name.
-fn draw_markers(app: &mut FilmcraftApp, ui: &egui::Ui, clip: &egui::Painter, layout: &Layout, seq: &Sequence) {
+fn draw_markers(app: &mut EpsicutApp, ui: &egui::Ui, clip: &egui::Painter, layout: &Layout, seq: &Sequence) {
     let ruler = layout.ruler;
     let marker_y = ruler.min.y + 2.0;
     // Point flags stay whole; ranges split the same glyph across their endpoints.
@@ -211,7 +211,7 @@ fn draw_markers(app: &mut FilmcraftApp, ui: &egui::Ui, clip: &egui::Painter, lay
 
 /// The Timeline Display Settings popup from the ruler toolbar: thumbnails, waveforms, edit
 /// markers and the track-height presets.
-fn timeline_settings(app: &mut FilmcraftApp, ui: &mut egui::Ui) {
+fn timeline_settings(app: &mut EpsicutApp, ui: &mut egui::Ui) {
     let c = ui.checkbox(&mut app.ui.timeline.show_thumbnails, tl!("Show Video Thumbnails"));
     app.auto.add("timeline.settings.showThumbnails", c.rect, "Show Video Thumbnails");
     let on = app.ui.timeline.show_thumbnails;

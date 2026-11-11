@@ -1,8 +1,8 @@
 //! Tests of the M3.10 Edit / Clip / File menu commands (`clip_ops`): each one executes, checks the
 //! result, undoes / redoes where it edits, and checks its disabled state.
 
-use filmcraft_project::{AudioChannels, ClipId, FieldProcessing, ItemId, ItemKind, Label, TimeInterpolation, TrackItem};
-use filmcraft_time::{TICKS_PER_SECOND, Tick};
+use epsicut_project::{AudioChannels, ClipId, FieldProcessing, ItemId, ItemKind, Label, TimeInterpolation, TrackItem};
+use epsicut_time::{TICKS_PER_SECOND, Tick};
 use serde_json::json;
 
 use crate::Session;
@@ -23,7 +23,7 @@ fn v1(s: &Session) -> Vec<TrackItem> {
 }
 
 fn clip(s: &Session, id: u64) -> TrackItem {
-    s.active_sequence().unwrap().find_item(filmcraft_project::ClipId(id)).unwrap().1.clone()
+    s.active_sequence().unwrap().find_item(epsicut_project::ClipId(id)).unwrap().1.clone()
 }
 
 fn select(s: &mut Session, clips: &[u64]) {
@@ -117,7 +117,7 @@ fn label_commands_and_select_label_group() {
     // Select Label Group (timeline): the Mango overlay alone, the Iris clips together
     s.state.project_selection.clear();
     let ov = s.active_sequence().unwrap().video_tracks[1].items[0].id.0;
-    s.state.selection = vec![filmcraft_project::ClipId(ov)];
+    s.state.selection = vec![epsicut_project::ClipId(ov)];
     s.execute("edit.selectLabelGroup", json!({})).unwrap();
     assert_eq!(s.state.selection.len(), 1);
 }
@@ -150,8 +150,8 @@ fn paste_attributes_with_scaled_keyframes_and_remove_attributes() {
         let seq = s.state.active_sequence.unwrap();
         let it = p.sequence_mut(seq).unwrap().find_item_mut(a.id).unwrap().1;
         let sc = it.effect_mut("motion").unwrap().param_mut("scale").unwrap();
-        sc.put_keyframe(a_now.source_in, filmcraft_project::ParamValue::Float(100.0));
-        sc.put_keyframe(a_now.source_out(), filmcraft_project::ParamValue::Float(200.0));
+        sc.put_keyframe(a_now.source_in, epsicut_project::ParamValue::Float(100.0));
+        sc.put_keyframe(a_now.source_out(), epsicut_project::ParamValue::Float(200.0));
         s.project = std::sync::Arc::new(p);
     }
     select(&mut s, &[a.id.0]);
@@ -183,7 +183,7 @@ fn paste_attributes_with_scaled_keyframes_and_remove_attributes() {
     assert_eq!(f64_param(&got, "motion", "rotation"), 0.0);
     assert_eq!(f64_param(&got, "motion", "scale"), 100.0);
     assert!(got.effect("motion").unwrap().param("scale").unwrap().keyframes.is_empty());
-    assert_eq!(got.effect("motion").unwrap().param("position").unwrap().value.as_vec2().unwrap(), filmcraft_geom::Vec2::new(960.0, 540.0));
+    assert_eq!(got.effect("motion").unwrap().param("position").unwrap().value.as_vec2().unwrap(), epsicut_geom::Vec2::new(960.0, 540.0));
     assert!(got.effect("gaussian_blur").is_none());
     assert_eq!(f64_param(&got, "opacity", "opacity"), 40.0);
     // audio: volume pasted onto another audio clip
@@ -243,7 +243,7 @@ fn duplicate_lands_in_the_bin_of_its_source() {
     assert!(in_root(&s, copy), "a root-level item's copy stays in the root");
 
     // a sequence inside a folder is duplicated into that folder, not the root
-    let bin = filmcraft_project::BinId(s.execute("file.newBin", json!({"name": "Cuts"})).unwrap()["bin"].as_u64().unwrap());
+    let bin = epsicut_project::BinId(s.execute("file.newBin", json!({"name": "Cuts"})).unwrap()["bin"].as_u64().unwrap());
     s.execute("project.moveToBin", json!({"items": [sequence.0, ocean.0], "bin": bin.0})).unwrap();
     assert_eq!(s.project.root.parent_of(sequence), Some(bin));
     s.execute("project.select", json!({"items": [sequence.0, ocean.0]})).unwrap();
@@ -308,7 +308,7 @@ fn new_sequence_from_clip_bin_from_selection_and_offline_file() {
     // Bin From Selection
     s.execute("project.select", json!({"items": [a.0, b.0]})).unwrap();
     let r = s.execute("file.newBinFromSelection", json!({})).unwrap();
-    let bin = filmcraft_project::BinId(r["bin"].as_u64().unwrap());
+    let bin = epsicut_project::BinId(r["bin"].as_u64().unwrap());
     let found = s.project.root.find_bin(bin).unwrap();
     assert_eq!(found.name, "Bin 01");
     assert_eq!(s.project.root.parent_of(a), Some(bin));
@@ -349,7 +349,7 @@ fn close_project_and_save_all() {
 fn make_and_edit_subclips() {
     let mut s = demo();
     let ocean = item_named(&s, "Ocean_Sunset.mp4");
-    let r24 = filmcraft_time::FrameRate::FPS_23_976;
+    let r24 = epsicut_time::FrameRate::FPS_23_976;
     s.execute("source.open", json!({"item": ocean.0})).unwrap();
     s.execute("project.setMarks", json!({"item": ocean.0, "in": r24.tick_of(24).0, "out": r24.tick_of(71).0})).unwrap();
     let r = s.execute("clip.makeSubclip", json!({})).unwrap();
@@ -544,13 +544,13 @@ fn field_options_and_time_interpolation_are_stored() {
     s.execute("clip.speedDuration", json!({"speed": 50.0, "interpolation": "frameSampling"})).unwrap();
     assert_eq!(clip(&s, c).time_interpolation, TimeInterpolation::FrameSampling);
     // survives a save / load
-    let bytes = filmcraft_format::encode(&s.project, true);
-    let back = filmcraft_format::decode(&bytes).unwrap().project;
+    let bytes = epsicut_format::encode(&s.project, true);
+    let back = epsicut_format::decode(&bytes).unwrap().project;
     let seq = s.state.active_sequence.unwrap();
-    assert_eq!(back.sequence(seq).unwrap().find_item(filmcraft_project::ClipId(c)).unwrap().1, &clip(&s, c));
+    assert_eq!(back.sequence(seq).unwrap().find_item(epsicut_project::ClipId(c)).unwrap().1, &clip(&s, c));
 }
 
-fn mean_abs_diff(a: &filmcraft_render::Image, b: &filmcraft_render::Image) -> f32 {
+fn mean_abs_diff(a: &epsicut_render::Image, b: &epsicut_render::Image) -> f32 {
     a.px.iter().zip(&b.px).map(|(x, y)| (x - y).abs()).sum::<f32>() / a.px.len() as f32
 }
 
@@ -567,12 +567,12 @@ fn frame_blending_renders_in_between_frames() {
     let t = c.start + rate.tick_of(31);
     s.execute("playhead.set", json!({"time": t.0})).unwrap();
     let it = clip(&s, c.id.0);
-    let src_rate = filmcraft_time::FrameRate::FPS_23_976;
-    assert!(filmcraft_render::interpolation_blend(&it, t, src_rate, rate).is_none(), "frame sampling");
+    let src_rate = epsicut_time::FrameRate::FPS_23_976;
+    assert!(epsicut_render::interpolation_blend(&it, t, src_rate, rate).is_none(), "frame sampling");
     let sampled = s.render_program(0.125).unwrap();
     s.execute("clip.timeInterpolation.frameBlending", json!({})).unwrap();
     let it = clip(&s, c.id.0);
-    let (next, w) = filmcraft_render::interpolation_blend(&it, t, src_rate, rate).unwrap();
+    let (next, w) = epsicut_render::interpolation_blend(&it, t, src_rate, rate).unwrap();
     assert!((w - 0.5).abs() < 0.01, "half-way: {w}");
     assert_eq!(next, src_rate.tick_of(src_rate.frame_at(it.source_time_at(t)) + 1));
     let blended = s.render_program(0.125).unwrap();
@@ -596,7 +596,7 @@ fn frame_blending_renders_in_between_frames() {
     assert!(d < mean_abs_diff(&blended, &sampled), "optical flow stays near the blend on mostly static footage: {d}");
     // at 100 % nothing is blended
     s.execute("clip.speedDuration", json!({"speed": 100.0})).unwrap();
-    assert!(filmcraft_render::interpolation_blend(&clip(&s, c.id.0), t, src_rate, rate).is_none());
+    assert!(epsicut_render::interpolation_blend(&clip(&s, c.id.0), t, src_rate, rate).is_none());
 }
 
 #[test]
@@ -607,10 +607,10 @@ fn time_interpolation_applies_to_a_frame_rate_conform() {
     let c = v1(&s)[2].clone();
     assert!((c.speed - 1.0).abs() < 1e-9);
     let own = s.sequence_rate();
-    let src_rate = filmcraft_time::FrameRate::FPS_23_976;
+    let src_rate = epsicut_time::FrameRate::FPS_23_976;
     s.execute("sequence.settings", json!({"fps": 29.97})).unwrap();
     let rate = s.sequence_rate();
-    assert_eq!(rate, filmcraft_time::FrameRate::FPS_29_97);
+    assert_eq!(rate, epsicut_time::FrameRate::FPS_29_97);
     select(&mut s, &[c.id.0]);
     s.execute("clip.timeInterpolation.opticalFlow", json!({})).unwrap();
     let it = clip(&s, c.id.0);
@@ -618,20 +618,20 @@ fn time_interpolation_applies_to_a_frame_rate_conform() {
     let first = rate.frame_at(it.start) + 1;
     let (t, (next, w)) = (first..first + 5)
         .map(|f| rate.tick_of(f))
-        .find_map(|t| filmcraft_render::interpolation_blend(&it, t, src_rate, rate).filter(|(_, w)| (0.1..0.9).contains(w)).map(|b| (t, b)))
+        .find_map(|t| epsicut_render::interpolation_blend(&it, t, src_rate, rate).filter(|(_, w)| (0.1..0.9).contains(w)).map(|b| (t, b)))
         .expect("a 29.97 frame between two 23.976 frames");
     assert_eq!(next, src_rate.tick_of(src_rate.frame_at(it.source_time_at(t)) + 1));
     s.execute("playhead.set", json!({"time": t.0})).unwrap();
     let flowed = s.render_program(0.125).unwrap();
     s.execute("clip.timeInterpolation.frameSampling", json!({})).unwrap();
-    assert!(filmcraft_render::interpolation_blend(&clip(&s, c.id.0), t, src_rate, rate).is_none());
+    assert!(epsicut_render::interpolation_blend(&clip(&s, c.id.0), t, src_rate, rate).is_none());
     let sampled = s.render_program(0.125).unwrap();
     assert!(mean_abs_diff(&flowed, &sampled) > 1e-4, "optical flow changes the conformed frame (weight {w})");
     // back at the media's own rate, 100 % needs no in-between frame
     s.execute("clip.timeInterpolation.opticalFlow", json!({})).unwrap();
     s.execute("sequence.settings", json!({"fps": own.as_f64()})).unwrap();
     assert_eq!(s.sequence_rate(), src_rate);
-    assert!(filmcraft_render::interpolation_blend(&clip(&s, c.id.0), t, src_rate, src_rate).is_none());
+    assert!(epsicut_render::interpolation_blend(&clip(&s, c.id.0), t, src_rate, src_rate).is_none());
 }
 
 #[test]
@@ -647,7 +647,7 @@ fn fit_and_fill_frame() {
     s.execute("clip.fitToFrame", json!({})).unwrap();
     let got = clip(&s, c);
     assert!((f64_param(&got, "motion", "scale") - 100.0).abs() < 1e-9);
-    assert_eq!(got.effect("motion").unwrap().param("anchor").unwrap().value.as_vec2().unwrap(), filmcraft_geom::Vec2::new(480.0, 540.0));
+    assert_eq!(got.effect("motion").unwrap().param("anchor").unwrap().value.as_vec2().unwrap(), epsicut_geom::Vec2::new(480.0, 540.0));
     s.execute("edit.undo", json!({})).unwrap();
     assert!((f64_param(&clip(&s, c), "motion", "scale") - 200.0).abs() < 1e-9);
     s.state.selection.clear();
@@ -894,36 +894,36 @@ fn replace_with_clip_reports_clips_that_run_past_the_new_media() {
 #[test]
 fn audio_source_channels_pick_what_a_clip_plays() {
     let mut it = v1(&demo())[0].clone();
-    assert_eq!(filmcraft_render::audio::source_pair(&it, 2), (0, 1));
-    assert_eq!(filmcraft_render::audio::source_pair(&it, 1), (0, 0));
+    assert_eq!(epsicut_render::audio::source_pair(&it, 2), (0, 1));
+    assert_eq!(epsicut_render::audio::source_pair(&it, 1), (0, 0));
     it.source_channels = vec![1];
-    assert_eq!(filmcraft_render::audio::source_pair(&it, 2), (1, 1));
+    assert_eq!(epsicut_render::audio::source_pair(&it, 2), (1, 1));
     it.source_channels = vec![1, 0];
-    assert_eq!(filmcraft_render::audio::source_pair(&it, 2), (1, 0));
+    assert_eq!(epsicut_render::audio::source_pair(&it, 2), (1, 0));
     it.source_channels = vec![5];
-    assert_eq!(filmcraft_render::audio::source_pair(&it, 2), (0, 0), "missing channels fall back to the first");
+    assert_eq!(epsicut_render::audio::source_pair(&it, 2), (0, 0), "missing channels fall back to the first");
 }
 
 #[test]
 fn subclip_source_monitor_trims_and_markers() {
     let mut s = demo();
     let ocean = item_named(&s, "Ocean_Sunset.mp4");
-    let r24 = filmcraft_time::FrameRate::FPS_23_976;
+    let r24 = epsicut_time::FrameRate::FPS_23_976;
     let f = |n: i64| r24.tick_of(n);
     // clip markers on the master clip at frames 10, 30, 60 and 90
     let mut p = (*s.project).clone();
     if let Some(ItemKind::Media(m)) = p.item_mut(ocean).map(|i| &mut i.kind) {
         for (k, n) in [10, 30, 60, 90].into_iter().enumerate() {
-            m.markers.push(filmcraft_project::Marker {
+            m.markers.push(epsicut_project::Marker {
                 url: String::new(),
                 author: String::new(),
                 custom_color: None,
-                id: filmcraft_project::MarkerId(9000 + k as u64),
+                id: epsicut_project::MarkerId(9000 + k as u64),
                 start: f(n),
                 duration: Tick::ZERO,
                 name: format!("m{n}"),
                 comment: String::new(),
-                kind: filmcraft_project::MarkerKind::Comment,
+                kind: epsicut_project::MarkerKind::Comment,
                 color: Label::Green,
             });
         }
@@ -990,7 +990,7 @@ fn color_matte_color_changes_and_undoes() {
     let mut s = demo();
     let matte = s.execute("file.newColorMatte", json!({"width": 64, "height": 36, "color": "#ff0000"})).unwrap()["item"].as_u64().unwrap();
     let px = |s: &Session| {
-        let f = s.source(ItemId(matte)).unwrap().video_frame(filmcraft_media::FrameRequest::full(Tick::ZERO)).unwrap();
+        let f = s.source(ItemId(matte)).unwrap().video_frame(epsicut_media::FrameRequest::full(Tick::ZERO)).unwrap();
         f.to_rgba8()[..3].to_vec()
     };
     assert_eq!(px(&s), [255, 0, 0]);
@@ -1027,7 +1027,7 @@ fn speed_duration_moves_fade_out_to_the_new_clip_end() {
     let fade = &s.active_sequence().unwrap().video_tracks[0].transitions[0];
     assert_eq!((rate.frame_at(it.start), rate.frame_at(it.end())), (0, 50));
     assert_eq!((rate.frame_at(fade.start), rate.frame_at(fade.end())), (40, 50));
-    assert_eq!(fade.from, Some(filmcraft_project::ClipId(c)));
+    assert_eq!(fade.from, Some(epsicut_project::ClipId(c)));
     assert_eq!(fade.to, None);
 }
 
@@ -1085,9 +1085,9 @@ fn edits_leave_untouched_sequences_alone() {
     let old = s.execute("file.newSequence", json!({"name": "Old", "video": 1, "audio": 0})).unwrap()["sequence"].as_u64().unwrap();
     {
         let q = std::sync::Arc::make_mut(&mut s.project).sequence_mut(ItemId(old)).unwrap();
-        q.video_tracks[0].transitions.push(filmcraft_project::Transition {
-            id: filmcraft_project::TransitionId(9999),
-            effect: filmcraft_project::find_effect("cross_dissolve").unwrap().instance(),
+        q.video_tracks[0].transitions.push(epsicut_project::Transition {
+            id: epsicut_project::TransitionId(9999),
+            effect: epsicut_project::find_effect("cross_dissolve").unwrap().instance(),
             start: Tick::ZERO,
             duration: Tick(1),
             from: Some(ClipId(1)),
@@ -1127,7 +1127,7 @@ fn add_edit_cuts_only_the_selected_clips() {
     };
     // a V1 clip and a time inside it
     let first = v1(&s)[1].clone();
-    let t = first.start + filmcraft_time::Tick(first.duration.0 / 2);
+    let t = first.start + epsicut_time::Tick(first.duration.0 / 2);
     let (v0, a0) = count(&s);
     s.state.selection = vec![first.id];
     s.execute("sequence.addEdit", json!({"time": t.0})).unwrap();
@@ -1323,7 +1323,7 @@ fn applied_transform_centres_its_points_in_the_clip_picture() {
     let r = s.execute("timeline.place", json!({"item": matte, "track": "V3", "seconds": 0.0})).unwrap();
     let c = r["clips"][0].as_u64().unwrap();
     s.execute("effects.apply", json!({"clips": [c], "effect": "transform"})).unwrap();
-    let centre = filmcraft_geom::Vec2::new(480.0, 540.0);
+    let centre = epsicut_geom::Vec2::new(480.0, 540.0);
     let point = |s: &Session, k: &str| clip(s, c).effect("transform").unwrap().param(k).unwrap().value.as_vec2().unwrap();
     assert_eq!(point(&s, "anchor"), centre);
     assert_eq!(point(&s, "position"), centre);
@@ -1340,7 +1340,7 @@ fn applied_transform_centres_its_points_in_the_clip_picture() {
     assert_eq!(point(&s, "anchor"), centre);
     // intrinsic effects stay centred in the sequence frame when applied to a smaller clip
     let q = s.active_sequence().unwrap();
-    let frame_centre = filmcraft_geom::Vec2::new(f64::from(q.settings.width) / 2.0, f64::from(q.settings.height) / 2.0);
+    let frame_centre = epsicut_geom::Vec2::new(f64::from(q.settings.width) / 2.0, f64::from(q.settings.height) / 2.0);
     s.execute("effects.apply", json!({"clips": [c], "effect": "motion"})).unwrap();
     for m in clip(&s, c).effects.iter().filter(|e| e.effect == "motion") {
         assert_eq!(m.param("position").unwrap().value.as_vec2().unwrap(), frame_centre);
@@ -1355,8 +1355,8 @@ fn set_param_rejects_colour_component_that_overflows_f32() {
     s.execute("effects.apply", json!({"clips": [a.id.0], "effect": "tint"})).unwrap();
     let r = s.execute("effects.setParam", json!({"clip": a.id.0, "effect": "tint", "param": "black", "value": [1e300, 0, 0, 1]}));
     assert!(r.is_err(), "an overflowing colour component must be refused");
-    let bytes = filmcraft_format::encode(&s.project, false);
-    filmcraft_format::decode(&bytes).unwrap();
+    let bytes = epsicut_format::encode(&s.project, false);
+    epsicut_format::decode(&bytes).unwrap();
 }
 
 #[test]
@@ -1366,8 +1366,8 @@ fn set_param_rejects_curve_coordinate_that_overflows_f32() {
     s.execute("effects.apply", json!({"clips": [a.id.0], "effect": "lumetri"})).unwrap();
     let r = s.execute("effects.setParam", json!({"clip": a.id.0, "effect": "lumetri", "param": "curve_luma", "value": [[1e300, 0.5], [1.0, 1.0]]}));
     assert!(r.is_err(), "an overflowing curve coordinate must be refused");
-    let bytes = filmcraft_format::encode(&s.project, false);
-    filmcraft_format::decode(&bytes).unwrap();
+    let bytes = epsicut_format::encode(&s.project, false);
+    epsicut_format::decode(&bytes).unwrap();
 }
 
 /// #2326 review: a video effect aimed only at an audio clip applies to nothing, so it is refused

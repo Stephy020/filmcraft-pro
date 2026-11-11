@@ -1,4 +1,4 @@
-//! FilmCraft captions.
+//! EpsiCut captions.
 //!
 //! - **Files:** [SubRip](srt) (`.srt`), [WebVTT](vtt) (`.vtt`), [Scenarist SCC](scc) (`.scc`,
 //!   CEA-608 pop-on, roll-up and paint-on on read; pop-on on write), [MacCaption MCC](mcc)
@@ -13,7 +13,7 @@
 //! - **Model:** [`track_from_document`] / [`document_from_track`] convert to and from the project's
 //!   [`CaptionTrack`].
 //! - **Burn-in:** [`burn`] lays a caption out with the track style and draws it with the
-//!   `filmcraft-text` engine (Inter SemiBold, shaped and kerned).
+//!   `epsicut-text` engine (Inter SemiBold, shaped and kerned).
 
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable))]
 
@@ -26,8 +26,8 @@ pub mod stl;
 pub mod ttml;
 pub mod vtt;
 
-use filmcraft_project::{Caption, CaptionFormat, CaptionTrack, ClipId, TrackId};
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick};
+use epsicut_project::{Caption, CaptionFormat, CaptionTrack, ClipId, TrackId};
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick};
 
 /// A caption file format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -277,7 +277,7 @@ fn lossy_chars(doc: &Document, stream: &str, shown_as: impl Fn(char) -> Option<c
     cues.sort_by_key(|c| c.start);
     for cue in cues {
         // the text the SCC and MCC writers encode: plain text in 32-column rows
-        for c in scc::wrap_rows(&filmcraft_project::plain_text(&cue.text)).iter().flat_map(|r| r.chars()) {
+        for c in scc::wrap_rows(&epsicut_project::plain_text(&cue.text)).iter().flat_map(|r| r.chars()) {
             let shown = shown_as(c);
             if shown == Some(c) {
                 continue;

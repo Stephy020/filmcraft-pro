@@ -4,12 +4,12 @@
 //! grid).
 
 use egui::{Align2, Color32, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
-use filmcraft_engine::project_panel::{self as pp, Card, SortSpec, ViewMode};
-use filmcraft_project::{Bin, BinEntry, BinId, ItemId, ItemKind};
-use filmcraft_time::Tick;
+use epsicut_engine::project_panel::{self as pp, Card, SortSpec, ViewMode};
+use epsicut_project::{Bin, BinEntry, BinId, ItemId, ItemKind};
+use epsicut_time::Tick;
 use serde_json::json;
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::icons::{self, Icon};
 use crate::panels::project::{Actions, Hover, Inst, View, commit_rename, font, open_bin, quantize};
 use crate::theme::Tokens;
@@ -22,8 +22,8 @@ const LEAD: f32 = 26.0;
 pub fn item_icon(k: &ItemKind) -> Icon {
     match k {
         ItemKind::Media(m) => match m.info.kind {
-            filmcraft_media::MediaKind::AudioOnly => Icon::Audio,
-            filmcraft_media::MediaKind::Still | filmcraft_media::MediaKind::ImageSequence => Icon::Image,
+            epsicut_media::MediaKind::AudioOnly => Icon::Audio,
+            epsicut_media::MediaKind::Still | epsicut_media::MediaKind::ImageSequence => Icon::Image,
             _ => Icon::Film,
         },
         ItemKind::Sequence(_) => Icon::Sequence,
@@ -46,7 +46,7 @@ pub struct Badge {
 /// An item's badges in the Project panel, read from its media (a subclip reads its parent's):
 /// offline, with the word the badge shows and, for an Unreadable file, the error the media pool
 /// recorded; then whether a proxy is attached and whether proxies are on.
-pub fn media_badge(app: &FilmcraftApp, it: &filmcraft_project::ProjectItem) -> Badge {
+pub fn media_badge(app: &EpsicutApp, it: &epsicut_project::ProjectItem) -> Badge {
     let mut b = Badge { offline: false, offline_text: "", offline_reason: None, proxy: false, proxy_on: false };
     let target = match &it.kind {
         ItemKind::Subclip { parent, .. } => app.session.project.item(*parent),
@@ -60,7 +60,7 @@ pub fn media_badge(app: &FilmcraftApp, it: &filmcraft_project::ProjectItem) -> B
         (b.offline, b.offline_text) = (true, tl!("Media missing"));
     } else if let Some(st) = app.session.media.offline_status(id) {
         b.offline = true;
-        if st.reason == filmcraft_render::offline::OfflineReason::Unreadable {
+        if st.reason == epsicut_render::offline::OfflineReason::Unreadable {
             b.offline_text = tl!("Unreadable");
             b.offline_reason = Some(st.error).filter(|e| !e.is_empty());
         } else {
@@ -73,7 +73,7 @@ pub fn media_badge(app: &FilmcraftApp, it: &filmcraft_project::ProjectItem) -> B
 }
 
 /// Paint the List view's offline icon and proxy chip from `at`, and register the offline badge.
-fn paint_badges(app: &mut FilmcraftApp, ui: &egui::Ui, b: &Badge, at: egui::Pos2, pre: &str, id: ItemId) {
+fn paint_badges(app: &mut EpsicutApp, ui: &egui::Ui, b: &Badge, at: egui::Pos2, pre: &str, id: ItemId) {
     let t = app.tokens;
     let mut x = at.x;
     if b.offline {
@@ -110,14 +110,14 @@ fn name_room(b: &Badge, name_r: Rect) -> (Rect, bool) {
 
 /// Register the offline badge drawn at `rect`. An Unreadable badge shows on hover why the file
 /// cannot be read, such as "no decoder for Apple Intermediate Codec video" (#3646).
-fn offline_badge(app: &mut FilmcraftApp, ui: &egui::Ui, rect: Rect, pre: &str, id: ItemId, badge: &Badge) {
+fn offline_badge(app: &mut EpsicutApp, ui: &egui::Ui, rect: Rect, pre: &str, id: ItemId, badge: &Badge) {
     app.auto.add(&format!("{pre}.item.{}.offline", id.0), rect, badge.offline_text);
     if let Some(why) = &badge.offline_reason {
         ui.interact(rect, egui::Id::unique((pre, "offline", id.0)), Sense::hover()).on_hover_text(why);
     }
 }
 
-fn matches_filter(app: &FilmcraftApp, id: ItemId, filter: &str) -> bool {
+fn matches_filter(app: &EpsicutApp, id: ItemId, filter: &str) -> bool {
     app.session.project.item(id).is_some_and(|i| pp::listed(&app.session.project, i) && name_matches(&i.name, filter))
 }
 
@@ -129,21 +129,21 @@ fn name_matches(name: &str, filter: &str) -> bool {
     filter.split_whitespace().all(|word| name.contains(word))
 }
 
-fn label_color(app: &FilmcraftApp, l: filmcraft_project::Label, custom: Option<filmcraft_project::HexColor>) -> Color32 {
+fn label_color(app: &EpsicutApp, l: epsicut_project::Label, custom: Option<epsicut_project::HexColor>) -> Color32 {
     let c = custom.map_or_else(|| app.session.prefs.labels.rgb(l), |c| c.0);
     Color32::from_rgb(c[0], c[1], c[2])
 }
 
 /// Items in display order for a view (keyboard navigation): the list's expanded rows, or the icon
 /// / freeform cards.
-pub fn items_in_view(app: &FilmcraftApp, v: &View, filter: &str) -> Vec<ItemId> {
+pub fn items_in_view(app: &EpsicutApp, v: &View, filter: &str) -> Vec<ItemId> {
     let p = &app.session.project;
     let Some(bin) = p.root.find_bin(v.bin) else { return Vec::new() };
     match v.mode {
         ViewMode::List => {
             let sort = &app.session.prefs.project_panel.view.sort;
             let mut out = Vec::new();
-            fn walk(app: &FilmcraftApp, b: &Bin, sort: &SortSpec, filter: &str, out: &mut Vec<ItemId>) {
+            fn walk(app: &EpsicutApp, b: &Bin, sort: &SortSpec, filter: &str, out: &mut Vec<ItemId>) {
                 let (bins, items) = pp::bin_children(&app.session.project, b, sort);
                 for bid in bins {
                     if (app.ui.expanded_bins.contains(&bid.0) || !filter.is_empty())
@@ -174,7 +174,7 @@ pub fn items_in_view(app: &FilmcraftApp, v: &View, filter: &str) -> Vec<ItemId> 
 
 /// Icon view order: Sort Icons column, else the bin's order (User Order). A search shows matches
 /// from sub-bins too.
-fn icon_order(app: &FilmcraftApp, bin: &Bin, filter: &str) -> Vec<ItemId> {
+fn icon_order(app: &EpsicutApp, bin: &Bin, filter: &str) -> Vec<ItemId> {
     let mut ids = Vec::new();
     if filter.is_empty() {
         for e in &bin.children {
@@ -250,7 +250,7 @@ pub(super) struct ItemInteraction<'a> {
     allow_menu: bool,
 }
 
-pub(super) fn item_interactions(app: &mut FilmcraftApp, ui: &egui::Ui, actions: &mut Actions, interaction: ItemInteraction<'_>) {
+pub(super) fn item_interactions(app: &mut EpsicutApp, ui: &egui::Ui, actions: &mut Actions, interaction: ItemInteraction<'_>) {
     let ItemInteraction { view: v, response: resp, item: id, kind, allow_drag: drag, allow_menu: menu } = interaction;
     if resp.clicked() {
         let mods = click_modifiers(ui);
@@ -265,7 +265,8 @@ pub(super) fn item_interactions(app: &mut FilmcraftApp, ui: &egui::Ui, actions: 
         actions.push(("project.select".into(), json!({"items": sel.iter().map(|i| i.0).collect::<Vec<_>>()})));
     }
     if resp.double_clicked() {
-        let matte = matches!(kind, ItemKind::Media(m) if matches!(m.media, filmcraft_engine::project::MediaRef::Generator(filmcraft_media::Generator::ColorMatte { .. })));
+        let matte =
+            matches!(kind, ItemKind::Media(m) if matches!(m.media, epsicut_engine::project::MediaRef::Generator(epsicut_media::Generator::ColorMatte { .. })));
         if matte {
             // like Premiere: double-clicking a Color Matte opens its color picker
             actions.push(("project.select".into(), json!({"items": [id.0]})));
@@ -283,7 +284,7 @@ pub(super) fn item_interactions(app: &mut FilmcraftApp, ui: &egui::Ui, actions: 
     }
 }
 
-fn item_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, id: ItemId, kind: &ItemKind, actions: &mut Actions) {
+fn item_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, id: ItemId, kind: &ItemKind, actions: &mut Actions) {
     let sel = || json!({"items": [id.0]});
     if ui.button(tl!("Rename")).clicked() {
         actions.push(("projectPanel.rename".into(), json!({"item": id.0})));
@@ -351,7 +352,7 @@ fn item_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, id: ItemId, kind: &ItemK
     let r = ui.menu_button(tl!("Label"), |ui| {
         // the user's label names and colours, as in Edit ▸ Label (#786)
         let labels = app.session.prefs.labels.clone();
-        for l in filmcraft_project::Label::ALL {
+        for l in epsicut_project::Label::ALL {
             if crate::menus::label_choice(ui, &mut app.auto, &labels, l, "project.itemMenu.label").clicked() {
                 actions.push(("project.select".into(), json!({"items": [id.0]})));
                 actions.push(("edit.label".into(), json!({"label": l.name()})));
@@ -361,14 +362,14 @@ fn item_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, id: ItemId, kind: &ItemK
         super::custom_colors::menu(app, ui, json!({"items":[id.0]}), "project.itemMenu.label");
     });
     app.auto.add("project.itemMenu.label", r.response.rect, tl!("Label"));
-    let can_reveal = app.session.project.resolve_media(id).is_some_and(|(_, m, _)| matches!(m.media, filmcraft_project::MediaRef::File { .. }));
+    let can_reveal = app.session.project.resolve_media(id).is_some_and(|(_, m, _)| matches!(m.media, epsicut_project::MediaRef::File { .. }));
     let b = ui.add_enabled(can_reveal, egui::Button::new(tl!("Reveal in Finder")));
     app.auto.add("project.itemMenu.file.reveal", b.rect, "Reveal in Finder");
     if b.clicked() {
         actions.push(("file.reveal".into(), json!({"items": [id.0]})));
         ui.close();
     }
-    if matches!(kind, ItemKind::Media(m) if matches!(m.media, filmcraft_project::MediaRef::File { .. })) {
+    if matches!(kind, ItemKind::Media(m) if matches!(m.media, epsicut_project::MediaRef::File { .. })) {
         ui.separator();
         for (label, cmd) in [(tl!("Link Media…"), "media.linkMedia"), (tl!("Make Offline…"), "media.makeOffline")] {
             if ui.button(label).clicked() {
@@ -405,7 +406,7 @@ fn item_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, id: ItemId, kind: &ItemK
     }
 }
 
-fn bin_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, bin: u64, actions: &mut Actions) {
+fn bin_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, v: &View, bin: u64, actions: &mut Actions) {
     for (label, how) in [(tl!("Open in Place"), "inPlace"), (tl!("Open in New Tab"), "newTab"), (tl!("Open in New Window"), "newWindow")] {
         let b = ui.button(label);
         app.auto.add(&format!("{}.binMenu.{how}", v.prefix), b.rect, label);
@@ -435,7 +436,7 @@ fn bin_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, bin: u64, actio
 
 /// Parameters for `project.delete`: the selected items, else the selected bin by id (the engine
 /// deletes a named bin with everything in it). `None` when nothing is selected.
-pub fn clear_params(selection: &[filmcraft_project::ItemId], selected_bin: Option<u64>) -> Option<serde_json::Value> {
+pub fn clear_params(selection: &[epsicut_project::ItemId], selected_bin: Option<u64>) -> Option<serde_json::Value> {
     if !selection.is_empty() {
         return Some(json!({}));
     }
@@ -444,7 +445,7 @@ pub fn clear_params(selection: &[filmcraft_project::ItemId], selected_bin: Optio
 
 /// Drop project items dragged onto a bin: move them (the selection when the dragged item is in it).
 /// A dragged bin nests in it, unless that would put the bin inside itself.
-fn accept_bin_drop(app: &FilmcraftApp, ui: &egui::Ui, r: Rect, bin: u64, actions: &mut Actions) -> bool {
+fn accept_bin_drop(app: &EpsicutApp, ui: &egui::Ui, r: Rect, bin: u64, actions: &mut Actions) -> bool {
     let items: Vec<u64> = if let Some(item) = crate::panels::dragged_project_item(ui) {
         let sel = &app.session.state.project_selection;
         if sel.contains(&item) { sel.iter().map(|i| i.0).collect() } else { vec![item.0] }
@@ -469,7 +470,7 @@ fn accept_bin_drop(app: &FilmcraftApp, ui: &egui::Ui, r: Rect, bin: u64, actions
 }
 
 /// A bin dropped on empty space moves into the bin the view shows (out of the bin it was nested in).
-fn accept_view_drop(app: &FilmcraftApp, ui: &egui::Ui, r: Rect, v: &View, actions: &mut Actions) {
+fn accept_view_drop(app: &EpsicutApp, ui: &egui::Ui, r: Rect, v: &View, actions: &mut Actions) {
     let Some(dragged) = crate::panels::dragged_bin(ui) else { return };
     let root = &app.session.project.root;
     // already shown here, or the view is inside the dragged bin
@@ -484,7 +485,7 @@ fn accept_view_drop(app: &FilmcraftApp, ui: &egui::Ui, r: Rect, v: &View, action
 }
 
 /// The inline rename field at `r`; true while it is shown.
-fn rename_field(app: &mut FilmcraftApp, ui: &mut egui::Ui, r: Rect, item: Option<u64>, bin: Option<u64>, pre: &str) -> bool {
+fn rename_field(app: &mut EpsicutApp, ui: &mut egui::Ui, r: Rect, item: Option<u64>, bin: Option<u64>, pre: &str) -> bool {
     let Some(rn) = app.ui.project_panel.rename.clone() else { return false };
     if rn.item != item || rn.bin != bin || item.is_none() && bin.is_none() || (!rn.panel.is_empty() && rn.panel != pre) {
         return false;
@@ -530,7 +531,7 @@ fn rename_field(app: &mut FilmcraftApp, ui: &mut egui::Ui, r: Rect, item: Option
 
 /// A second click on the name of the only selected item starts renaming it (after the
 /// double-click interval, so a double-click still opens it).
-fn slow_click_rename(app: &mut FilmcraftApp, ui: &egui::Ui, resp: &egui::Response, name_rect: Rect, id: ItemId, was_selected: bool) {
+fn slow_click_rename(app: &mut EpsicutApp, ui: &egui::Ui, resp: &egui::Response, name_rect: Rect, id: ItemId, was_selected: bool) {
     let key = egui::Id::unique("project-rename-pending");
     let now = ui.input(|i| i.time);
     if resp.double_clicked() {
@@ -570,7 +571,7 @@ struct ListCtx {
     width: f32,
 }
 
-pub fn list_view(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, v: &View, filter: &str, actions: &mut Actions) {
+pub fn list_view(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect, v: &View, filter: &str, actions: &mut Actions) {
     let t = app.tokens;
     let f = font(app);
     let thumbs = app.session.prefs.project_panel.thumbnails;
@@ -599,7 +600,7 @@ pub fn list_view(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, v: &View
         let mut row = 0usize;
         list_bin(app, ui, &root, 0, filter, &mut row, actions, v, &lc);
         if v.inst == Inst::Main && v.bin == app.session.project.root.id {
-            let mut draw = |app: &mut FilmcraftApp, ui: &mut egui::Ui, bin: &Bin, row: &mut usize, actions: &mut Actions| {
+            let mut draw = |app: &mut EpsicutApp, ui: &mut egui::Ui, bin: &Bin, row: &mut usize, actions: &mut Actions| {
                 list_bin(app, ui, bin, 1, "", row, actions, v, &lc);
             };
             crate::panels::menu_dialogs::search_bin_rows(app, ui, &mut row, actions, &mut draw);
@@ -681,7 +682,7 @@ fn background(ui: &egui::Ui, v: &View) -> egui::Response {
 
 /// Empty space under the rows / cards, and the gaps between them (`bg`): click deselects,
 /// double-click imports, right-click menu, drag selects with a marquee.
-fn empty_space(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, bg: &egui::Response, actions: &mut Actions) {
+fn empty_space(app: &mut EpsicutApp, ui: &mut egui::Ui, v: &View, bg: &egui::Response, actions: &mut Actions) {
     let rest = ui.available_rect_before_wrap();
     let r = Rect::from_min_size(rest.min, vec2(rest.width(), rest.height().max(40.0)));
     ui.allocate_rect(r, Sense::hover());
@@ -711,7 +712,7 @@ fn note_hit(ui: &egui::Ui, v: &View, id: ItemId, r: Rect) {
 /// Marquee selection: dragging `bg` (empty space) selects every item drawn this frame whose rect
 /// the rectangle touches, live. Shift/Ctrl add to the selection the drag started with; Escape
 /// cancels and restores it. `origin` is the content's top-left, so scrolling keeps the anchor.
-fn marquee(app: &mut FilmcraftApp, ui: &egui::Ui, v: &View, bg: &egui::Response, origin: egui::Pos2, actions: &mut Actions) {
+fn marquee(app: &mut EpsicutApp, ui: &egui::Ui, v: &View, bg: &egui::Response, origin: egui::Pos2, actions: &mut Actions) {
     // (press point relative to `origin`, selection when the drag began, adds to it)
     type Drag = (egui::Vec2, Vec<u64>, bool);
     let key = egui::Id::unique((&v.prefix, "marquee"));
@@ -757,7 +758,7 @@ fn marquee(app: &mut FilmcraftApp, ui: &egui::Ui, v: &View, bg: &egui::Response,
     }
 }
 
-fn background_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, bin: Option<u64>, actions: &mut Actions) {
+fn background_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, v: &View, bin: Option<u64>, actions: &mut Actions) {
     for (label, cmd) in [
         (tl!("New Bin"), "file.newBin"),
         (tl!("New Search Bin"), "file.newSearchBin"),
@@ -775,7 +776,7 @@ fn background_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, bin: Opt
 }
 
 #[allow(clippy::too_many_arguments)]
-fn list_bin(app: &mut FilmcraftApp, ui: &mut egui::Ui, bin: &Bin, depth: usize, filter: &str, row: &mut usize, actions: &mut Actions, v: &View, lc: &ListCtx) {
+fn list_bin(app: &mut EpsicutApp, ui: &mut egui::Ui, bin: &Bin, depth: usize, filter: &str, row: &mut usize, actions: &mut Actions, v: &View, lc: &ListCtx) {
     let t = app.tokens;
     let (bins, items) = pp::bin_children(&app.session.project, bin, &app.session.prefs.project_panel.view.sort);
     for bid in bins {
@@ -901,9 +902,9 @@ fn list_bin(app: &mut FilmcraftApp, ui: &mut egui::Ui, bin: &Bin, depth: usize, 
 }
 
 /// An item's thumbnail at `t` (None: the poster frame or a third in) fitted into `r`.
-fn thumb(app: &mut FilmcraftApp, ui: &egui::Ui, r: Rect, it: &filmcraft_project::ProjectItem, at: Option<Tick>) {
+fn thumb(app: &mut EpsicutApp, ui: &egui::Ui, r: Rect, it: &epsicut_project::ProjectItem, at: Option<Tick>) {
     ui.painter().rect_filled(r, 2.0, Color32::from_rgb(12, 12, 12));
-    let tt = at.or_else(|| filmcraft_engine::keyboard::poster_frame(it)).unwrap_or(Tick(it.duration().0 * 3 / 10));
+    let tt = at.or_else(|| epsicut_engine::keyboard::poster_frame(it)).unwrap_or(Tick(it.duration().0 * 3 / 10));
     let ctx = ui.ctx().clone();
     let w = (r.width() as u32).clamp(96, 320);
     if let Some((tex, sz)) = app.thumbnail(&ctx, it.id, quantize(tt), w) {
@@ -921,7 +922,7 @@ fn thumb(app: &mut FilmcraftApp, ui: &egui::Ui, r: Rect, it: &filmcraft_project:
 // ------------------------------------------------------------------------------------ icon view
 
 /// Hover scrub over a thumbnail: the media time under the pointer (recorded for I / O).
-fn hover_time(app: &mut FilmcraftApp, ui: &egui::Ui, resp: &egui::Response, r: Rect, it: &filmcraft_project::ProjectItem) -> Option<Tick> {
+fn hover_time(app: &mut EpsicutApp, ui: &egui::Ui, resp: &egui::Response, r: Rect, it: &epsicut_project::ProjectItem) -> Option<Tick> {
     if !(resp.hovered() && app.session.prefs.project_panel.hover_scrub) || it.duration().0 <= 0 {
         return None;
     }
@@ -935,7 +936,7 @@ fn hover_time(app: &mut FilmcraftApp, ui: &egui::Ui, resp: &egui::Response, r: R
 
 /// A clip card: thumbnail (hover scrub, poster frame), In/Out bar, badges, name and duration.
 #[allow(clippy::too_many_arguments)]
-fn card(app: &mut FilmcraftApp, ui: &mut egui::Ui, r: Rect, id: ItemId, pre: &str, show_name: bool, show_dur: bool, sense: Sense) -> Option<egui::Response> {
+fn card(app: &mut EpsicutApp, ui: &mut egui::Ui, r: Rect, id: ItemId, pre: &str, show_name: bool, show_dur: bool, sense: Sense) -> Option<egui::Response> {
     let t = app.tokens;
     let it = app.session.project.item(id).cloned()?;
     let mut resp = ui.interact(r.expand(2.0), egui::Id::unique((pre, "card", id.0)), sense);
@@ -1034,7 +1035,7 @@ fn elided_name(ui: &egui::Ui, name: &str, font: egui::FontId, color: Color32, ma
     ui.fonts_mut(|f| f.layout_job(job))
 }
 
-fn bin_card(app: &mut FilmcraftApp, ui: &mut egui::Ui, r: Rect, b: &Bin, v: &View, actions: &mut Actions) {
+fn bin_card(app: &mut EpsicutApp, ui: &mut egui::Ui, r: Rect, b: &Bin, v: &View, actions: &mut Actions) {
     let t = app.tokens;
     let th = Rect::from_min_size(r.min, vec2(r.width(), r.width() * 9.0 / 16.0));
     let mut resp = ui.interact(r.expand(2.0), egui::Id::unique((&v.prefix, "bincard", b.id.0)), Sense::click_and_drag());
@@ -1079,7 +1080,7 @@ fn bin_card(app: &mut FilmcraftApp, ui: &mut egui::Ui, r: Rect, b: &Bin, v: &Vie
     resp.context_menu(|ui| bin_menu(app, ui, v, b.id.0, actions));
 }
 
-pub fn icon_view(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, v: &View, filter: &str, actions: &mut Actions) {
+pub fn icon_view(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect, v: &View, filter: &str, actions: &mut Actions) {
     let Some(bin) = app.session.project.root.find_bin(v.bin).cloned() else { return };
     let size = v.icon_size;
     let th_h = size * 9.0 / 16.0;
@@ -1132,7 +1133,7 @@ pub fn icon_view(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, v: &View
 
 // ------------------------------------------------------------------------------------ freeform
 
-pub fn freeform_view(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, v: &View, filter: &str, actions: &mut Actions) {
+pub fn freeform_view(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect, v: &View, filter: &str, actions: &mut Actions) {
     let t = app.tokens;
     let opts = app.session.prefs.project_panel.freeform.clone();
     // the footer's Zoom scales the canvas (#3774); cards keep their positions and sizes unscaled
@@ -1307,7 +1308,7 @@ fn cards_stack(cards: &[Card], item: u64) -> Option<u64> {
     cards.iter().find(|c| c.item == item).and_then(|c| c.stack)
 }
 
-fn card_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, item: u64, width: f32, actions: &mut Actions) {
+fn card_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, v: &View, item: u64, width: f32, actions: &mut Actions) {
     let sel: Vec<u64> = app.session.state.project_selection.iter().map(|i| i.0).collect();
     // the selection's cards in this bin: its width lays them out, not another bin's cards
     let here = |i: &u64| app.session.project.root.parent_of(ItemId(*i)) == Some(v.bin);
@@ -1345,8 +1346,8 @@ fn card_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, item: u64, wid
     }
 }
 
-fn canvas_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, bin: Option<u64>, width: f32, actions: &mut Actions) {
-    fn entry(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, actions: &mut Actions, id: &str, label: &str, (cmd, p): (&str, serde_json::Value)) {
+fn canvas_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, v: &View, bin: Option<u64>, width: f32, actions: &mut Actions) {
+    fn entry(app: &mut EpsicutApp, ui: &mut egui::Ui, v: &View, actions: &mut Actions, id: &str, label: &str, (cmd, p): (&str, serde_json::Value)) {
         let b = ui.button(label);
         app.auto.add(&format!("{}.canvasMenu.{id}", v.prefix), b.rect, label);
         if b.clicked() {
@@ -1391,7 +1392,7 @@ fn canvas_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &View, bin: Option<
 #[cfg(test)]
 mod clear_tests {
     use super::{clear_params, click_selection, menu_targets};
-    use filmcraft_project::ItemId;
+    use epsicut_project::ItemId;
     use serde_json::json;
 
     #[test]

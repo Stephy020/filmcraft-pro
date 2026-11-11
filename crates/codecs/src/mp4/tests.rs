@@ -1,16 +1,16 @@
 use super::*;
-use filmcraft_isobmff::{Brand, FourCc, Mp4Writer, SampleEntry, TrackConfig, WriteSample, WriterOptions};
-use filmcraft_media::FrameRequest;
+use epsicut_isobmff::{Brand, FourCc, Mp4Writer, SampleEntry, TrackConfig, WriteSample, WriterOptions};
+use epsicut_media::FrameRequest;
 
 /// A one-frame 64×32 ProRes MOV (bright left half, dark right half) whose `tkhd` matrix is
 /// replaced by `matrix` — built here, no media files.
 fn rotated_mov(matrix: [i32; 9]) -> Arc<[u8]> {
     let (w, h) = (64u32, 32u32);
-    let mut fr = filmcraft_prores::Frame::new(w, h, filmcraft_prores::ChromaFormat::Yuv422, 10, false);
+    let mut fr = epsicut_prores::Frame::new(w, h, epsicut_prores::ChromaFormat::Yuv422, 10, false);
     for (i, y) in fr.y.iter_mut().enumerate() {
         *y = if (i as u32 % w) < w / 2 { 800 } else { 100 };
     }
-    let data = filmcraft_prores::Encoder::new(filmcraft_prores::Profile::Hq, w, h).encode(&fr).expect("encode");
+    let data = epsicut_prores::Encoder::new(epsicut_prores::Profile::Hq, w, h).encode(&fr).expect("encode");
     let mut mux = Mp4Writer::new(std::io::Cursor::new(Vec::new()), WriterOptions::new(Brand::Mov)).expect("writer");
     let t = mux.add_track(TrackConfig::new(SampleEntry::prores(FourCc(*b"apch"), w as u16, h as u16), 25)).expect("track");
     mux.write_sample(t, WriteSample { data: &data, duration: 1, composition_offset: 0, is_sync: true }).expect("sample");
@@ -26,15 +26,15 @@ fn rotated_mov(matrix: [i32; 9]) -> Arc<[u8]> {
 }
 
 /// A four-frame 25 fps ProRes MOV (64×32) whose video track carries `edits`.
-fn mov_with_edits(edits: Vec<filmcraft_isobmff::Edit>) -> Arc<[u8]> {
+fn mov_with_edits(edits: Vec<epsicut_isobmff::Edit>) -> Arc<[u8]> {
     mov_at(25, 1000, 4, edits)
 }
 
 /// An `n`-frame ProRes MOV (64×32) at `fps` (track timescale `fps`, one tick per frame) with movie
 /// timescale `movie`, whose video track carries `edits`.
-fn mov_at(fps: u32, movie: u32, n: usize, edits: Vec<filmcraft_isobmff::Edit>) -> Arc<[u8]> {
-    let fr = filmcraft_prores::Frame::new(64, 32, filmcraft_prores::ChromaFormat::Yuv422, 10, false);
-    let data = filmcraft_prores::Encoder::new(filmcraft_prores::Profile::Hq, 64, 32).encode(&fr).expect("encode");
+fn mov_at(fps: u32, movie: u32, n: usize, edits: Vec<epsicut_isobmff::Edit>) -> Arc<[u8]> {
+    let fr = epsicut_prores::Frame::new(64, 32, epsicut_prores::ChromaFormat::Yuv422, 10, false);
+    let data = epsicut_prores::Encoder::new(epsicut_prores::Profile::Hq, 64, 32).encode(&fr).expect("encode");
     let mut mux = Mp4Writer::new(std::io::Cursor::new(Vec::new()), WriterOptions { movie_timescale: movie, ..WriterOptions::new(Brand::Mov) }).expect("writer");
     let mut cfg = TrackConfig::new(SampleEntry::prores(FourCc(*b"apch"), 64, 32), fps);
     cfg.edits = edits;
@@ -50,7 +50,7 @@ fn mov_at(fps: u32, movie: u32, n: usize, edits: Vec<filmcraft_isobmff::Edit>) -
 /// frame too long; a video track delayed by an empty edit lost its last frame.
 #[test]
 fn duration_follows_the_edit_list() {
-    use filmcraft_isobmff::Edit;
+    use epsicut_isobmff::Edit;
     let frames = |s: &Mp4Source| s.info().duration.to_rational_floor(1, 25);
     // no edit list: the media duration
     assert_eq!(frames(&Mp4Source::open("plain.mov", mov_with_edits(Vec::new())).expect("open")), 4);
@@ -74,7 +74,7 @@ fn duration_follows_the_edit_list() {
 /// frames at 24 fps (13.3333 s, written as 13 333) imported as 319.
 #[test]
 fn an_edit_rounded_to_the_movie_timescale_keeps_the_last_frame() {
-    use filmcraft_isobmff::Edit;
+    use epsicut_isobmff::Edit;
     let frames = |s: &Mp4Source| s.info().duration.to_rational_floor(1, 24);
     let open = |n: usize, edits: Vec<Edit>| Mp4Source::open("rounded.mov", mov_at(24, 1000, n, edits)).expect("open");
     // the whole media: 5 frames = 208.33 ms, written as 208
@@ -133,9 +133,9 @@ fn unedited_composition_delay_starts_at_the_first_picture() {
     let mut mux = Mp4Writer::new(std::io::Cursor::new(Vec::new()), WriterOptions::new(Brand::Mov)).expect("writer");
     let t = mux.add_track(TrackConfig::new(SampleEntry::prores(FourCc(*b"apch"), 64, 32), 25)).expect("track");
     for k in 0..4u16 {
-        let mut fr = filmcraft_prores::Frame::new(64, 32, filmcraft_prores::ChromaFormat::Yuv422, 10, false);
+        let mut fr = epsicut_prores::Frame::new(64, 32, epsicut_prores::ChromaFormat::Yuv422, 10, false);
         fr.y.fill(100 + 200 * k);
-        let data = filmcraft_prores::Encoder::new(filmcraft_prores::Profile::Hq, 64, 32).encode(&fr).expect("encode");
+        let data = epsicut_prores::Encoder::new(epsicut_prores::Profile::Hq, 64, 32).encode(&fr).expect("encode");
         mux.write_sample(t, WriteSample { data: &data, duration: 1, composition_offset: 2, is_sync: true }).expect("sample");
     }
     let src = Mp4Source::open("delay.mov", mux.finish().expect("finish").into_inner().into()).expect("open");
@@ -217,13 +217,13 @@ fn display_matrix_rotates_frames_and_reported_size() {
 }
 
 /// A one-frame 25 fps ProRes MOV (64×32, left half bright) with clean aperture `clap`.
-fn clap_mov(clap: filmcraft_isobmff::CleanAperture) -> Arc<[u8]> {
+fn clap_mov(clap: epsicut_isobmff::CleanAperture) -> Arc<[u8]> {
     let (w, h) = (64u32, 32u32);
-    let mut fr = filmcraft_prores::Frame::new(w, h, filmcraft_prores::ChromaFormat::Yuv422, 10, false);
+    let mut fr = epsicut_prores::Frame::new(w, h, epsicut_prores::ChromaFormat::Yuv422, 10, false);
     for (i, y) in fr.y.iter_mut().enumerate() {
         *y = if (i as u32 % w) < w / 2 { 800 } else { 100 };
     }
-    let data = filmcraft_prores::Encoder::new(filmcraft_prores::Profile::Hq, w, h).encode(&fr).expect("encode");
+    let data = epsicut_prores::Encoder::new(epsicut_prores::Profile::Hq, w, h).encode(&fr).expect("encode");
     let mut entry = SampleEntry::prores(FourCc(*b"apch"), w as u16, h as u16);
     entry.video.as_mut().expect("video").clean_aperture = Some(clap);
     let mut mux = Mp4Writer::new(std::io::Cursor::new(Vec::new()), WriterOptions::new(Brand::Mov)).expect("writer");
@@ -234,7 +234,7 @@ fn clap_mov(clap: filmcraft_isobmff::CleanAperture) -> Arc<[u8]> {
 
 #[test]
 fn clean_aperture_crops_frames_and_reported_size() {
-    use filmcraft_isobmff::CleanAperture;
+    use epsicut_isobmff::CleanAperture;
     let clap = |w: (u32, u32), h: (u32, u32), dx: (i32, u32), dy: (i32, u32)| CleanAperture { width: w, height: h, horiz_offset: dx, vert_offset: dy };
     // 32x16 moved 8 left of centre: columns 8..40 (24 bright, then 8 dark), rows 8..24
     let s = Mp4Source::open("clap.mov", clap_mov(clap((32, 1), (16, 1), (-8, 1), (0, 1)))).expect("open");
@@ -290,14 +290,14 @@ fn mirrored_or_scaled_matrices_are_not_mistaken_for_rotations() {
 #[test]
 fn hevc_pixel_format_comes_from_hvcc() {
     for (chroma, bits, want) in [(1, 8, "YUV 4:2:0 8-bit"), (1, 10, "YUV 4:2:0 10-bit"), (2, 8, "YUV 4:2:2 8-bit"), (2, 10, "YUV 4:2:2 10-bit")] {
-        let c = filmcraft_isobmff::HevcConfig { general_profile_idc: 1, chroma_format_idc: chroma, bit_depth_luma: bits, ..Default::default() };
+        let c = epsicut_isobmff::HevcConfig { general_profile_idc: 1, chroma_format_idc: chroma, bit_depth_luma: bits, ..Default::default() };
         assert_eq!(pixfmt_label(&CodecConfig::Hevc(c)), want);
     }
 }
 
 /// A High-profile SPS NAL unit (ITU-T H.264 §7.3.2.1.1) with the given chroma format and bit depth, 16×16.
 fn high_sps(profile: u8, chroma: u32, bits: u32) -> Vec<u8> {
-    let mut w = filmcraft_bitstream::BitWriter::new();
+    let mut w = epsicut_bitstream::BitWriter::new();
     w.write_bits(0x67, 8);
     w.write_bits(profile as u32, 8);
     w.write_bits(0, 8); // constraint flags
@@ -324,7 +324,7 @@ fn high_sps(profile: u8, chroma: u32, bits: u32) -> Vec<u8> {
 
 #[test]
 fn avc_pixel_format_comes_from_avcc_not_the_profile() {
-    let avc = |profile: u8, sps: Vec<u8>, ext: Vec<u8>| CodecConfig::Avc(filmcraft_isobmff::AvcConfig { profile, sps: vec![sps], ext, ..Default::default() });
+    let avc = |profile: u8, sps: Vec<u8>, ext: Vec<u8>| CodecConfig::Avc(epsicut_isobmff::AvcConfig { profile, sps: vec![sps], ext, ..Default::default() });
     // High 4:2:2 at 10 and 8 bits, from the avcC extension (chroma_format 2, bit_depth_luma_minus8)
     assert_eq!(pixfmt_label(&avc(122, high_sps(122, 2, 10), vec![0xFE, 0xFA, 0xFA, 0])), "YUV 4:2:2 10-bit");
     assert_eq!(pixfmt_label(&avc(122, high_sps(122, 2, 8), vec![0xFE, 0xF8, 0xF8, 0])), "YUV 4:2:2 8-bit");
@@ -342,7 +342,7 @@ fn avc_pixel_format_comes_from_avcc_not_the_profile() {
 
 /// An HEVC Main SPS NAL unit (ITU-T H.265 §7.3.2.2) with the given chroma format and bit depth, 64×64.
 fn hevc_sps(chroma: u32, bits: u32) -> Vec<u8> {
-    let mut w = filmcraft_bitstream::BitWriter::new();
+    let mut w = epsicut_bitstream::BitWriter::new();
     w.write_bits(0, 4); // vps id
     w.write_bits(0, 3); // max_sub_layers_minus1
     w.write_bits(1, 1); // temporal_id_nesting
@@ -389,7 +389,7 @@ fn hevc_sps(chroma: u32, bits: u32) -> Vec<u8> {
     w.write_bits(0, 1); // extensions
     w.rbsp_trailing();
     let mut nal = vec![33 << 1, 1];
-    nal.extend(filmcraft_bitstream::escape_rbsp(&w.finish()));
+    nal.extend(epsicut_bitstream::escape_rbsp(&w.finish()));
     nal
 }
 
@@ -397,8 +397,8 @@ fn hevc_sps(chroma: u32, bits: u32) -> Vec<u8> {
 #[test]
 fn hevc_pixel_format_prefers_the_sps_over_the_hvcc_fields() {
     let with_sps = |chroma: u32, bits: u32, field_chroma: u8, field_bits: u8| {
-        let arrays = vec![filmcraft_isobmff::HevcNalArray { completeness: true, nal_type: 33, nalus: vec![hevc_sps(chroma, bits)] }];
-        CodecConfig::Hevc(filmcraft_isobmff::HevcConfig {
+        let arrays = vec![epsicut_isobmff::HevcNalArray { completeness: true, nal_type: 33, nalus: vec![hevc_sps(chroma, bits)] }];
+        CodecConfig::Hevc(epsicut_isobmff::HevcConfig {
             general_profile_idc: 1,
             chroma_format_idc: field_chroma,
             bit_depth_luma: field_bits,
@@ -410,15 +410,15 @@ fn hevc_pixel_format_prefers_the_sps_over_the_hvcc_fields() {
     assert_eq!(pixfmt_label(&with_sps(2, 10, 1, 8)), "YUV 4:2:2 10-bit", "the SPS outranks the fields");
     assert_eq!(pixfmt_label(&with_sps(3, 12, 3, 12)), "YUV 4:4:4 12-bit");
     // no SPS in the record: its fields
-    let bare = CodecConfig::Hevc(filmcraft_isobmff::HevcConfig { general_profile_idc: 1, chroma_format_idc: 1, bit_depth_luma: 10, ..Default::default() });
+    let bare = CodecConfig::Hevc(epsicut_isobmff::HevcConfig { general_profile_idc: 1, chroma_format_idc: 1, bit_depth_luma: 10, ..Default::default() });
     assert_eq!(pixfmt_label(&bare), "YUV 4:2:0 10-bit");
 }
 
 /// A one-frame 32×16 ProRes MOV with the given profile, chroma format and fourcc.
-fn prores_mov(profile: filmcraft_prores::Profile, fourcc: &[u8; 4], chroma: filmcraft_prores::ChromaFormat, alpha: bool) -> Arc<[u8]> {
+fn prores_mov(profile: epsicut_prores::Profile, fourcc: &[u8; 4], chroma: epsicut_prores::ChromaFormat, alpha: bool) -> Arc<[u8]> {
     let (w, h) = (32u32, 16u32);
-    let fr = filmcraft_prores::Frame::new(w, h, chroma, if chroma == filmcraft_prores::ChromaFormat::Yuv444 { 12 } else { 10 }, alpha);
-    let data = filmcraft_prores::Encoder::new(profile, w, h).encode(&fr).expect("encode");
+    let fr = epsicut_prores::Frame::new(w, h, chroma, if chroma == epsicut_prores::ChromaFormat::Yuv444 { 12 } else { 10 }, alpha);
+    let data = epsicut_prores::Encoder::new(profile, w, h).encode(&fr).expect("encode");
     let mut mux = Mp4Writer::new(std::io::Cursor::new(Vec::new()), WriterOptions::new(Brand::Mov)).expect("writer");
     let t = mux.add_track(TrackConfig::new(SampleEntry::prores(FourCc(*fourcc), w as u16, h as u16), 25)).expect("track");
     mux.write_sample(t, WriteSample { data: &data, duration: 1, composition_offset: 0, is_sync: true }).expect("sample");
@@ -428,7 +428,7 @@ fn prores_mov(profile: filmcraft_prores::Profile, fourcc: &[u8; 4], chroma: film
 /// `ap4h` / `ap4x` don't imply alpha: the frame header's alpha_channel_type does.
 #[test]
 fn prores_alpha_comes_from_the_frame_header() {
-    use filmcraft_prores::{ChromaFormat, Profile};
+    use epsicut_prores::{ChromaFormat, Profile};
     for (profile, fourcc, chroma, alpha, want) in [
         (Profile::P4444, b"ap4h", ChromaFormat::Yuv444, false, "YUV 4:4:4 12-bit"),
         (Profile::P4444, b"ap4h", ChromaFormat::Yuv444, true, "YUVA 4:4:4 12-bit"),
@@ -444,7 +444,7 @@ fn prores_alpha_comes_from_the_frame_header() {
 /// [`prores_mov`] with its sample entry retyped `icod`: an Apple Intermediate Codec MOV as far as
 /// the demuxer can tell (there is no AIC encoder to make a real one).
 fn aic_mov() -> Arc<[u8]> {
-    let mut b = prores_mov(filmcraft_prores::Profile::Hq, b"apch", filmcraft_prores::ChromaFormat::Yuv422, false).to_vec();
+    let mut b = prores_mov(epsicut_prores::Profile::Hq, b"apch", epsicut_prores::ChromaFormat::Yuv422, false).to_vec();
     // stsd (ISO/IEC 14496-12 §8.5.2): type, version/flags, entry_count, then the first entry's size and type
     let k = b.windows(4).position(|x| x == b"stsd").expect("stsd") + 16;
     assert_eq!(&b[k..k + 4], b"apch");

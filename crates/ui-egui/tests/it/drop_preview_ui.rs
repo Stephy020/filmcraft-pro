@@ -6,16 +6,16 @@ use std::collections::BTreeSet;
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_project::{BinEntry, ItemId};
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_project::{BinEntry, ItemId};
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
-    /// `FILMCRAFT_UI_SNAPSHOT_DIR`: where each drag's mid-drag frame is saved (off by default).
+    /// `EPSICUT_UI_SNAPSHOT_DIR`: where each drag's mid-drag frame is saved (off by default).
     snapshots: Option<std::path::PathBuf>,
 }
 
@@ -27,8 +27,8 @@ impl Driver {
         session.execute("file.newSequence", json!({"name": "Drop preview", "width": 1280, "height": 720, "fps": 24})).expect("sequence");
         session.prefs.timeline.clip_mismatch_warning = false;
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
-        let snapshots = std::env::var_os("FILMCRAFT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+        let app = EpsicutApp::new(session).with_control(rx);
+        let snapshots = std::env::var_os("EPSICUT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000);
         if snapshots.is_some() {
             b = b.wgpu();
@@ -123,7 +123,7 @@ impl Driver {
     /// "V2" / "A1" labels of the active sequence's tracks that hold a clip of `item`.
     fn tracks_holding(&self, item: ItemId) -> BTreeSet<String> {
         let q = self.harness.state().session.active_sequence().unwrap();
-        let named = |letter: char, tracks: &[filmcraft_project::Track]| {
+        let named = |letter: char, tracks: &[epsicut_project::Track]| {
             tracks
                 .iter()
                 .enumerate()
@@ -200,7 +200,7 @@ fn a_sequence_dropped_unnested_on_v2_previews_the_tracks_its_clips_land_on() {
     let shown = d.drag_to_track(from, "V2");
     let filled: BTreeSet<String> = {
         let q = d.harness.state().session.active_sequence().unwrap();
-        let named = |letter: char, tracks: &[filmcraft_project::Track]| {
+        let named = |letter: char, tracks: &[epsicut_project::Track]| {
             tracks
                 .iter()
                 .enumerate()

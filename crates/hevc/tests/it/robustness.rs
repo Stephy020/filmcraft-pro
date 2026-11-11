@@ -2,8 +2,8 @@
 
 use crate::common;
 
-use filmcraft_bitstream::annexb_nals;
-use filmcraft_hevc::Decoder;
+use epsicut_bitstream::annexb_nals;
+use epsicut_hevc::Decoder;
 
 /// Build an hvcC record and length-prefixed samples from an Annex-B stream.
 fn to_hvcc(data: &[u8]) -> (Vec<u8>, Vec<Vec<u8>>) {

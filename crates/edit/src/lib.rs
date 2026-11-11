@@ -26,8 +26,8 @@ pub mod transitions;
 
 use std::collections::HashMap;
 
-use filmcraft_project::{ClipId, ItemId, Sequence, Track, TrackId, TrackItem, Transition, TransitionAlign, TransitionId};
-use filmcraft_time::{Tick, TimeRange};
+use epsicut_project::{ClipId, ItemId, Sequence, Track, TrackId, TrackItem, Transition, TransitionAlign, TransitionId};
+use epsicut_time::{Tick, TimeRange};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum EditError {

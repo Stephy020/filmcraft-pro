@@ -1,6 +1,6 @@
 //! Saved swatch operations do not change colors already assigned to media or markers.
 use crate::{Result, Session, commands::bad};
-use filmcraft_project::HexColor;
+use epsicut_project::HexColor;
 use serde_json::{Value, json};
 fn color(p: &Value, key: &str, id: &str) -> Result<HexColor> {
     p.get(key).and_then(Value::as_str).and_then(HexColor::parse).ok_or_else(|| bad(id, "need a six-digit hex color"))

@@ -1,7 +1,7 @@
 //! Fixture locations and race-free generation.
 //!
 //! Fixtures live in `<workspace>/target/fixtures/<crate>/` whatever `CARGO_TARGET_DIR` is, so
-//! parallel agents with private target dirs share one generated set. `FILMCRAFT_FIXTURES_DIR`
+//! parallel agents with private target dirs share one generated set. `EPSICUT_FIXTURES_DIR`
 //! overrides the root. Media is never committed.
 
 use std::path::{Path, PathBuf};
@@ -14,9 +14,9 @@ pub fn workspace_root() -> PathBuf {
     root.canonicalize().unwrap_or_else(|_| root.to_path_buf())
 }
 
-/// Root of all generated fixtures: `$FILMCRAFT_FIXTURES_DIR` or `<workspace>/target/fixtures`.
+/// Root of all generated fixtures: `$EPSICUT_FIXTURES_DIR` or `<workspace>/target/fixtures`.
 pub fn fixtures_root() -> PathBuf {
-    match std::env::var_os("FILMCRAFT_FIXTURES_DIR").filter(|v| !v.is_empty()) {
+    match std::env::var_os("EPSICUT_FIXTURES_DIR").filter(|v| !v.is_empty()) {
         Some(d) => PathBuf::from(d),
         None => workspace_root().join("target").join("fixtures"),
     }
@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn direct_publication_reuses_a_locked_complete_winner() {
         use std::os::windows::fs::OpenOptionsExt;
-        let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-direct-publish"));
+        let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-direct-publish"));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("fixture.bin");
         let tmp = temp_path(&out);
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn direct_publication_rejects_invalid_temporary_without_output() {
         for kind in ["empty", "missing", "directory"] {
-            let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-invalid-publish"));
+            let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-invalid-publish"));
             std::fs::create_dir_all(&dir).unwrap();
             let out = dir.join("fixture.bin");
             let tmp = temp_path(&out);
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn direct_publication_rejects_invalid_temporary_with_empty_output() {
         for kind in ["empty", "missing", "directory"] {
-            let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-invalid-empty-out"));
+            let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-invalid-empty-out"));
             std::fs::create_dir_all(&dir).unwrap();
             let out = dir.join("fixture.bin");
             let tmp = temp_path(&out);
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn direct_publication_preserves_complete_winner_with_invalid_temporary() {
         for kind in ["empty", "missing", "directory"] {
-            let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-invalid-winner"));
+            let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-invalid-winner"));
             std::fs::create_dir_all(&dir).unwrap();
             let out = dir.join("fixture.bin");
             let tmp = temp_path(&out);
@@ -237,7 +237,7 @@ mod tests {
     // does not establish that the generated path is a complete fixture file.
     #[test]
     fn generate_rejects_successful_callback_producing_empty_file() {
-        let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-generate-empty"));
+        let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-generate-empty"));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("fixture.bin");
         let mut temporary = None;
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn generate_rejects_successful_callback_producing_directory() {
-        let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-generate-directory"));
+        let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-generate-directory"));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("fixture.bin");
         let mut temporary = None;
@@ -310,7 +310,7 @@ mod tests {
     fn concurrent_complete_fixture_survives_blocked_publication() {
         use std::os::windows::fs::OpenOptionsExt;
 
-        let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-publish"));
+        let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-publish"));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("fixture.bin");
         let mut reader = None;
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn failed_publication_does_not_accept_a_directory_or_leave_temporary() {
-        let dir = temp_path(&std::env::temp_dir().join("filmcraft-testkit-publish-directory"));
+        let dir = temp_path(&std::env::temp_dir().join("epsicut-testkit-publish-directory"));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("fixture.bin");
         let mut temporary = None;

@@ -1,11 +1,11 @@
 //! An engine toast (#2443) reaches the status bar, for a message and for an error.
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
 
-fn harness() -> Harness<'static, FilmcraftApp> {
-    let app = FilmcraftApp::new(Session::default());
+fn harness() -> Harness<'static, EpsicutApp> {
+    let app = EpsicutApp::new(Session::default());
     let mut harness = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(10_000).build_eframe(move |_cc| app);
     for _ in 0..3 {
         harness.step();

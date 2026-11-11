@@ -1,17 +1,17 @@
 //! Option-drag of a caption in the Timeline leaves it where it was and drops a copy where it is
-//! released, as with clips. The real `FilmcraftApp` under `egui_kittest` with the demo project.
+//! released, as with clips. The real `EpsicutApp` under `egui_kittest` with the demo project.
 
 use std::sync::mpsc::{Sender, channel};
 
 use egui::{Modifiers, Pos2, Rect, pos2};
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
 }
 
@@ -23,7 +23,7 @@ impl Driver {
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         session.execute("sequence.snap", json!({"on": false})).expect("snapping off");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
+        let app = EpsicutApp::new(session).with_control(rx);
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_step_dt(1.0 / 60.0).with_max_steps(10_000).build_eframe(move |_cc| app);
         let mut d = Driver { harness, tx };
         d.frames(4);

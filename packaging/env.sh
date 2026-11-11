@@ -3,10 +3,10 @@
 #
 # Exports:
 #   ROOT                    workspace root
-#   VERSION                 [workspace.package] version from Cargo.toml (override: FILMCRAFT_VERSION)
+#   VERSION                 [workspace.package] version from Cargo.toml (override: EPSICUT_VERSION)
 #   DIST                    output directory for release artifacts (default: $ROOT/dist/release)
-#   FILMCRAFT_BUILD_SHA    git commit baked into the binaries (see crates/engine/src/build_info.rs)
-#   FILMCRAFT_BUILD_DATE   UTC build date, YYYY-MM-DD
+#   EPSICUT_BUILD_SHA    git commit baked into the binaries (see crates/engine/src/build_info.rs)
+#   EPSICUT_BUILD_DATE   UTC build date, YYYY-MM-DD
 #   CARGO_TARGET_DIR        cargo's target dir (default: $ROOT/target)
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,7 +22,7 @@ workspace_version() {
   return 0
 }
 
-VERSION="${FILMCRAFT_VERSION:-$(workspace_version)}"
+VERSION="${EPSICUT_VERSION:-$(workspace_version)}"
 if [[ -z "$VERSION" ]]; then
   echo "error: could not read [workspace.package] version from $ROOT/Cargo.toml" >&2
   exit 1
@@ -33,11 +33,11 @@ DIST="${DIST:-$ROOT/dist/release}"
 mkdir -p "$DIST"
 export DIST
 
-if [[ -z "${FILMCRAFT_BUILD_SHA:-}" ]]; then
-  FILMCRAFT_BUILD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
+if [[ -z "${EPSICUT_BUILD_SHA:-}" ]]; then
+  EPSICUT_BUILD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
 fi
-export FILMCRAFT_BUILD_SHA
-export FILMCRAFT_BUILD_DATE="${FILMCRAFT_BUILD_DATE:-$(date -u +%Y-%m-%d)}"
+export EPSICUT_BUILD_SHA
+export EPSICUT_BUILD_DATE="${EPSICUT_BUILD_DATE:-$(date -u +%Y-%m-%d)}"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT/target}"
 
 # Emit a GitHub Actions warning (plain stderr outside Actions).

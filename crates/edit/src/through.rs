@@ -7,8 +7,8 @@
 //!   ▸ Go to Gap).
 //! - [`clip_item_to`] trims a copy of an item to a time range (Make Subsequence).
 
-use filmcraft_project::{ClipId, Sequence, Track, TrackId, TrackItem};
-use filmcraft_time::{Tick, TimeRange};
+use epsicut_project::{ClipId, Sequence, Track, TrackId, TrackItem};
+use epsicut_time::{Tick, TimeRange};
 
 use crate::remove_orphan_transitions;
 
@@ -169,7 +169,7 @@ pub fn clip_item_to(it: &TrackItem, range: TimeRange) -> Option<TrackItem> {
 mod tests {
     use super::*;
     use crate::{EditCtx, razor};
-    use filmcraft_project::{ItemId, Label, SequenceSettings, TrackKind};
+    use epsicut_project::{ItemId, Label, SequenceSettings, TrackKind};
 
     fn item(id: u64, start: i64, dur: i64, src: i64) -> TrackItem {
         TrackItem {
@@ -203,7 +203,7 @@ mod tests {
     }
 
     fn seq_with(items: Vec<TrackItem>) -> Sequence {
-        let mut p = filmcraft_project::Project::new("t");
+        let mut p = epsicut_project::Project::new("t");
         let id = p.new_sequence("s", SequenceSettings::default(), 1, 1, None);
         let mut q = p.sequence(id).unwrap().clone();
         q.video_tracks[0].items = items;

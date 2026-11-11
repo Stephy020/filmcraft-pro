@@ -1,6 +1,6 @@
 //! VideoToolbox H.264 and HEVC encoding (macOS): what the hardware path takes and declines, a round trip
 //! through our own software decoder (picture quality, frame count and order, keyframes, the
-//! timestamps the muxer needs), a full export through `filmcraft_export` that decodes, the fallback
+//! timestamps the muxer needs), a full export through `epsicut_export` that decodes, the fallback
 //! to the built-in encoder for everything hardware does not take, and hostile configurations that
 //! must give errors and never crash. Tests that need a hardware encoder skip without one.
 #![cfg(target_os = "macos")]
@@ -8,19 +8,19 @@
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 
-use filmcraft_export::{
+use epsicut_export::{
     BitrateMode, EncodedPacket, EncoderFrame, ExportSettings, Format, H264Pass, H264Profile, HardwareEncoding, Progress, VideoEncoder, export, hw_encode_stats,
     rgba_to_yuv420_8,
 };
-use filmcraft_frame::PixelData;
-use filmcraft_isobmff::{CodecConfig, SampleEntry};
-use filmcraft_media::generators::GeneratorSource;
-use filmcraft_media::{DemoScene, MediaSource};
-use filmcraft_platform::hardware_encode::{HardwareEncoder, config_for, hevc_available, videotoolbox_encoder_factory};
-use filmcraft_platform::videotoolbox_encode::{VtConfig, VtEncoder, VtInput, VtProfile, VtRate};
-use filmcraft_project::{ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
-use filmcraft_render::SourceMap;
-use filmcraft_time::{FrameRate, Tick, TimeRange};
+use epsicut_frame::PixelData;
+use epsicut_isobmff::{CodecConfig, SampleEntry};
+use epsicut_media::generators::GeneratorSource;
+use epsicut_media::{DemoScene, MediaSource};
+use epsicut_platform::hardware_encode::{HardwareEncoder, config_for, hevc_available, videotoolbox_encoder_factory};
+use epsicut_platform::videotoolbox_encode::{VtConfig, VtEncoder, VtInput, VtProfile, VtRate};
+use epsicut_project::{ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
+use epsicut_render::SourceMap;
+use epsicut_time::{FrameRate, Tick, TimeRange};
 
 const W: u32 = 640;
 const H: u32 = 360;
@@ -76,10 +76,10 @@ fn encode_all(enc: &mut Box<dyn VideoEncoder>, frames: u64) -> Vec<EncodedPacket
 
 /// Decode `packets` (decoding order) with our software decoder: the pictures in presentation order.
 fn decode(entry: &SampleEntry, packets: &[EncodedPacket]) -> Vec<(i64, Vec<u8>)> {
-    let mut dec = filmcraft_codecs::software_video_decoder(entry).expect("software decoder");
+    let mut dec = epsicut_codecs::software_video_decoder(entry).expect("software decoder");
     let mut out = Vec::new();
     let mut dts = 0i64;
-    let take = |frames: Vec<filmcraft_codecs::DecodedFrame>, out: &mut Vec<(i64, Vec<u8>)>| {
+    let take = |frames: Vec<epsicut_codecs::DecodedFrame>, out: &mut Vec<(i64, Vec<u8>)>| {
         for f in frames {
             let PixelData::Yuv8 { planes, .. } = &f.frame.data else { panic!("expected 8-bit planes") };
             out.push((f.pts, planes[0].to_vec()));
@@ -108,9 +108,9 @@ fn mean_abs_diff(a: &[u8], b: &[u8]) -> f64 {
 /// Decode `packets` (decoding order, no reordering) with our software decoder: every picture's
 /// Y, Cb and Cr planes in presentation order.
 fn decode_planes(entry: &SampleEntry, packets: &[EncodedPacket]) -> Vec<[Vec<u8>; 3]> {
-    let mut dec = filmcraft_codecs::software_video_decoder(entry).expect("software decoder");
+    let mut dec = epsicut_codecs::software_video_decoder(entry).expect("software decoder");
     let mut out = Vec::new();
-    let take = |frames: Vec<filmcraft_codecs::DecodedFrame>, out: &mut Vec<(i64, [Vec<u8>; 3])>| {
+    let take = |frames: Vec<epsicut_codecs::DecodedFrame>, out: &mut Vec<(i64, [Vec<u8>; 3])>| {
         for f in frames {
             let PixelData::Yuv8 { planes, .. } = &f.frame.data else { panic!("expected 8-bit planes") };
             out.push((f.pts, [planes[0].to_vec(), planes[1].to_vec(), planes[2].to_vec()]));
@@ -127,7 +127,7 @@ fn decode_planes(entry: &SampleEntry, packets: &[EncodedPacket]) -> Vec<[Vec<u8>
 /// The sample entry of a session's stream (known once its first frame came out).
 fn entry_of(vt: &VtEncoder) -> SampleEntry {
     let p = vt.parameter_sets().expect("parameter sets after the first frame");
-    SampleEntry::avc(filmcraft_isobmff::AvcConfig::new(p.sps, p.pps, 4), W as u16, H as u16)
+    SampleEntry::avc(epsicut_isobmff::AvcConfig::new(p.sps, p.pps, 4), W as u16, H as u16)
 }
 
 /// RGBA pictures handed to VideoToolbox as they are (`32BGRA`, VideoToolbox converting) encode the
@@ -245,7 +245,7 @@ fn rgba_input_refuses_what_does_not_fit() {
 /// asked-for frame count, release its sessions and start clean again.
 #[test]
 fn rate_conversion_and_cancel_then_export_again() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     let probe = ExportSettings { include_audio: false, ..hardware_settings() };
     if hardware(&probe, W, H).is_none() {
         return;
@@ -275,7 +275,7 @@ fn rate_conversion_and_cancel_then_export_again() {
         export(&p, seq, &s, &m, &progress)
     });
     match result {
-        Err(filmcraft_export::ExportError::Cancelled) => {}
+        Err(epsicut_export::ExportError::Cancelled) => {}
         Ok(r) => eprintln!("the export finished before the cancel landed ({} frames)", r.frames),
         Err(e) => panic!("a cancelled export must report Cancelled or finish, not {e}"),
     }
@@ -300,7 +300,7 @@ fn declines_what_the_hardware_path_does_not_take() {
     declined(&ExportSettings { bitrate_mode: BitrateMode::Vbr2Pass, ..ok.clone() }, "two-pass VBR");
     declined(&ExportSettings { bitrate_mode: BitrateMode::Crf, ..ok.clone() }, "CRF");
     declined(&ExportSettings { h264_pass: H264Pass::First, ..ok.clone() }, "an analysis pass");
-    declined(&ExportSettings { signal: filmcraft_export::ColorSignal::PQ, ..ok.clone() }, "HDR");
+    declined(&ExportSettings { signal: epsicut_export::ColorSignal::PQ, ..ok.clone() }, "HDR");
     declined(&ExportSettings { pixel_aspect: Some((4, 3)), ..ok.clone() }, "non-square pixels");
     declined(&ExportSettings { format: Format::MxfOp1a, ..ok.clone() }, "MXF");
     assert!(config_for(W, H, FrameRate { num: 0, den: 1 }, &ok).is_err());
@@ -380,7 +380,7 @@ fn round_trip_through_our_software_decoder() {
 }
 
 /// A project with an animated demo clip as the whole sequence.
-fn project(frames: i64) -> (Arc<Project>, filmcraft_project::ItemId, SourceMap) {
+fn project(frames: i64) -> (Arc<Project>, epsicut_project::ItemId, SourceMap) {
     let mut p = Project::new("hw");
     let g = GeneratorSource::demo(DemoScene::Plasma);
     let info = g.info().clone();
@@ -418,12 +418,12 @@ fn tmp(name: &str) -> String {
 /// (sample count, decoded picture count, sync sample count) of an MP4's video track, decoded by our decoder.
 fn inspect(path: &str) -> (usize, usize, usize) {
     let bytes = std::fs::read(path).unwrap();
-    let file = filmcraft_isobmff::open(bytes.as_slice()).unwrap();
-    let vt = file.track_of_kind(filmcraft_isobmff::TrackKind::Video).unwrap();
+    let file = epsicut_isobmff::open(bytes.as_slice()).unwrap();
+    let vt = file.track_of_kind(epsicut_isobmff::TrackKind::Video).unwrap();
     let track = &file.tracks[vt];
     let entry = track.entries.first().expect("a sample entry");
     assert!(matches!(&entry.codec, CodecConfig::Avc(_) | CodecConfig::Hevc(_)), "neither AVC nor HEVC: {}", entry.codec.name());
-    let mut dec = filmcraft_codecs::software_video_decoder(entry).expect("software decoder");
+    let mut dec = epsicut_codecs::software_video_decoder(entry).expect("software decoder");
     let mut pictures = 0;
     for (i, s) in track.samples.iter().enumerate() {
         let data = file.read_sample(bytes.as_slice(), vt, i).unwrap();
@@ -435,7 +435,7 @@ fn inspect(path: &str) -> (usize, usize, usize) {
 
 #[test]
 fn export_through_the_pipeline_with_hardware_encoding() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     let path = tmp("hw.mp4");
     let s = ExportSettings { path: path.clone(), include_audio: false, ..hardware_settings() };
     // is the hardware encoder available at all on this machine?
@@ -453,7 +453,7 @@ fn export_through_the_pipeline_with_hardware_encoding() {
 
 #[test]
 fn what_hardware_does_not_take_still_exports_with_the_built_in_encoder() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     let (frames, (p, seq, m)) = (30, project(30));
     for (name, settings) in [
         ("two-pass", ExportSettings { bitrate_mode: BitrateMode::Vbr2Pass, ..hardware_settings() }),
@@ -548,9 +548,9 @@ fn encoders_can_be_dropped_at_any_point() {
 
 #[test]
 fn ffmpeg_decodes_what_the_hardware_encoder_writes() {
-    filmcraft_platform::register();
-    let Some(ffmpeg) = filmcraft_testkit::ffmpeg_or_skip("hardware H.264 export") else { return };
-    let Some(ffprobe) = filmcraft_testkit::ffprobe_or_skip("hardware H.264 export") else { return };
+    epsicut_platform::register();
+    let Some(ffmpeg) = epsicut_testkit::ffmpeg_or_skip("hardware H.264 export") else { return };
+    let Some(ffprobe) = epsicut_testkit::ffprobe_or_skip("hardware H.264 export") else { return };
     let path = tmp("oracle.mp4");
     let s = ExportSettings { path: path.clone(), include_audio: false, ..hardware_settings() };
     if hardware(&s, W, H).is_none() {
@@ -601,7 +601,7 @@ fn pictures_keep_their_exact_size() {
         packets.extend(enc.flush().expect("flush"));
         assert_eq!(packets.len(), 6, "{w}x{h}");
         let entry = enc.sample_entry();
-        let mut dec = filmcraft_codecs::software_video_decoder(&entry).expect("software decoder");
+        let mut dec = epsicut_codecs::software_video_decoder(&entry).expect("software decoder");
         let mut pictures = Vec::new();
         for (i, p) in packets.iter().enumerate() {
             pictures.extend(dec.decode(&p.data, i as i64).expect("decode"));
@@ -619,7 +619,7 @@ fn pictures_keep_their_exact_size() {
 
 #[test]
 fn an_empty_range_never_leaves_a_broken_file() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     let probe = ExportSettings { include_audio: false, ..hardware_settings() };
     if hardware(&probe, W, H).is_none() {
         return;
@@ -637,8 +637,8 @@ fn an_empty_range_never_leaves_a_broken_file() {
             (Err(_), _) => {}
             (Ok(r), Some(bytes)) => {
                 assert_eq!(r.frames, 0, "{name}");
-                let f = filmcraft_isobmff::open(bytes.as_slice()).unwrap_or_else(|e| panic!("{name}: the empty file does not parse: {e}"));
-                let vt = f.track_of_kind(filmcraft_isobmff::TrackKind::Video).expect("a video track");
+                let f = epsicut_isobmff::open(bytes.as_slice()).unwrap_or_else(|e| panic!("{name}: the empty file does not parse: {e}"));
+                let vt = f.track_of_kind(epsicut_isobmff::TrackKind::Video).expect("a video track");
                 assert!(f.tracks[vt].samples.is_empty(), "{name}");
             }
             (Ok(_), None) => panic!("{name}: reported success without a file"),
@@ -657,7 +657,7 @@ fn hevc_declines_what_the_hardware_path_does_not_take() {
     assert_eq!((config.profile, config.keyframe_interval, config.rate), (VtProfile::HevcMain, 30, VtRate::Vbr { target_kbps: 6000, max_kbps: 9000 }));
     let declined = |s: &ExportSettings, what: &str| assert!(config_for(W, H, FPS, s).is_err(), "{what} must not use the hardware encoder");
     declined(&ExportSettings { bitrate_mode: BitrateMode::Vbr2Pass, ..ok.clone() }, "two-pass VBR");
-    declined(&ExportSettings { signal: filmcraft_export::ColorSignal::PQ, ..ok.clone() }, "HDR");
+    declined(&ExportSettings { signal: epsicut_export::ColorSignal::PQ, ..ok.clone() }, "HDR");
     declined(&ExportSettings { pixel_aspect: Some((4, 3)), ..ok.clone() }, "non-square pixels");
     assert!(config_for(321, 181, FPS, &ok).is_err() && config_for(640, 361, FPS, &ok).is_err(), "odd sizes");
     assert!(config_for(W, H, FrameRate { num: 0, den: 1 }, &ok).is_err());
@@ -668,9 +668,9 @@ fn hevc_declines_what_the_hardware_path_does_not_take() {
 
 #[test]
 fn hevc_format_follows_the_machine() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     // the format list asks `available`: it must agree with the probe
-    assert_eq!(filmcraft_export::available(Format::Hevc), hevc_available());
+    assert_eq!(epsicut_export::available(Format::Hevc), hevc_available());
     let s = hevc_settings();
     // no hardware flag needed, but nothing else is taken by this factory
     assert_eq!(videotoolbox_encoder_factory(Format::Hevc, W, H, FPS, &s).is_some(), hevc_available());
@@ -718,7 +718,7 @@ fn hevc_round_trip_through_our_software_decoder() {
 
 #[test]
 fn hevc_export_through_the_pipeline() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     if !hevc_available() {
         eprintln!("SKIPPED: no VideoToolbox hardware HEVC encoder");
         return;
@@ -726,7 +726,7 @@ fn hevc_export_through_the_pipeline() {
     let frames = 70;
     let (p, seq, m) = project(frames);
     // MP4 (the default container) and QuickTime
-    for (name, multiplexer) in [("hevc.mp4", filmcraft_export::Multiplexer::Mp4), ("hevc.mov", filmcraft_export::Multiplexer::Mov)] {
+    for (name, multiplexer) in [("hevc.mp4", epsicut_export::Multiplexer::Mp4), ("hevc.mov", epsicut_export::Multiplexer::Mov)] {
         let path = tmp(name);
         let s = ExportSettings { path: path.clone(), include_audio: false, multiplexer, ..hevc_settings() };
         let report = export(&p, seq, &s, &m, &Progress::default()).unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -739,7 +739,7 @@ fn hevc_export_through_the_pipeline() {
 
 #[test]
 fn hevc_export_with_audio_writes_aac_in_mp4() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     if !hevc_available() {
         eprintln!("SKIPPED: no VideoToolbox hardware HEVC encoder");
         return;
@@ -749,15 +749,15 @@ fn hevc_export_with_audio_writes_aac_in_mp4() {
     let s = ExportSettings { path: path.clone(), include_audio: true, ..hevc_settings() };
     export(&p, seq, &s, &m, &Progress::default()).expect("export");
     let bytes = std::fs::read(&path).unwrap();
-    let file = filmcraft_isobmff::open(bytes.as_slice()).unwrap();
-    assert!(file.track_of_kind(filmcraft_isobmff::TrackKind::Video).is_some());
-    let at = file.track_of_kind(filmcraft_isobmff::TrackKind::Audio).expect("an audio track");
+    let file = epsicut_isobmff::open(bytes.as_slice()).unwrap();
+    assert!(file.track_of_kind(epsicut_isobmff::TrackKind::Video).is_some());
+    let at = file.track_of_kind(epsicut_isobmff::TrackKind::Audio).expect("an audio track");
     assert!(matches!(&file.tracks[at].entries[0].codec, CodecConfig::Aac(_)), "audio is {}", file.tracks[at].entries[0].codec.name());
 }
 
 #[test]
 fn hevc_has_no_two_pass_mode() {
-    filmcraft_platform::register();
+    epsicut_platform::register();
     let (p, seq, m) = project(10);
     let s = ExportSettings { path: tmp("hevc-2pass.mp4"), include_audio: false, bitrate_mode: BitrateMode::Vbr2Pass, ..hevc_settings() };
     let err = export(&p, seq, &s, &m, &Progress::default()).expect_err("two-pass HEVC must be refused").to_string();
@@ -835,7 +835,7 @@ fn hevc_pictures_keep_their_exact_size() {
         packets.extend(enc.flush().expect("flush"));
         assert_eq!(packets.len(), 6, "{w}x{h}");
         let entry = enc.sample_entry();
-        let mut dec = filmcraft_codecs::software_video_decoder(&entry).expect("software decoder");
+        let mut dec = epsicut_codecs::software_video_decoder(&entry).expect("software decoder");
         let mut pictures = Vec::new();
         for (i, p) in packets.iter().enumerate() {
             pictures.extend(dec.decode(&p.data, i as i64).expect("decode"));
@@ -853,16 +853,16 @@ fn hevc_pictures_keep_their_exact_size() {
 
 #[test]
 fn ffmpeg_decodes_what_the_hevc_encoder_writes() {
-    filmcraft_platform::register();
-    let Some(ffmpeg) = filmcraft_testkit::ffmpeg_or_skip("hardware HEVC export") else { return };
-    let Some(ffprobe) = filmcraft_testkit::ffprobe_or_skip("hardware HEVC export") else { return };
+    epsicut_platform::register();
+    let Some(ffmpeg) = epsicut_testkit::ffmpeg_or_skip("hardware HEVC export") else { return };
+    let Some(ffprobe) = epsicut_testkit::ffprobe_or_skip("hardware HEVC export") else { return };
     if !hevc_available() {
         eprintln!("SKIPPED: no VideoToolbox hardware HEVC encoder");
         return;
     }
     let frames = 65;
     let (p, seq, m) = project(frames);
-    for (name, multiplexer) in [("oracle-hevc.mp4", filmcraft_export::Multiplexer::Mp4), ("oracle-hevc.mov", filmcraft_export::Multiplexer::Mov)] {
+    for (name, multiplexer) in [("oracle-hevc.mp4", epsicut_export::Multiplexer::Mp4), ("oracle-hevc.mov", epsicut_export::Multiplexer::Mov)] {
         let path = tmp(name);
         let s = ExportSettings { path: path.clone(), include_audio: false, multiplexer, ..hevc_settings() };
         export(&p, seq, &s, &m, &Progress::default()).expect("export");

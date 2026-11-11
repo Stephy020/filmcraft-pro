@@ -1,8 +1,8 @@
 //! Its own test binary: the font database is process-global, so only a fresh process starts
 //! with the system fonts not yet scanned (any `resolve` in the lib tests scans them).
 
-use filmcraft_text::fonts::system_scanned;
-use filmcraft_text::{families, picker_families};
+use epsicut_text::fonts::system_scanned;
+use epsicut_text::{families, picker_families};
 
 /// The first list a picker takes must already hold the system families, not the bundled ones only.
 #[test]

@@ -1,7 +1,7 @@
 //! #855: a rolling edit on a linked A/V cut must move the sound cut with the picture.
 
-use filmcraft_project::ClipId;
-use filmcraft_time::Tick;
+use epsicut_project::ClipId;
+use epsicut_time::Tick;
 use serde_json::json;
 
 use crate::Session;
@@ -61,7 +61,7 @@ fn roll_delta_stops_at_the_start_of_the_media() {
     }
     let q = s.active_sequence().unwrap();
     let (left, right) = (q.video_tracks[0].items[0].id, q.video_tracks[0].items[1].id);
-    let far = Tick(-3600 * filmcraft_time::TICKS_PER_SECOND);
+    let far = Tick(-3600 * epsicut_time::TICKS_PER_SECOND);
     let shown = crate::commands::roll_delta(&s, left, right, far).unwrap();
     assert_eq!(shown, -f(12), "clamped to the media before the right clip's In point");
     assert_eq!(crate::commands::roll_delta(&s, left, right, -f(5)).unwrap(), -f(5), "a roll within the media is not clamped");
@@ -81,7 +81,7 @@ fn roll_delta_is_zero_when_a_clip_cannot_roll_by_the_asked_amount() {
     let f = |n: i64| rate.tick_of(n);
     let item = s.active_sequence().unwrap().find_item(v0).unwrap().1.item;
     match std::sync::Arc::make_mut(&mut s.project).items.get_mut(&item).map(|i| &mut i.kind) {
-        Some(filmcraft_project::ItemKind::Media(m)) => m.info.duration = f(94),
+        Some(epsicut_project::ItemKind::Media(m)) => m.info.duration = f(94),
         other => panic!("not media: {other:?}"),
     }
     for asked in [f(1), -f(1)] {

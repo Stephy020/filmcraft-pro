@@ -1,7 +1,7 @@
 use super::*;
-use filmcraft_geom::{Affine, Vec2};
-use filmcraft_render::Blend;
-use filmcraft_render::plan::execute_cpu;
+use epsicut_geom::{Affine, Vec2};
+use epsicut_render::Blend;
+use epsicut_render::plan::execute_cpu;
 
 fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = crate::adapter::native_instance();
@@ -22,7 +22,7 @@ fn yuv_code_range_uniforms() {
                 alpha: 0.0,
                 chroma: (1, 1),
                 size: (1, 1),
-                color: filmcraft_color::ColorInfo { range, ..filmcraft_color::ColorInfo::REC709 },
+                color: epsicut_color::ColorInfo { range, ..epsicut_color::ColorInfo::REC709 },
                 input: None,
             };
             let u = GpuCompositor::uniforms(&src, &Affine::IDENTITY, 1.0, Blend::Normal, (1, 1));
@@ -63,7 +63,7 @@ fn yuv_code_range_gpu_matches_cpu() {
                     width: 256,
                     height: 1,
                     data,
-                    color: filmcraft_color::ColorInfo { range, ..filmcraft_color::ColorInfo::REC709 },
+                    color: epsicut_color::ColorInfo { range, ..epsicut_color::ColorInfo::REC709 },
                     par: (1, 1),
                     pts: Default::default(),
                 });
@@ -96,7 +96,7 @@ fn yuv_frame(w: u32, h: u32) -> Arc<VideoFrame> {
         width: w,
         height: h,
         data: PixelData::Yuv8 { planes: [Arc::new(y), Arc::new(u), Arc::new(v)], chroma: Chroma::C420, alpha: None },
-        color: filmcraft_color::ColorInfo::REC709,
+        color: epsicut_color::ColorInfo::REC709,
         par: (1, 1),
         pts: Default::default(),
     })
@@ -109,13 +109,13 @@ fn gpu_matches_cpu_plan() {
         return;
     };
     let mut c = GpuCompositor::new(&dev, &q);
-    let pixels = filmcraft_media::generators::render(
-        &filmcraft_media::Generator::Demo(filmcraft_media::DemoScene::OceanSunset),
+    let pixels = epsicut_media::generators::render(
+        &epsicut_media::Generator::Demo(epsicut_media::DemoScene::OceanSunset),
         320,
         180,
         1.0,
         24,
-        filmcraft_time::FrameRate::FPS_24,
+        epsicut_time::FrameRate::FPS_24,
     )
     .unwrap();
     let rgba = Arc::new(VideoFrame::rgba8(320, 180, pixels));
@@ -167,7 +167,7 @@ fn half_float_conversion() {
 
 #[test]
 fn gpu_push_matches_cpu_with_alpha_and_surrounding_blends() {
-    use filmcraft_project::ParamValue;
+    use epsicut_project::ParamValue;
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -189,7 +189,7 @@ fn gpu_push_matches_cpu_with_alpha_and_surrounding_blends() {
     for direction in 0..4 {
         for blur in [0.0, 50.0, 100.0] {
             for progress in [0.0, 0.25, 0.37, 0.5, 0.75, 1.0] {
-                let mut effect = filmcraft_project::find_effect("push").unwrap().instance();
+                let mut effect = epsicut_project::find_effect("push").unwrap().instance();
                 effect.param_mut("direction").unwrap().value = ParamValue::Choice(direction);
                 effect.param_mut("motion_blur").unwrap().value = ParamValue::Float(blur);
                 let mut above = layer(1);
@@ -225,7 +225,7 @@ fn gpu_push_matches_cpu_with_alpha_and_surrounding_blends() {
         height: h,
         steps: vec![PlanStep::Transition {
             inputs: [vec![layer(0)], vec![layer(1)]],
-            effect: filmcraft_project::find_effect("cross_dissolve").unwrap().instance(),
+            effect: epsicut_project::find_effect("cross_dissolve").unwrap().instance(),
             progress: 0.37,
             scale: 1.0,
         }],
@@ -240,7 +240,7 @@ fn gpu_push_matches_cpu_with_alpha_and_surrounding_blends() {
     // Reuse both input targets across ordered transitions; preparation advances past intervening layers.
     let transition = |progress| PlanStep::Transition {
         inputs: [vec![layer(0)], vec![layer(1)]],
-        effect: filmcraft_project::find_effect("push").unwrap().instance(),
+        effect: epsicut_project::find_effect("push").unwrap().instance(),
         progress,
         scale: 1.0,
     };
@@ -280,7 +280,7 @@ fn prepared_upload_matches_inline_conversion() {
             bits: 10,
             alpha: None,
         },
-        color: filmcraft_color::ColorInfo::REC709,
+        color: epsicut_color::ColorInfo::REC709,
         par: (1, 1),
         pts: Default::default(),
     });
@@ -294,7 +294,7 @@ fn prepared_upload_matches_inline_conversion() {
             PlanLayer { frame: rgbaf, matrix: Affine::scale(0.5, 0.5), opacity: 0.8, blend: Blend::Normal, fx: None, input: None },
         ],
     };
-    let image = FramePlan::Image(filmcraft_render::Image { w: w as usize, h: h as usize, px: f32_layer });
+    let image = FramePlan::Image(epsicut_render::Image { w: w as usize, h: h as usize, px: f32_layer });
     for plan in [layers, image] {
         let mut a = GpuCompositor::new(&dev, &q);
         a.composite(&plan);
@@ -339,7 +339,7 @@ fn gpu_lut_matches_cpu_tetrahedral() {
     };
     let g = GpuLut::new(&dev, &q);
     for size in [2usize, 17, 33, 65] {
-        let mut lut = filmcraft_color::Lut3d::from_fn(size, |c| {
+        let mut lut = epsicut_color::Lut3d::from_fn(size, |c| {
             [(c[0] * c[1] + c[2] * c[2]).sin(), c[1].powf(0.45) * (1.0 - 0.3 * c[0]), (c[0] - c[2]).abs() + 0.1 * c[1]]
         });
         if size == 17 {
@@ -370,8 +370,8 @@ fn gpu_lut_matches_cpu_tetrahedral() {
     }
 }
 
-fn test_masks(scale: f32) -> Vec<filmcraft_render::mask::FlatMask> {
-    use filmcraft_project::{Mask, MaskMode, MaskPath, ParamValue};
+fn test_masks(scale: f32) -> Vec<epsicut_render::mask::FlatMask> {
+    use epsicut_project::{Mask, MaskMode, MaskPath, ParamValue};
     let mut a = Mask::new("a", MaskPath::ellipse(Vec2::new(150.0, 90.0), Vec2::new(90.0, 55.0)));
     a.feather.value = ParamValue::Float(24.0);
     a.expansion.value = ParamValue::Float(6.0);
@@ -383,7 +383,7 @@ fn test_masks(scale: f32) -> Vec<filmcraft_render::mask::FlatMask> {
     c.mode = MaskMode::Difference;
     c.inverted = true;
     c.feather.value = ParamValue::Float(3.5);
-    filmcraft_render::mask::prepare(&[a, b, c], filmcraft_time::Tick(0), scale)
+    epsicut_render::mask::prepare(&[a, b, c], epsicut_time::Tick(0), scale)
 }
 
 #[test]
@@ -396,7 +396,7 @@ fn gpu_mask_coverage_matches_cpu() {
     for scale in [1.0f32, 0.5] {
         let masks = test_masks(scale);
         let (w, h) = ((320.0 * scale) as usize, (180.0 * scale) as usize);
-        let cpu = filmcraft_render::mask::coverage(&masks, w, h).unwrap();
+        let cpu = epsicut_render::mask::coverage(&masks, w, h).unwrap();
         let gpu = g.coverage(&masks, w, h).expect("gpu coverage");
         let worst = cpu.iter().zip(&gpu).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max);
         eprintln!("mask coverage @{scale}: max |cpu − gpu| = {worst:e}");
@@ -414,13 +414,13 @@ fn gpu_masked_mix_matches_cpu() {
     let g = crate::GpuMask::new(&dev, &q);
     let masks = test_masks(1.0);
     let (w, h) = (320usize, 180usize);
-    let original = filmcraft_render::Image { w, h, px: (0..w * h * 4).map(|i| ((i * 37) % 101) as f32 / 100.0).collect() };
+    let original = epsicut_render::Image { w, h, px: (0..w * h * 4).map(|i| ((i * 37) % 101) as f32 / 100.0).collect() };
     let mut effected = original.clone();
     effected.px.iter_mut().for_each(|v| *v = 1.0 - *v * 0.5);
     let gpu = g.mix(&masks, w, h, &original.px, &effected.px).expect("gpu mix");
-    let cov = filmcraft_render::mask::coverage(&masks, w, h).unwrap();
+    let cov = epsicut_render::mask::coverage(&masks, w, h).unwrap();
     let mut cpu = effected.clone();
-    filmcraft_render::mask::mix(&mut cpu, &original, &cov);
+    epsicut_render::mask::mix(&mut cpu, &original, &cov);
     let worst = cpu.px.iter().zip(&gpu).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max);
     eprintln!("masked mix: max |cpu − gpu| = {worst:e}");
     assert!(worst < 2e-4, "{worst}");
@@ -446,7 +446,7 @@ fn yuv_alpha_frame(w: u32, h: u32, bits: u32) -> Arc<VideoFrame> {
             alpha: Some(Arc::new((0..n).map(ramp).collect())),
         }
     };
-    Arc::new(VideoFrame { width: w, height: h, data, color: filmcraft_color::ColorInfo::REC709, par: (1, 1), pts: Default::default() })
+    Arc::new(VideoFrame { width: w, height: h, data, color: epsicut_color::ColorInfo::REC709, par: (1, 1), pts: Default::default() })
 }
 
 /// A Y'CbCr layer with an alpha plane (ProRes 4444) is drawn with its alpha: the GPU result matches
@@ -458,13 +458,13 @@ fn gpu_draws_yuv_alpha_plane_like_the_cpu() {
         return;
     };
     let (w, h) = (320usize, 180usize);
-    let pixels = filmcraft_media::generators::render(
-        &filmcraft_media::Generator::Demo(filmcraft_media::DemoScene::OceanSunset),
+    let pixels = epsicut_media::generators::render(
+        &epsicut_media::Generator::Demo(epsicut_media::DemoScene::OceanSunset),
         320,
         180,
         1.0,
         24,
-        filmcraft_time::FrameRate::FPS_24,
+        epsicut_time::FrameRate::FPS_24,
     )
     .unwrap();
     let background = Arc::new(VideoFrame::rgba8(320, 180, pixels));
@@ -513,7 +513,7 @@ fn fast_half_float_conversion_matches_the_reference_for_every_value() {
 /// running the same `InputTransform`.
 #[test]
 fn hdr_input_gpu_matches_cpu() {
-    use filmcraft_color::{ColorInfo, ColorPipeline, ColorSpace, InputTransform, Matrix, Primaries, Transfer};
+    use epsicut_color::{ColorInfo, ColorPipeline, ColorSpace, InputTransform, Matrix, Primaries, Transfer};
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;

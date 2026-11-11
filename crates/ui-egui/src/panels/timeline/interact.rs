@@ -3,21 +3,21 @@ use super::layout::{Layout, max_scroll, min_pps, new_track_at};
 use super::menus::{CLIP_MENU, EditPointTarget, edit_point_menu, gap_menu, marker_menu, multicam_menu, ruler_menu};
 use super::snap::{snap, snap_playhead};
 use super::{
-    Align2, ClipId, Color32, CursorIcon, Drag, EdgeKind, FilmcraftApp, Grab, HashMap, Hit, MarkerId, MarqueeAnchor, Pos2, Pressed, Rect, Sense, Sequence,
-    Stroke, StrokeKind, Tick, Tokens, Tool, TrackId, TrackItem, TrackKind, Value, edge_geometry, grab_at, hit, json, marker_at, marker_under_pointer, pos2,
+    Align2, ClipId, Color32, CursorIcon, Drag, EdgeKind, EpsicutApp, Grab, HashMap, Hit, MarkerId, MarqueeAnchor, Pos2, Pressed, Rect, Sense, Sequence, Stroke,
+    StrokeKind, Tick, Tokens, Tool, TrackId, TrackItem, TrackKind, Value, edge_geometry, grab_at, hit, json, marker_at, marker_under_pointer, pos2,
     selection_trim_kind, vec2,
 };
 
 pub(super) fn preview_drag(
-    app: &FilmcraftApp,
+    app: &EpsicutApp,
     seq: &Sequence,
     out: &mut HashMap<ClipId, (Tick, Tick, Option<TrackId>)>,
     edited: &mut HashMap<ClipId, TrackItem>,
 ) {
     // the item as the edge move leaves it, and its place in the preview
-    let mut moved = |it: &TrackItem, edge: filmcraft_edit::Edge, delta: Tick| {
+    let mut moved = |it: &TrackItem, edge: epsicut_edit::Edge, delta: Tick| {
         let mut e = it.clone();
-        filmcraft_edit::move_edge(&mut e, edge, delta, true);
+        epsicut_edit::move_edge(&mut e, edge, delta, true);
         out.insert(e.id, (e.start, e.duration, None));
         edited.insert(e.id, e);
     };
@@ -45,7 +45,7 @@ pub(super) fn preview_drag(
             }
         }
         Drag::Trim { clip, edge, delta, linked, .. } => {
-            let ids = if *linked { filmcraft_engine::commands::with_links(&app.session, &[*clip]) } else { vec![*clip] };
+            let ids = if *linked { epsicut_engine::commands::with_links(&app.session, &[*clip]) } else { vec![*clip] };
             for c in ids {
                 if let Some((_, it)) = seq.find_item(c) {
                     moved(it, *edge, *delta);
@@ -54,25 +54,25 @@ pub(super) fn preview_drag(
         }
         // a rate stretch keeps the same media in a new length: that one does squeeze
         Drag::Stretch { clip, edge, delta, linked, .. } => {
-            let ids = if *linked { filmcraft_engine::commands::with_links(&app.session, &[*clip]) } else { vec![*clip] };
+            let ids = if *linked { epsicut_engine::commands::with_links(&app.session, &[*clip]) } else { vec![*clip] };
             for c in ids {
                 if let Some((_, it)) = seq.find_item(c) {
                     let v = match edge {
-                        filmcraft_edit::Edge::In => (it.start + *delta, it.duration - *delta, None),
-                        filmcraft_edit::Edge::Out => (it.start, it.duration + *delta, None),
+                        epsicut_edit::Edge::In => (it.start + *delta, it.duration - *delta, None),
+                        epsicut_edit::Edge::Out => (it.start, it.duration + *delta, None),
                     };
                     out.insert(c, v);
                 }
             }
         }
         Drag::Roll { left, right, delta, .. } => {
-            let pairs = filmcraft_engine::commands::linked_roll_pairs(seq, *left, *right, app.session.state.linked_selection);
+            let pairs = epsicut_engine::commands::linked_roll_pairs(seq, *left, *right, app.session.state.linked_selection);
             for (pl, pr) in pairs {
                 if let Some((_, l)) = seq.find_item(pl) {
-                    moved(l, filmcraft_edit::Edge::Out, *delta);
+                    moved(l, epsicut_edit::Edge::Out, *delta);
                 }
                 if let Some((_, r)) = seq.find_item(pr) {
-                    moved(r, filmcraft_edit::Edge::In, *delta);
+                    moved(r, epsicut_edit::Edge::In, *delta);
                 }
             }
         }
@@ -92,7 +92,7 @@ pub(super) fn preview_drag(
 /// so a dragged clip's transition follows it instead of lagging behind until the drop, and a cut
 /// transition does not ride along on a clip whose partner stays. Returns the transition's
 /// `(start, end, destination track)` when the drag carries it.
-pub(super) fn move_transition_preview(app: &FilmcraftApp, seq: &Sequence, trn: &filmcraft_project::Transition) -> Option<(Tick, Tick, TrackId)> {
+pub(super) fn move_transition_preview(app: &EpsicutApp, seq: &Sequence, trn: &epsicut_project::Transition) -> Option<(Tick, Tick, TrackId)> {
     let Some(Drag::Move { clips, offset, track_delta, .. }) = &app.tl.drag else { return None };
     let endpoints: Vec<ClipId> = [trn.from, trn.to].into_iter().flatten().collect();
     // where each clip it sits on that moves lands (the same track shift as the clip preview), and
@@ -156,7 +156,7 @@ fn marquee_clips(seq: &Sequence, layout: &Layout, r: Rect) -> Vec<ClipId> {
 }
 
 /// A move previews the same track-lock restrictions as its eventual edit.
-fn drag_is_locked(session: &filmcraft_engine::Session, seq: &Sequence, drag: &Drag) -> bool {
+fn drag_is_locked(session: &epsicut_engine::Session, seq: &Sequence, drag: &Drag) -> bool {
     let clips = match drag {
         Drag::Move { clips, track_delta, .. } => return move_is_locked(seq, clips, *track_delta),
         Drag::Trim { clip, .. } | Drag::Stretch { clip, .. } | Drag::Remix { clip, .. } | Drag::Slip { clip, .. } | Drag::Slide { clip, .. } => vec![*clip],
@@ -164,7 +164,7 @@ fn drag_is_locked(session: &filmcraft_engine::Session, seq: &Sequence, drag: &Dr
         Drag::Transition { id, .. } => return seq.all_tracks().any(|t| t.locked && t.transitions.iter().any(|tr| tr.id == *id)),
         _ => return false,
     };
-    move_is_locked(seq, &filmcraft_engine::commands::with_links(session, &clips), 0)
+    move_is_locked(seq, &epsicut_engine::commands::with_links(session, &clips), 0)
 }
 
 fn move_is_locked(seq: &Sequence, clips: &[ClipId], delta: i32) -> bool {
@@ -229,7 +229,7 @@ pub(crate) fn wheel_input(ctx: &egui::Context) -> WheelInput {
 }
 
 /// Puts the playhead where the pointer is on the ruler: what a press does before any drag (#1090).
-fn scrub_playhead(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, p: Pos2, shift: bool) {
+fn scrub_playhead(app: &mut EpsicutApp, seq: &Sequence, layout: &Layout, p: Pos2, shift: bool) {
     // A press on the ruler stops playback, but it must not close a scrub stream that is already
     // open: `stop()` drops the output stream, and the grain a frame later has to open the device
     // again (slow on WASAPI, #2633). A press while nothing runs has nothing to stop.
@@ -250,7 +250,7 @@ fn scrub_playhead(app: &mut FilmcraftApp, seq: &Sequence, layout: &Layout, p: Po
 /// Wheel input over the Timeline, as in Premiere Pro on macOS (checked in 26.5.2): the wheel
 /// moves the tracks under the pointer, Cmd + wheel the Timeline sideways, Option + wheel
 /// zooms about the pointer.
-fn wheel_scroll(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, layout: &Layout, seq: &Sequence) {
+fn wheel_scroll(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect, layout: &Layout, seq: &Sequence) {
     let ctx = ui.ctx().clone();
     // ---- wheel, as in Premiere Pro on macOS (checked in 26.5.2):
     //   wheel            the tracks under the pointer, up and down
@@ -295,7 +295,7 @@ fn wheel_scroll(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, layout: &
 
 /// Cursor feedback: what a press here would grab (#259) — the cursor for it, the trim
 /// bracket on an edge, and the razor's preview line.
-fn hover_cursor(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout, pos: Option<Pos2>) {
+fn hover_cursor(app: &mut EpsicutApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout, pos: Option<Pos2>) {
     let ctx = ui.ctx().clone();
     let area = Rect::from_min_max(pos2(layout.content.min.x, layout.ruler.min.y), layout.content.max);
     let mods = ctx.input(|i| i.modifiers);
@@ -316,7 +316,7 @@ fn hover_cursor(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layou
                     } else if mods.alt {
                         vec![clip]
                     } else {
-                        filmcraft_engine::commands::with_links(&app.session, &[clip])
+                        epsicut_engine::commands::with_links(&app.session, &[clip])
                     };
                     move_is_locked(seq, &clips, 0)
                 }
@@ -360,7 +360,7 @@ fn hover_cursor(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layou
 /// The press frame: remember what was under the pointer, jump the playhead on a ruler press,
 /// select a marker, and start the drag the press implies. Returns whether `interact` should
 /// stop (a press with no pointer position: nothing more can be handled this frame).
-fn press_action(app: &mut FilmcraftApp, ctx: &egui::Context, resp: &egui::Response, seq: &Sequence, layout: &Layout) -> bool {
+fn press_action(app: &mut EpsicutApp, ctx: &egui::Context, resp: &egui::Response, seq: &Sequence, layout: &Layout) -> bool {
     let tool = app.ui.tool;
     let mods = ctx.input(|i| i.modifiers);
     let roll_ripple = app.session.prefs.trim.selection_tool_roll_ripple;
@@ -400,7 +400,7 @@ fn press_action(app: &mut FilmcraftApp, ctx: &egui::Context, resp: &egui::Respon
 /// ruler press makes, and the selection a tool change makes first.
 #[allow(clippy::too_many_arguments)]
 fn start_drag(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ctx: &egui::Context,
     resp: &egui::Response,
     seq: &Sequence,
@@ -492,7 +492,7 @@ fn start_drag(
                     selection_trim_kind(roll_ripple, mods.command, mods.shift, dist, neighbour)
                 }
             };
-            let e = if edge == filmcraft_edit::Edge::In { "in" } else { "out" };
+            let e = if edge == epsicut_edit::Edge::In { "in" } else { "out" };
             let r = app.session.execute("trim.selectEditPoint", json!({"clip": clip.0, "edge": e, "kind": kind, "add": mods.shift && !mods.command}));
             if let Err(e) = r {
                 app.ui.status = e.to_string();
@@ -500,8 +500,8 @@ fn start_drag(
             None
         }
         (_, Grab::Edge { clip, edge, kind, .. }) => Some(match kind {
-            EdgeKind::Trim => Drag::Trim { clip, edge, mode: filmcraft_edit::TrimMode::Regular, delta: Tick::ZERO, from: t, linked: !mods.alt },
-            EdgeKind::Ripple => Drag::Trim { clip, edge, mode: filmcraft_edit::TrimMode::Ripple, delta: Tick::ZERO, from: t, linked: !mods.alt },
+            EdgeKind::Trim => Drag::Trim { clip, edge, mode: epsicut_edit::TrimMode::Regular, delta: Tick::ZERO, from: t, linked: !mods.alt },
+            EdgeKind::Ripple => Drag::Trim { clip, edge, mode: epsicut_edit::TrimMode::Ripple, delta: Tick::ZERO, from: t, linked: !mods.alt },
             EdgeKind::Roll { left, right } => Drag::Roll { left, right, delta: Tick::ZERO, from: t },
             EdgeKind::Stretch => Drag::Stretch { clip, edge, delta: Tick::ZERO, from: t, linked: !mods.alt },
             EdgeKind::Remix => Drag::Remix { clip, delta: Tick::ZERO, from: t },
@@ -593,18 +593,18 @@ fn start_drag(
 /// Track Select Forward (Backward) also selects the captions that end after (start before) `t`, so
 /// the subtitles go with the clips and stay in sync. Shift keeps to the clicked track, which has no
 /// captions, and a locked caption track keeps its captions.
-fn select_track_select_captions(app: &mut FilmcraftApp, seq: &Sequence, t: Tick, fwd: bool, shift: bool) {
+fn select_track_select_captions(app: &mut EpsicutApp, seq: &Sequence, t: Tick, fwd: bool, shift: bool) {
     if shift {
         return;
     }
-    let picked = |c: &&filmcraft_project::Caption| if fwd { c.end() > t } else { c.start < t };
+    let picked = |c: &&epsicut_project::Caption| if fwd { c.end() > t } else { c.start < t };
     let captions: Vec<u64> = seq.caption_tracks.iter().filter(|tr| !tr.locked).flat_map(|tr| tr.captions.iter()).filter(picked).map(|c| c.id.0).collect();
     let _ = app.session.execute("captions.select", json!({"captions": captions, "add": true}));
 }
 
 /// The captions a Track Select drag moves with its clips, in the same undo step. None when the drop
 /// copies (Option) or inserts (Cmd): an insert already carries the sync-locked caption tracks.
-fn track_select_drag_captions(app: &FilmcraftApp, copying: bool, inserting: bool) -> Vec<u64> {
+fn track_select_drag_captions(app: &EpsicutApp, copying: bool, inserting: bool) -> Vec<u64> {
     if copying || inserting || !matches!(app.ui.tool, Tool::TrackSelectForward | Tool::TrackSelectBackward) {
         return Vec::new();
     }
@@ -612,7 +612,7 @@ fn track_select_drag_captions(app: &FilmcraftApp, copying: bool, inserting: bool
 }
 
 /// Escape cancels an ongoing drag or press (#580): the release commits nothing.
-fn escape_cancel(app: &mut FilmcraftApp, ctx: &egui::Context) {
+fn escape_cancel(app: &mut EpsicutApp, ctx: &egui::Context) {
     // Escape cancels an ongoing drag or press (#580): the release commits nothing
     if (app.tl.drag.is_some() || app.tl.pressed.is_some()) && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         if let Some(d) = app.tl.drag.take() {
@@ -645,7 +645,7 @@ fn escape_cancel(app: &mut FilmcraftApp, ctx: &egui::Context) {
 /// An ongoing drag: recomputes its state under the pointer (snapping, the destination track,
 /// the marquee box), refuses it when it would land on locked tracks, and auto-scrolls near
 /// the edges.
-fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response, seq: &Sequence, layout: &Layout) {
+fn drag_update(app: &mut EpsicutApp, ui: &mut egui::Ui, resp: &egui::Response, seq: &Sequence, layout: &Layout) {
     let ctx = ui.ctx().clone();
     let rate = seq.settings.frame_rate;
     let mods = ctx.input(|i| i.modifiers);
@@ -709,10 +709,10 @@ fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response,
                 }
             }
             Drag::Trim { clip, edge, mode, from, linked, .. } => seq.find_item(clip).map(|(_, it)| {
-                let base = if edge == filmcraft_edit::Edge::In { it.start } else { it.end() };
+                let base = if edge == epsicut_edit::Edge::In { it.start } else { it.end() };
                 let target = snap(app, seq, layout, rate.snap_nearest(base + (t_here - from)), &[clip]);
                 // stop at the end of the media (or the neighbour), as the trim on release will (#653)
-                let delta = filmcraft_engine::commands::trim_delta_linked(&app.session, clip, edge, mode, target - base, linked).unwrap_or(target - base);
+                let delta = epsicut_engine::commands::trim_delta_linked(&app.session, clip, edge, mode, target - base, linked).unwrap_or(target - base);
                 Drag::Trim { clip, edge, mode, delta, from, linked }
             }),
             Drag::Remix { clip, from, .. } => seq.find_item(clip).map(|(_, it)| {
@@ -720,7 +720,7 @@ fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response,
                 Drag::Remix { clip, delta: target - it.end(), from }
             }),
             Drag::Stretch { clip, edge, from, linked, .. } => seq.find_item(clip).map(|(_, it)| {
-                let base = if edge == filmcraft_edit::Edge::In { it.start } else { it.end() };
+                let base = if edge == epsicut_edit::Edge::In { it.start } else { it.end() };
                 let target = snap(app, seq, layout, rate.snap_nearest(base + (t_here - from)), &[clip]);
                 Drag::Stretch { clip, edge, delta: target - base, from, linked }
             }),
@@ -728,7 +728,7 @@ fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response,
                 let target = snap(app, seq, layout, rate.snap_nearest(l.end() + (t_here - from)), &[left, right]);
                 // stop where the roll on release stops: the media, a frame left in each clip and linked
                 // cuts
-                let delta = filmcraft_engine::commands::roll_delta(&app.session, left, right, target - l.end()).unwrap_or(target - l.end());
+                let delta = epsicut_engine::commands::roll_delta(&app.session, left, right, target - l.end()).unwrap_or(target - l.end());
                 Drag::Roll { left, right, delta, from }
             }),
             Drag::Slip { clip, .. } => {
@@ -743,7 +743,7 @@ fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response,
             Drag::Transition { id, edge, from, start, duration } => {
                 let delta = rate.snap_nearest(t_here - from);
                 let span = seq.all_tracks().find_map(|tr| {
-                    tr.transitions.iter().find(|x| x.id == id).and_then(|x| filmcraft_edit::transitions::drag_span(tr, x, edge, delta, rate.frame_duration()))
+                    tr.transitions.iter().find(|x| x.id == id).and_then(|x| epsicut_edit::transitions::drag_span(tr, x, edge, delta, rate.frame_duration()))
                 });
                 let (start, duration) = span.unwrap_or((start, duration));
                 Some(Drag::Transition { id, edge, from, start, duration })
@@ -754,8 +754,8 @@ fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response,
                 let fd = rate.frame_duration();
                 let delta = rate.snap_nearest(t_here - from);
                 let (start, end) = match edge {
-                    Some(filmcraft_edit::Edge::In) => (snap(app, seq, layout, rate.snap_nearest(s0 + delta), &[]).min(e0 - fd).max(Tick::ZERO), e0),
-                    Some(filmcraft_edit::Edge::Out) => (s0, snap(app, seq, layout, rate.snap_nearest(e0 + delta), &[]).max(s0 + fd)),
+                    Some(epsicut_edit::Edge::In) => (snap(app, seq, layout, rate.snap_nearest(s0 + delta), &[]).min(e0 - fd).max(Tick::ZERO), e0),
+                    Some(epsicut_edit::Edge::Out) => (s0, snap(app, seq, layout, rate.snap_nearest(e0 + delta), &[]).max(s0 + fd)),
                     None => {
                         let d = delta.max(Tick::ZERO - s0);
                         (s0 + d, e0 + d)
@@ -772,7 +772,7 @@ fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response,
                 // the command, so the drag is one selection change
                 let mut sel = if add { before.clone() } else { Vec::new() };
                 let clips = marquee_clips(seq, layout, r);
-                let clips = if individual { clips } else { filmcraft_engine::commands::with_links(&app.session, &clips) };
+                let clips = if individual { clips } else { epsicut_engine::commands::with_links(&app.session, &clips) };
                 for c in clips {
                     if !sel.contains(&c) {
                         sel.push(c);
@@ -814,7 +814,7 @@ fn drag_update(app: &mut FilmcraftApp, ui: &mut egui::Ui, resp: &egui::Response,
 
 /// Release: commit exactly one command for the drag that just ended, or drop it when the
 /// drag moved nothing (or Escape cancelled it).
-fn commit_drag(app: &mut FilmcraftApp, ctx: &egui::Context, resp: &egui::Response, seq: &Sequence, layout: &Layout) {
+fn commit_drag(app: &mut EpsicutApp, ctx: &egui::Context, resp: &egui::Response, seq: &Sequence, layout: &Layout) {
     let mods = ctx.input(|i| i.modifiers);
     // ---- release: commit exactly one command
     if resp.drag_stopped() {
@@ -838,9 +838,9 @@ fn commit_drag(app: &mut FilmcraftApp, ctx: &egui::Context, resp: &egui::Respons
                 }
                 Drag::Trim { clip, edge, mode, delta, linked, .. } if delta != Tick::ZERO => Some(app.session.execute(
                     "timeline.trim",
-                    json!({"clip": clip.0, "edge": if edge == filmcraft_edit::Edge::In {"in"} else {"out"}, "mode": if mode == filmcraft_edit::TrimMode::Ripple {"ripple"} else {"regular"}, "delta": delta.0, "linked": linked}),
+                    json!({"clip": clip.0, "edge": if edge == epsicut_edit::Edge::In {"in"} else {"out"}, "mode": if mode == epsicut_edit::TrimMode::Ripple {"ripple"} else {"regular"}, "delta": delta.0, "linked": linked}),
                 )),
-                Drag::Stretch { clip, edge, delta, linked, .. } if delta != Tick::ZERO => Some(app.session.execute("timeline.rateStretch", json!({"clip": clip.0, "edge": if edge == filmcraft_edit::Edge::In {"in"} else {"out"}, "delta": delta.0, "linked": linked}))),
+                Drag::Stretch { clip, edge, delta, linked, .. } if delta != Tick::ZERO => Some(app.session.execute("timeline.rateStretch", json!({"clip": clip.0, "edge": if edge == epsicut_edit::Edge::In {"in"} else {"out"}, "delta": delta.0, "linked": linked}))),
                 Drag::Remix { clip, delta, .. } if delta != Tick::ZERO => {
                     let d = seq.find_item(clip).map(|(_, it)| it.duration + delta).unwrap_or(Tick::ZERO);
                     Some(app.session.execute("clip.remix", json!({"clip": clip.0, "duration": d.0})))
@@ -882,7 +882,7 @@ fn commit_drag(app: &mut FilmcraftApp, ctx: &egui::Context, resp: &egui::Respons
 /// destination up, the sound from the audio destination down (one track per audio clip the item
 /// places), as `timeline.place` lays them out. `row` is the track under the pointer, `new_track`
 /// the track the drop adds in the empty space above or below them (drawn for its first lane only).
-/// `(vlanes, alanes)` is how many video and audio tracks the drop fills ([`filmcraft_engine::Session::placement_lanes`]).
+/// `(vlanes, alanes)` is how many video and audio tracks the drop fills ([`epsicut_engine::Session::placement_lanes`]).
 fn drop_preview_bands(
     seq: &Sequence,
     layout: &Layout,
@@ -919,7 +919,7 @@ fn drop_preview_bands(
 /// Project items, graphics templates, effects and OS files dragged over the Timeline: the
 /// preview of where they would land while hovering, and the command that places them on
 /// release.
-fn drop_targets(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout) {
+fn drop_targets(app: &mut EpsicutApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout) {
     let ctx = ui.ctx().clone();
     let rate = seq.settings.frame_rate;
     let mods = ctx.input(|i| i.modifiers);
@@ -938,7 +938,7 @@ fn drop_targets(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layou
         });
         let t = snap(app, seq, layout, rate.snap_nearest(layout.tick_at(p.x).max(Tick::ZERO)), &[]);
         let still = app.session.prefs.timeline.still_duration(rate);
-        let is_still = app.session.project.item(item).and_then(|i| i.as_media()).is_some_and(|m| m.info.kind == filmcraft_media::MediaKind::Still);
+        let is_still = app.session.project.item(item).and_then(|i| i.as_media()).is_some_and(|m| m.info.kind == epsicut_media::MediaKind::Still);
         let dur = source
             .map(|s| s.range.duration)
             .unwrap_or_else(|| app.session.project.item(item).map(|i| i.duration()).filter(|d| d.0 > 0 && !is_still).unwrap_or(still));
@@ -950,7 +950,7 @@ fn drop_targets(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layou
             },
         );
         // #1887: a preview on every track the drop fills, not only the one under the pointer
-        let range = source.map_or(filmcraft_time::TimeRange::new(Tick::ZERO, dur), |s| s.range);
+        let range = source.map_or(epsicut_time::TimeRange::new(Tick::ZERO, dur), |s| s.range);
         let lanes = app.session.placement_lanes(item, range, source.is_none_or(|s| s.video), source.is_none_or(|s| s.audio));
         for (k, (band, id)) in drop_preview_bands(seq, layout, lanes, row.as_ref(), new_track).iter().enumerate() {
             let r = Rect::from_min_max(pos2(layout.x_of(t), band.min.y + 1.0), pos2(layout.x_of(t + dur), band.max.y - 1.0));
@@ -1064,7 +1064,7 @@ fn drop_targets(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layou
 
 /// An effect or transition dragged over a clip: previews where it would land (the transition
 /// spanning the nearest edge, the effect covering the clip) and applies it on release.
-fn effect_drop_preview(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout) {
+fn effect_drop_preview(app: &mut EpsicutApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout) {
     let ctx = ui.ctx().clone();
     if let Some(effect) = crate::panels::dragged_effect(ui)
         && let Some(p) = ctx.pointer_hover_pos()
@@ -1075,28 +1075,28 @@ fn effect_drop_preview(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence
         && let Some(row) = layout.rows.iter().find(|r| r.track == tid)
     {
         {
-            let transition_kind = filmcraft_project::find_effect(&effect).and_then(|d| match d.kind {
-                filmcraft_project::EffectKind::VideoTransition => Some(TrackKind::Video),
-                filmcraft_project::EffectKind::AudioTransition => Some(TrackKind::Audio),
+            let transition_kind = epsicut_project::find_effect(&effect).and_then(|d| match d.kind {
+                epsicut_project::EffectKind::VideoTransition => Some(TrackKind::Video),
+                epsicut_project::EffectKind::AudioTransition => Some(TrackKind::Audio),
                 _ => None,
             });
             let edge = if p.x - layout.x_of(it.start) < layout.x_of(it.end()) - p.x { "in" } else { "out" };
             let mut params = json!({"effect": effect, "clip": clip.0, "edge": edge});
             if let Some(kind) = transition_kind {
-                if let Ok((_, tr)) = filmcraft_engine::commands::preview_transition(&app.session, &params, kind) {
+                if let Ok((_, tr)) = epsicut_engine::commands::preview_transition(&app.session, &params, kind) {
                     // Snap the drop to the cut: Start at Cut, Center at Cut or End at Cut, by
                     // where the pointer is relative to it (beyond half the transition's span).
                     let cut = if edge == "in" { it.start } else { it.end() };
                     let half = tr.duration.mul_ratio(1, 2);
                     let align = if layout.tick_at(p.x) < cut - half {
-                        filmcraft_edit::transitions::Alignment::End
+                        epsicut_edit::transitions::Alignment::End
                     } else if layout.tick_at(p.x) > cut + half {
-                        filmcraft_edit::transitions::Alignment::Start
+                        epsicut_edit::transitions::Alignment::Start
                     } else {
-                        filmcraft_edit::transitions::Alignment::Center
+                        epsicut_edit::transitions::Alignment::Center
                     };
                     params["align"] = json!(align.id());
-                    if let Ok((_, tr)) = filmcraft_engine::commands::preview_transition(&app.session, &params, kind) {
+                    if let Ok((_, tr)) = epsicut_engine::commands::preview_transition(&app.session, &params, kind) {
                         let r = Rect::from_min_max(pos2(layout.x_of(tr.start), row.rect.min.y + 1.0), pos2(layout.x_of(tr.end()), row.rect.max.y - 1.0));
                         let painter = ui.painter().with_clip_rect(layout.content);
                         painter.rect_filled(r, 2.0, app.tokens.accent.gamma_multiply(0.35));
@@ -1105,7 +1105,7 @@ fn effect_drop_preview(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence
                         let x = layout.x_of(cut);
                         painter.line_segment([pos2(x, r.top()), pos2(x, r.bottom())], Stroke::new(3.0, app.tokens.accent));
                         // Keep the alignment label readable even when the transition is only a few pixels wide.
-                        let label = filmcraft_edit::transitions::alignment(&tr, cut, seq.settings.frame_rate.frame_duration()).label();
+                        let label = epsicut_edit::transitions::alignment(&tr, cut, seq.settings.frame_rate.frame_duration()).label();
                         let shown = crate::i18n::t(label);
                         let label_width = painter.layout_no_wrap(shown.to_string(), Tokens::ui(11.0), app.tokens.accent).size().x + 8.0;
                         let label_rect = Rect::from_center_size(pos2(p.x, row.rect.top() + 10.0), vec2(label_width, 15.0));
@@ -1142,7 +1142,7 @@ fn effect_drop_preview(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence
 
 /// Handle Timeline pointer input: remember the grab from the press frame, jump the playhead on a ruler press, select a marker on its press, and reset the
 /// cancel flag once the button is released.
-pub(super) fn interact(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout, rect: Rect) {
+pub(super) fn interact(app: &mut EpsicutApp, ui: &mut egui::Ui, seq: &Sequence, layout: &Layout, rect: Rect) {
     let ctx = ui.ctx().clone();
     let area = Rect::from_min_max(pos2(layout.content.min.x, layout.ruler.min.y), layout.content.max);
     let resp = ui.interact(area, egui::Id::unique("timeline-area"), Sense::click_and_drag());
@@ -1250,7 +1250,7 @@ pub(super) fn interact(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence
         && seq
             .find_item(clip)
             .and_then(|(_, it)| app.session.project.item(it.item))
-            .is_some_and(|i| !matches!(i.kind, filmcraft_project::ItemKind::Sequence(_) | filmcraft_project::ItemKind::Graphic { .. }))
+            .is_some_and(|i| !matches!(i.kind, epsicut_project::ItemKind::Sequence(_) | epsicut_project::ItemKind::Graphic { .. }))
         && let Err(e) = app.session.execute("source.open", json!({"clip": clip.0}))
     {
         app.ui.status = e.to_string();
@@ -1317,7 +1317,7 @@ pub(super) fn interact(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence
                         selection_trim_kind(app.session.prefs.trim.selection_tool_roll_ripple, false, false, dist, neighbour)
                     }
                 };
-                let edge = if e == filmcraft_edit::Edge::In { "in" } else { "out" };
+                let edge = if e == epsicut_edit::Edge::In { "in" } else { "out" };
                 let _ = app.session.execute("trim.selectEditPoint", json!({"clip": clip.0, "edge": edge, "kind": kind}));
             }
         } else if !app.session.state.selection.contains(&clip) {
@@ -1346,7 +1346,7 @@ pub(super) fn interact(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence
                 return;
             }
             let sel = app.session.state.selection.clone();
-            let picked: Vec<&filmcraft_project::TrackItem> = sel.iter().filter_map(|c| seq.find_item(*c).map(|(_, it)| it)).collect();
+            let picked: Vec<&epsicut_project::TrackItem> = sel.iter().filter_map(|c| seq.find_item(*c).map(|(_, it)| it)).collect();
             let all_enabled = !picked.is_empty() && picked.iter().all(|it| it.enabled);
             let linked = picked.iter().any(|it| it.link.is_some());
             let mut first = true;
@@ -1360,7 +1360,7 @@ pub(super) fn interact(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence
                             let menu = ui.menu_button(crate::i18n::t(label), |ui| {
                                 // the user's label names and colours, as in Edit ▸ Label (#786)
                                 let labels = app.session.prefs.labels.clone();
-                                for l in filmcraft_project::Label::ALL {
+                                for l in epsicut_project::Label::ALL {
                                     if crate::menus::label_choice(ui, &mut app.auto, &labels, l, "timeline.clipMenu.label").clicked() {
                                         if let Err(error) = app.session.execute("edit.label", json!({"label":l.name()})) {
                                             app.ui.status = error.to_string();
@@ -1428,8 +1428,8 @@ mod marquee_tests {
     /// clip, not the hidden video clip there (which a box over the audio tracks used to select).
     #[test]
     fn a_box_on_the_audio_tracks_skips_video_rows_scrolled_under_them() {
-        let mut p = filmcraft_project::Project::new("t");
-        let id = p.new_sequence("s", filmcraft_project::SequenceSettings::default(), 1, 1, None);
+        let mut p = epsicut_project::Project::new("t");
+        let id = p.new_sequence("s", epsicut_project::SequenceSettings::default(), 1, 1, None);
         let mut seq = p.sequence(id).cloned().expect("sequence");
         seq.video_tracks[0].items = vec![crate::panels::timeline_hit::tests::clip(1, 100.0, 300.0)];
         seq.audio_tracks[0].items = vec![crate::panels::timeline_hit::tests::clip(2, 100.0, 300.0)];

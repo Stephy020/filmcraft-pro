@@ -2,12 +2,12 @@
 //! `file.exportMedia` command the app runs, on the CPU (no GPU renderer, no hardware encoder).
 //!
 //! ```text
-//! cargo run --release -p filmcraft-engine --example bench_export -- [--runs N] [--secs S] [--format h264] [--keep out.mp4] [--source file.mp4]
+//! cargo run --release -p epsicut-engine --example bench_export -- [--runs N] [--secs S] [--format h264] [--keep out.mp4] [--source file.mp4]
 //! ```
 //!
 //! The source is made once in `target/fixtures/export-bench/` unless `--source` names a file:
 //! with ffmpeg when it is installed (the clip the documented numbers use), otherwise a procedural
-//! demo scene with audio written by FilmCraft's own H.264 and AAC encoders. Prints each run, the median and minimum, and the stage times of the
+//! demo scene with audio written by EpsiCut's own H.264 and AAC encoders. Prints each run, the median and minimum, and the stage times of the
 //! last run.
 
 use std::path::{Path, PathBuf};
@@ -15,12 +15,12 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Instant;
 
-use filmcraft_engine::Session;
-use filmcraft_export::{ExportSettings, Format};
-use filmcraft_media::generators::GeneratorSource;
-use filmcraft_media::{DemoScene, Generator, MediaSource, SharedSource};
-use filmcraft_project::{ItemId, ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
-use filmcraft_time::{FrameRate, Tick, TimeRange};
+use epsicut_engine::Session;
+use epsicut_export::{ExportSettings, Format};
+use epsicut_media::generators::GeneratorSource;
+use epsicut_media::{DemoScene, Generator, MediaSource, SharedSource};
+use epsicut_project::{ItemId, ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
+use epsicut_time::{FrameRate, Tick, TimeRange};
 use serde_json::{Value, json};
 
 fn arg(args: &[String], name: &str) -> Option<String> {
@@ -28,7 +28,7 @@ fn arg(args: &[String], name: &str) -> Option<String> {
 }
 
 /// The source clip: `secs` seconds of a procedural demo scene with its audio at 1080p23.976,
-/// written once as H.264 + AAC by FilmCraft's own encoders (no ffmpeg needed).
+/// written once as H.264 + AAC by EpsiCut's own encoders (no ffmpeg needed).
 fn generated_fixture(secs: u32) -> Option<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/fixtures/export-bench");
     let path = dir.join(format!("citynight1080_{secs}s.mp4"));
@@ -58,7 +58,7 @@ fn generated_fixture(secs: u32) -> Option<PathBuf> {
     let range = TimeRange::new(Tick::ZERO, dur);
     let mut v = p.make_track_item(item, TrackKind::Video, Tick::ZERO, range, rate)?;
     for e in &mut v.effects {
-        filmcraft_project::resolve_auto_points(e, (w, h), (w, h));
+        epsicut_project::resolve_auto_points(e, (w, h), (w, h));
     }
     let a = p.make_track_item(item, TrackKind::Audio, Tick::ZERO, range, rate)?;
     let q = p.sequence_mut(seq)?;
@@ -68,7 +68,7 @@ fn generated_fixture(secs: u32) -> Option<PathBuf> {
     let shared: SharedSource = Arc::new(src);
     let provider = move |id: ItemId| (id == item).then(|| shared.clone());
     eprintln!("generating {}", path.display());
-    filmcraft_export::export(&Arc::new(p), seq, &settings, &provider, &Default::default()).ok()?;
+    epsicut_export::export(&Arc::new(p), seq, &settings, &provider, &Default::default()).ok()?;
     std::fs::rename(&tmp, &path).ok()?;
     Some(path)
 }
@@ -84,7 +84,7 @@ fn ffmpeg_fixture(secs: u32) -> Option<PathBuf> {
     std::fs::create_dir_all(&dir).ok()?;
     let tmp = dir.join(format!(".tmp{}.mp4", std::process::id()));
     let src = format!("testsrc2=s=1920x1080:r=24000/1001:d={secs},noise=alls=6:allf=t");
-    let ok = Command::new(std::env::var_os("FILMCRAFT_FFMPEG").unwrap_or_else(|| "ffmpeg".into()))
+    let ok = Command::new(std::env::var_os("EPSICUT_FFMPEG").unwrap_or_else(|| "ffmpeg".into()))
         .args(["-v", "error", "-y", "-f", "lavfi", "-i", &src, "-f", "lavfi", "-i", &format!("sine=f=440:d={secs}")])
         .args(["-c:a", "aac", "-shortest", "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p"])
         .arg(&tmp)
@@ -113,7 +113,7 @@ fn session(src: &Path) -> Session {
         let range = TimeRange::new(Tick::ZERO, d);
         let mut vi = p.make_track_item(item, TrackKind::Video, Tick::ZERO, range, rate).expect("video item");
         for e in &mut vi.effects {
-            filmcraft_project::resolve_auto_points(e, (v.width, v.height), (v.width, v.height));
+            epsicut_project::resolve_auto_points(e, (v.width, v.height), (v.width, v.height));
         }
         let ai = p.make_track_item(item, TrackKind::Audio, Tick::ZERO, range, rate).expect("audio item");
         let q = p.sequence_mut(seq).expect("sequence");
@@ -137,14 +137,14 @@ fn main() {
         None => ffmpeg_fixture(secs).or_else(|| generated_fixture(secs)).expect("could not write the source fixture (or pass --source)"),
     };
     let keep = arg(&args, "--keep").map(PathBuf::from);
-    let dir = std::env::temp_dir().join(format!("filmcraft-bench-export-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("epsicut-bench-export-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("temp dir");
     let out = keep.clone().unwrap_or_else(|| dir.join(format!("out.{}", if format == "prores" { "mov" } else { "mp4" })));
     let mut s = session(&src);
     let mut times = Vec::new();
     let mut stages = Vec::new();
     for i in 0..runs {
-        let s0 = filmcraft_export::stage_times();
+        let s0 = epsicut_export::stage_times();
         let t0 = Instant::now();
         let r = s.execute(
             "file.exportMedia",
@@ -160,7 +160,7 @@ fn main() {
         let bytes = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
         eprintln!("run {i}: {dt:.3} s, {bytes} bytes");
         times.push(dt);
-        stages = filmcraft_export::stage_times().iter().zip(&s0).map(|((st, b), (_, a))| (st.name(), (b - a) as f64 / 1e9)).collect();
+        stages = epsicut_export::stage_times().iter().zip(&s0).map(|((st, b), (_, a))| (st.name(), (b - a) as f64 / 1e9)).collect();
     }
     let mut sorted = times.clone();
     sorted.sort_by(f64::total_cmp);

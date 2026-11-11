@@ -21,8 +21,8 @@
 //! 2. **Silence at the edges is trimmed.** Each word's start and end are moved inward past
 //!    frames below the threshold. A word keeps at least 60 ms.
 
-use filmcraft_project::Word;
-use filmcraft_time::Tick;
+use epsicut_project::Word;
+use epsicut_time::Tick;
 
 use crate::{SAMPLE_RATE, TICKS_PER_SAMPLE};
 
@@ -211,7 +211,7 @@ mod tests {
     }
 
     fn bounds(w: &[Word]) -> Vec<(f64, f64)> {
-        let s = |t: Tick| (t.0 as f64 / filmcraft_time::TICKS_PER_SECOND as f64 * 100.0).round() / 100.0;
+        let s = |t: Tick| (t.0 as f64 / epsicut_time::TICKS_PER_SECOND as f64 * 100.0).round() / 100.0;
         w.iter().map(|w| (s(w.start), s(w.end))).collect()
     }
 

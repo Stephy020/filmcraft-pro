@@ -6,9 +6,9 @@
 use std::cmp::Ordering;
 
 use egui::{Modifiers, Pos2, Rect, pos2, vec2};
-use filmcraft_edit::Edge;
-use filmcraft_project::{ClipId, Sequence, Track, TrackId, TransitionId};
-use filmcraft_time::Tick;
+use epsicut_edit::Edge;
+use epsicut_project::{ClipId, Sequence, Track, TrackId, TransitionId};
+use epsicut_time::Tick;
 
 use super::timeline::Layout;
 use crate::state::Tool;
@@ -79,12 +79,12 @@ pub fn marker_rect(layout: &Layout, start: Tick) -> Rect {
     Rect::from_center_size(pos2(layout.x_of(start), layout.ruler.min.y + 8.0), vec2(10.0, 13.0))
 }
 
-pub fn marker_end_rect(layout: &Layout, marker: &filmcraft_project::Marker) -> Option<Rect> {
+pub fn marker_end_rect(layout: &Layout, marker: &epsicut_project::Marker) -> Option<Rect> {
     (marker.duration > Tick::ZERO).then(|| marker_rect(layout, marker.start + marker.duration))
 }
 
 /// The visible duration band, shared by painting and hit testing (#1143).
-pub fn marker_range_rect(layout: &Layout, marker: &filmcraft_project::Marker) -> Option<Rect> {
+pub fn marker_range_rect(layout: &Layout, marker: &epsicut_project::Marker) -> Option<Rect> {
     (marker.duration > Tick::ZERO).then(|| {
         let y = layout.ruler.min.y + 2.0;
         Rect::from_min_max(pos2(layout.x_of(marker.start), y), pos2(layout.x_of(marker.start + marker.duration), y + 8.0)).intersect(layout.ruler)
@@ -93,7 +93,7 @@ pub fn marker_range_rect(layout: &Layout, marker: &filmcraft_project::Marker) ->
 
 /// The topmost marker under the pointer, including its range band. Preserve its id when opening
 /// a context menu: several markers can share a start, and the playhead can move while it is open.
-pub fn marker_under_pointer<'a>(seq: &'a Sequence, layout: &Layout, pos: Pos2) -> Option<&'a filmcraft_project::Marker> {
+pub fn marker_under_pointer<'a>(seq: &'a Sequence, layout: &Layout, pos: Pos2) -> Option<&'a epsicut_project::Marker> {
     if !layout.ruler.contains(pos) {
         return None;
     }
@@ -111,7 +111,7 @@ pub fn marker_at(seq: &Sequence, layout: &Layout, pos: Pos2) -> Option<Tick> {
 
 /// Where the Timeline ruler draws (and hit-tests) the work area bar, between the markers row and
 /// the time labels.
-pub fn work_area_rect(layout: &Layout, area: filmcraft_time::TimeRange) -> Rect {
+pub fn work_area_rect(layout: &Layout, area: epsicut_time::TimeRange) -> Rect {
     let y = layout.ruler.min.y + 14.0;
     Rect::from_min_max(pos2(layout.x_of(area.start), y), pos2(layout.x_of(area.end()), y + 6.0))
 }
@@ -340,8 +340,8 @@ fn roll(seq: &Sequence, track: TrackId, clip: ClipId, edge: Edge) -> EdgeKind {
 pub(crate) mod tests {
     use super::*;
     use egui::{Rect, pos2};
-    use filmcraft_project::{ItemId, Label, Project, SequenceSettings, TrackItem, TrackKind};
-    use filmcraft_time::{FrameRate, Tick};
+    use epsicut_project::{ItemId, Label, Project, SequenceSettings, TrackItem, TrackKind};
+    use epsicut_time::{FrameRate, Tick};
 
     use crate::panels::timeline::Row;
 
@@ -485,16 +485,16 @@ pub(crate) mod tests {
     fn a_press_on_a_marker_lands_on_its_start() {
         let (mut seq, l, _) = fixture(clips());
         let off = Tick::from_seconds_f64(3.017);
-        seq.markers.push(filmcraft_project::Marker {
+        seq.markers.push(epsicut_project::Marker {
             url: String::new(),
             author: String::new(),
             custom_color: None,
-            id: filmcraft_project::MarkerId(9),
+            id: epsicut_project::MarkerId(9),
             start: off,
             duration: Tick::ZERO,
             name: String::new(),
             comment: String::new(),
-            kind: filmcraft_project::MarkerKind::Comment,
+            kind: epsicut_project::MarkerKind::Comment,
             color: Label::Green,
         });
         // 3 px beside the pentagon's tip, where the nearest frame is not the marker's time
@@ -508,16 +508,16 @@ pub(crate) mod tests {
     fn range_bands_hit_the_last_drawn_marker_and_stay_on_the_ruler() {
         let (mut seq, layout, _) = fixture(clips());
         for id in [9, 10] {
-            seq.markers.push(filmcraft_project::Marker {
+            seq.markers.push(epsicut_project::Marker {
                 url: String::new(),
                 author: String::new(),
                 custom_color: None,
-                id: filmcraft_project::MarkerId(id),
+                id: epsicut_project::MarkerId(id),
                 start: Tick::from_seconds_f64(3.0),
                 duration: Tick::from_seconds_f64(2.0),
                 name: String::new(),
                 comment: String::new(),
-                kind: filmcraft_project::MarkerKind::Comment,
+                kind: epsicut_project::MarkerKind::Comment,
                 color: Label::Green,
             });
         }
@@ -542,7 +542,7 @@ pub(crate) mod tests {
         let (mut seq, l, _) = fixture(clips());
         // hidden, the bar's row is plain ruler
         assert_eq!(hit(&seq, &l, pos2(300.0, 17.0)), Hit::Ruler);
-        seq.work_area = Some(filmcraft_time::TimeRange::from_bounds(Tick::from_seconds_f64(2.0), Tick::from_seconds_f64(5.0)));
+        seq.work_area = Some(epsicut_time::TimeRange::from_bounds(Tick::from_seconds_f64(2.0), Tick::from_seconds_f64(5.0)));
         let y = work_area_rect(&l, seq.work_area.unwrap()).center().y;
         assert_eq!(hit(&seq, &l, pos2(197.0, y)), Hit::WorkArea { edge: Some(Edge::In) });
         assert_eq!(hit(&seq, &l, pos2(204.0, y)), Hit::WorkArea { edge: Some(Edge::In) });
@@ -554,7 +554,7 @@ pub(crate) mod tests {
         assert_eq!(hit(&seq, &l, pos2(350.0, 30.0)), Hit::Ruler);
         assert_eq!(grab_at(&seq, &l, pos2(350.0, y), Tool::Selection, Modifiers::NONE, false), Grab::Other(Hit::WorkArea { edge: None }));
         // a bar a few px wide keeps its middle third; hostile points grab nothing
-        seq.work_area = Some(filmcraft_time::TimeRange::from_bounds(Tick::from_seconds_f64(2.0), Tick::from_seconds_f64(2.09)));
+        seq.work_area = Some(epsicut_time::TimeRange::from_bounds(Tick::from_seconds_f64(2.0), Tick::from_seconds_f64(2.09)));
         assert_eq!(hit(&seq, &l, pos2(204.5, y)), Hit::WorkArea { edge: None });
         assert_eq!(hit(&seq, &l, pos2(f32::NAN, y)), Hit::None);
         for pps in [0.0, f64::NAN, f64::INFINITY] {

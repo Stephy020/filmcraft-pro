@@ -44,7 +44,7 @@ pub(super) fn apply_label(s: &mut Session, p: &Value, l: Label) -> Result<Value>
 }
 
 pub(super) fn select_label_group(s: &mut Session, _: &Value) -> Result<Value> {
-    let key = |label: Label, custom: Option<filmcraft_project::HexColor>| (if custom.is_some() { "" } else { label.name() }, custom);
+    let key = |label: Label, custom: Option<epsicut_project::HexColor>| (if custom.is_some() { "" } else { label.name() }, custom);
     if !s.state.selection.is_empty() {
         let q = s.active_sequence().ok_or(EngineError::NoSequence)?;
         let labels: BTreeSet<_> = s.state.selection.iter().filter_map(|c| q.find_item(*c).map(|(_, i)| key(i.label, i.custom_label_color))).collect();
@@ -96,7 +96,7 @@ pub(super) fn consolidate_duplicates(s: &mut Session, _: &Value) -> Result<Value
     let mut groups: BTreeMap<String, Vec<ItemId>> = BTreeMap::new();
     for it in s.project.items.values() {
         if let ItemKind::Media(m) = &it.kind {
-            let generator_rate = if matches!(&m.media, MediaRef::Generator(filmcraft_media::Generator::CountingLeader)) {
+            let generator_rate = if matches!(&m.media, MediaRef::Generator(epsicut_media::Generator::CountingLeader)) {
                 m.info.video.as_ref().map(|v| v.frame_rate)
             } else {
                 None
@@ -200,11 +200,11 @@ fn attr_sel(p: &Value) -> AttrSel {
 
 /// Whether Paste / Remove Attributes copies or removes this effect: an effect added to the clip,
 /// not an intrinsic one (Motion, Volume…), a graphic layer or one Essential Sound / Graphics manages.
-pub fn is_attribute_effect(e: &filmcraft_project::EffectInstance) -> bool {
-    e.def().is_some_and(|d| !d.intrinsic) && !filmcraft_project::graphic::is_layer(e) && !e.essential
+pub fn is_attribute_effect(e: &epsicut_project::EffectInstance) -> bool {
+    e.def().is_some_and(|d| !d.intrinsic) && !epsicut_project::graphic::is_layer(e) && !e.essential
 }
 
-fn wants_effect(sel: &AttrSel, e: &filmcraft_project::EffectInstance) -> bool {
+fn wants_effect(sel: &AttrSel, e: &epsicut_project::EffectInstance) -> bool {
     sel.effects.as_ref().is_none_or(|ids| ids.contains(&e.effect))
 }
 
@@ -251,7 +251,7 @@ pub(super) fn remove_attributes(s: &mut Session, p: &Value) -> Result<Value> {
     let seq = s.active_sequence().ok_or(EngineError::NoSequence)?;
     let frame = (seq.settings.width, seq.settings.height);
     let sizes: BTreeMap<ClipId, (u32, u32)> =
-        targets.iter().filter_map(|c| seq.find_item(*c).map(|(_, i)| (*c, filmcraft_render::source_size(&s.project, i.item).unwrap_or(frame)))).collect();
+        targets.iter().filter_map(|c| seq.find_item(*c).map(|(_, i)| (*c, epsicut_render::source_size(&s.project, i.item).unwrap_or(frame)))).collect();
     let n = s.edit_sequence("Remove Attributes", |q, _, _| {
         let mut n = 0;
         for c in &targets {
@@ -262,7 +262,7 @@ pub(super) fn remove_attributes(s: &mut Session, p: &Value) -> Result<Value> {
                     && let Some(def) = slot.def()
                 {
                     let mut fresh = def.instance();
-                    filmcraft_project::resolve_auto_points(&mut fresh, frame, sizes.get(c).copied().unwrap_or(frame));
+                    epsicut_project::resolve_auto_points(&mut fresh, frame, sizes.get(c).copied().unwrap_or(frame));
                     *slot = fresh;
                 }
             }

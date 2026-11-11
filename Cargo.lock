@@ -1710,6 +1710,746 @@ version = "0.37.0"
 source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
 
 [[package]]
+name = "epsicut"
+version = "0.17.0"
+dependencies = [
+ "arboard",
+ "chrono",
+ "cpal",
+ "craft-update",
+ "eframe",
+ "egui",
+ "epsicut-engine",
+ "epsicut-export",
+ "epsicut-gpu",
+ "epsicut-platform",
+ "epsicut-project",
+ "epsicut-render",
+ "epsicut-time",
+ "epsicut-ui-egui",
+ "glob",
+ "log",
+ "muda",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "open",
+ "pollster 1.0.1",
+ "rfd",
+ "serde_json",
+ "subtle",
+ "sys-locale",
+ "winit",
+ "winresource",
+ "zbus",
+]
+
+[[package]]
+name = "epsicut-aac"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-ac3"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-apv"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-audio-dsp"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+]
+
+[[package]]
+name = "epsicut-automation"
+version = "0.17.0"
+dependencies = [
+ "base64",
+ "epsicut-engine",
+ "epsicut-time",
+ "image",
+ "rmcp",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "epsicut-av1"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "rustix 1.1.5",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-avi"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+]
+
+[[package]]
+name = "epsicut-bitstream"
+version = "0.17.0"
+dependencies = [
+ "craft-media",
+]
+
+[[package]]
+name = "epsicut-captions"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "epsicut-project",
+ "epsicut-text",
+ "epsicut-time",
+ "proptest",
+ "roxmltree",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-cfb"
+version = "0.17.0"
+
+[[package]]
+name = "epsicut-cli"
+version = "0.17.0"
+dependencies = [
+ "epsicut-automation",
+ "epsicut-codecs",
+ "epsicut-engine",
+ "epsicut-export",
+ "epsicut-gpu",
+ "epsicut-media",
+ "epsicut-mpegts",
+ "epsicut-mxf",
+ "epsicut-ogg",
+ "epsicut-platform",
+ "epsicut-project",
+ "epsicut-render",
+ "epsicut-testkit",
+ "epsicut-time",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "epsicut-codecs"
+version = "0.17.0"
+dependencies = [
+ "epsicut-aac",
+ "epsicut-ac3",
+ "epsicut-apv",
+ "epsicut-av1",
+ "epsicut-avi",
+ "epsicut-bitstream",
+ "epsicut-color",
+ "epsicut-dnx",
+ "epsicut-frame",
+ "epsicut-h264",
+ "epsicut-hevc",
+ "epsicut-isobmff",
+ "epsicut-matroska",
+ "epsicut-media",
+ "epsicut-mpa",
+ "epsicut-mpeg2v",
+ "epsicut-mpegts",
+ "epsicut-mxf",
+ "epsicut-ogg",
+ "epsicut-opus",
+ "epsicut-prores",
+ "epsicut-testkit",
+ "epsicut-time",
+ "epsicut-vp8",
+ "epsicut-vp9",
+ "image",
+ "log",
+ "rayon",
+ "serde_json",
+ "symphonia",
+ "thiserror 2.0.21",
+ "web-time",
+]
+
+[[package]]
+name = "epsicut-color"
+version = "0.17.0"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "epsicut-dng"
+version = "0.17.0"
+dependencies = [
+ "epsicut-dng",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-dnx"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-edit"
+version = "0.17.0"
+dependencies = [
+ "epsicut-geom",
+ "epsicut-media",
+ "epsicut-project",
+ "epsicut-time",
+ "proptest",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-engine"
+version = "0.17.0"
+dependencies = [
+ "chrono",
+ "craft-docpath",
+ "epsicut-audio-dsp",
+ "epsicut-captions",
+ "epsicut-codecs",
+ "epsicut-color",
+ "epsicut-dng",
+ "epsicut-edit",
+ "epsicut-export",
+ "epsicut-format",
+ "epsicut-frame",
+ "epsicut-geom",
+ "epsicut-interchange",
+ "epsicut-isobmff",
+ "epsicut-media",
+ "epsicut-mxf",
+ "epsicut-project",
+ "epsicut-render",
+ "epsicut-scopes",
+ "epsicut-speech",
+ "epsicut-testkit",
+ "epsicut-text",
+ "epsicut-time",
+ "epsicut-tts",
+ "image",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "web-time",
+]
+
+[[package]]
+name = "epsicut-export"
+version = "0.17.0"
+dependencies = [
+ "epsicut-aac",
+ "epsicut-apv",
+ "epsicut-audio-dsp",
+ "epsicut-codecs",
+ "epsicut-color",
+ "epsicut-dnx",
+ "epsicut-flac",
+ "epsicut-frame",
+ "epsicut-geom",
+ "epsicut-h264enc",
+ "epsicut-isobmff",
+ "epsicut-media",
+ "epsicut-mxf",
+ "epsicut-project",
+ "epsicut-prores",
+ "epsicut-render",
+ "epsicut-testkit",
+ "epsicut-text",
+ "epsicut-time",
+ "image",
+ "rayon",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "web-time",
+]
+
+[[package]]
+name = "epsicut-flac"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-format"
+version = "0.17.0"
+dependencies = [
+ "chrono",
+ "epsicut-media",
+ "epsicut-project",
+ "epsicut-time",
+ "log",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-frame"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "epsicut-time",
+ "rayon",
+ "serde",
+]
+
+[[package]]
+name = "epsicut-geom"
+version = "0.17.0"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "epsicut-golden"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "epsicut-frame",
+ "epsicut-geom",
+ "epsicut-gpu",
+ "epsicut-media",
+ "epsicut-project",
+ "epsicut-render",
+ "epsicut-testkit",
+ "epsicut-time",
+ "pollster 1.0.1",
+ "wgpu",
+]
+
+[[package]]
+name = "epsicut-gpu"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "epsicut-export",
+ "epsicut-frame",
+ "epsicut-geom",
+ "epsicut-media",
+ "epsicut-project",
+ "epsicut-render",
+ "epsicut-time",
+ "image",
+ "log",
+ "pollster 1.0.1",
+ "rayon",
+ "wgpu",
+]
+
+[[package]]
+name = "epsicut-h264"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-h264enc"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-hevc"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-interchange"
+version = "0.17.0"
+dependencies = [
+ "epsicut-cfb",
+ "epsicut-color",
+ "epsicut-geom",
+ "epsicut-media",
+ "epsicut-project",
+ "epsicut-time",
+ "proptest",
+ "roxmltree",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-isobmff"
+version = "0.17.0"
+dependencies = [
+ "craft-media",
+ "epsicut-testkit",
+ "proptest",
+ "serde_json",
+]
+
+[[package]]
+name = "epsicut-matroska"
+version = "0.17.0"
+dependencies = [
+ "craft-media",
+ "epsicut-testkit",
+ "serde_json",
+]
+
+[[package]]
+name = "epsicut-media"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "epsicut-dng",
+ "epsicut-frame",
+ "epsicut-testkit",
+ "epsicut-time",
+ "image",
+ "png",
+ "rayon",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-mpa"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-mpeg2v"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-mpegts"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-mxf"
+version = "0.17.0"
+dependencies = [
+ "chrono",
+ "epsicut-testkit",
+]
+
+[[package]]
+name = "epsicut-ogg"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+]
+
+[[package]]
+name = "epsicut-opus"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+]
+
+[[package]]
+name = "epsicut-platform"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-codecs",
+ "epsicut-color",
+ "epsicut-export",
+ "epsicut-frame",
+ "epsicut-h264",
+ "epsicut-hevc",
+ "epsicut-isobmff",
+ "epsicut-media",
+ "epsicut-project",
+ "epsicut-render",
+ "epsicut-testkit",
+ "epsicut-time",
+ "libloading",
+ "log",
+ "objc2-core-foundation",
+ "objc2-core-media",
+ "objc2-core-video",
+ "objc2-video-toolbox",
+ "windows 0.62.2",
+]
+
+[[package]]
+name = "epsicut-project"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "epsicut-geom",
+ "epsicut-media",
+ "epsicut-time",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "url",
+]
+
+[[package]]
+name = "epsicut-prores"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-render"
+version = "0.17.0"
+dependencies = [
+ "epsicut-audio-dsp",
+ "epsicut-captions",
+ "epsicut-color",
+ "epsicut-frame",
+ "epsicut-geom",
+ "epsicut-media",
+ "epsicut-project",
+ "epsicut-text",
+ "epsicut-time",
+ "image",
+ "rayon",
+ "rustix 1.1.5",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "epsicut-scopes"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "epsicut-speech"
+version = "0.17.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "epsicut-project",
+ "epsicut-time",
+ "rayon",
+ "rustls",
+ "rustls-rustcrypto",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "ureq",
+]
+
+[[package]]
+name = "epsicut-testkit"
+version = "0.17.0"
+dependencies = [
+ "chrono",
+ "png",
+ "tempfile",
+]
+
+[[package]]
+name = "epsicut-text"
+version = "0.17.0"
+dependencies = [
+ "epsicut-color",
+ "harfrust",
+ "skrifa",
+ "tempfile",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "epsicut-time"
+version = "0.17.0"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "epsicut-tts"
+version = "0.17.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "epsicut-audio-dsp",
+ "epsicut-tts-text",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.21",
+ "zip 7.2.0",
+]
+
+[[package]]
+name = "epsicut-tts-text"
+version = "0.17.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-ui-egui"
+version = "0.17.0"
+dependencies = [
+ "cpu-time",
+ "craft-ui",
+ "craft-update",
+ "eframe",
+ "egui",
+ "egui_kittest",
+ "epsicut-audio-dsp",
+ "epsicut-captions",
+ "epsicut-codecs",
+ "epsicut-color",
+ "epsicut-edit",
+ "epsicut-engine",
+ "epsicut-export",
+ "epsicut-frame",
+ "epsicut-geom",
+ "epsicut-gpu",
+ "epsicut-interchange",
+ "epsicut-media",
+ "epsicut-platform",
+ "epsicut-project",
+ "epsicut-render",
+ "epsicut-scopes",
+ "epsicut-text",
+ "epsicut-time",
+ "epsicut-tts",
+ "image",
+ "log",
+ "pollster 1.0.1",
+ "rayon",
+ "rustix 1.1.5",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml 1.1.6+spec-1.1.0",
+ "unicode-bidi",
+ "web-time",
+]
+
+[[package]]
+name = "epsicut-vp8"
+version = "0.17.0"
+dependencies = [
+ "epsicut-testkit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-vp9"
+version = "0.17.0"
+dependencies = [
+ "epsicut-bitstream",
+ "epsicut-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "epsicut-web"
+version = "0.17.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "epsicut-codecs",
+ "epsicut-color",
+ "epsicut-engine",
+ "epsicut-format",
+ "epsicut-frame",
+ "epsicut-isobmff",
+ "epsicut-media",
+ "epsicut-time",
+ "epsicut-ui-egui",
+ "js-sys",
+ "log",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1827,746 +2567,6 @@ checksum = "5c287a33c7f0a620c38e641e7f60827713987b3c0f26e8ddc9462cc69cf75759"
 dependencies = [
  "cfg-if",
  "libc",
-]
-
-[[package]]
-name = "filmcraft"
-version = "0.17.0"
-dependencies = [
- "arboard",
- "chrono",
- "cpal",
- "craft-update",
- "eframe",
- "egui",
- "filmcraft-engine",
- "filmcraft-export",
- "filmcraft-gpu",
- "filmcraft-platform",
- "filmcraft-project",
- "filmcraft-render",
- "filmcraft-time",
- "filmcraft-ui-egui",
- "glob",
- "log",
- "muda",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "objc2-foundation 0.3.2",
- "open",
- "pollster 1.0.1",
- "rfd",
- "serde_json",
- "subtle",
- "sys-locale",
- "winit",
- "winresource",
- "zbus",
-]
-
-[[package]]
-name = "filmcraft-aac"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-ac3"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-apv"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-audio-dsp"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
-]
-
-[[package]]
-name = "filmcraft-automation"
-version = "0.17.0"
-dependencies = [
- "base64",
- "filmcraft-engine",
- "filmcraft-time",
- "image",
- "rmcp",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
-]
-
-[[package]]
-name = "filmcraft-av1"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "rustix 1.1.5",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-avi"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
-]
-
-[[package]]
-name = "filmcraft-bitstream"
-version = "0.17.0"
-dependencies = [
- "craft-media",
-]
-
-[[package]]
-name = "filmcraft-captions"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "filmcraft-project",
- "filmcraft-text",
- "filmcraft-time",
- "proptest",
- "roxmltree",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-cfb"
-version = "0.17.0"
-
-[[package]]
-name = "filmcraft-cli"
-version = "0.17.0"
-dependencies = [
- "filmcraft-automation",
- "filmcraft-codecs",
- "filmcraft-engine",
- "filmcraft-export",
- "filmcraft-gpu",
- "filmcraft-media",
- "filmcraft-mpegts",
- "filmcraft-mxf",
- "filmcraft-ogg",
- "filmcraft-platform",
- "filmcraft-project",
- "filmcraft-render",
- "filmcraft-testkit",
- "filmcraft-time",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "filmcraft-codecs"
-version = "0.17.0"
-dependencies = [
- "filmcraft-aac",
- "filmcraft-ac3",
- "filmcraft-apv",
- "filmcraft-av1",
- "filmcraft-avi",
- "filmcraft-bitstream",
- "filmcraft-color",
- "filmcraft-dnx",
- "filmcraft-frame",
- "filmcraft-h264",
- "filmcraft-hevc",
- "filmcraft-isobmff",
- "filmcraft-matroska",
- "filmcraft-media",
- "filmcraft-mpa",
- "filmcraft-mpeg2v",
- "filmcraft-mpegts",
- "filmcraft-mxf",
- "filmcraft-ogg",
- "filmcraft-opus",
- "filmcraft-prores",
- "filmcraft-testkit",
- "filmcraft-time",
- "filmcraft-vp8",
- "filmcraft-vp9",
- "image",
- "log",
- "rayon",
- "serde_json",
- "symphonia",
- "thiserror 2.0.21",
- "web-time",
-]
-
-[[package]]
-name = "filmcraft-color"
-version = "0.17.0"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "filmcraft-dng"
-version = "0.17.0"
-dependencies = [
- "filmcraft-dng",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-dnx"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-edit"
-version = "0.17.0"
-dependencies = [
- "filmcraft-geom",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-time",
- "proptest",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-engine"
-version = "0.17.0"
-dependencies = [
- "chrono",
- "craft-docpath",
- "filmcraft-audio-dsp",
- "filmcraft-captions",
- "filmcraft-codecs",
- "filmcraft-color",
- "filmcraft-dng",
- "filmcraft-edit",
- "filmcraft-export",
- "filmcraft-format",
- "filmcraft-frame",
- "filmcraft-geom",
- "filmcraft-interchange",
- "filmcraft-isobmff",
- "filmcraft-media",
- "filmcraft-mxf",
- "filmcraft-project",
- "filmcraft-render",
- "filmcraft-scopes",
- "filmcraft-speech",
- "filmcraft-testkit",
- "filmcraft-text",
- "filmcraft-time",
- "filmcraft-tts",
- "image",
- "log",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "web-time",
-]
-
-[[package]]
-name = "filmcraft-export"
-version = "0.17.0"
-dependencies = [
- "filmcraft-aac",
- "filmcraft-apv",
- "filmcraft-audio-dsp",
- "filmcraft-codecs",
- "filmcraft-color",
- "filmcraft-dnx",
- "filmcraft-flac",
- "filmcraft-frame",
- "filmcraft-geom",
- "filmcraft-h264enc",
- "filmcraft-isobmff",
- "filmcraft-media",
- "filmcraft-mxf",
- "filmcraft-project",
- "filmcraft-prores",
- "filmcraft-render",
- "filmcraft-testkit",
- "filmcraft-text",
- "filmcraft-time",
- "image",
- "rayon",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "web-time",
-]
-
-[[package]]
-name = "filmcraft-flac"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-format"
-version = "0.17.0"
-dependencies = [
- "chrono",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-time",
- "log",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-frame"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "filmcraft-time",
- "rayon",
- "serde",
-]
-
-[[package]]
-name = "filmcraft-geom"
-version = "0.17.0"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "filmcraft-golden"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "filmcraft-frame",
- "filmcraft-geom",
- "filmcraft-gpu",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-render",
- "filmcraft-testkit",
- "filmcraft-time",
- "pollster 1.0.1",
- "wgpu",
-]
-
-[[package]]
-name = "filmcraft-gpu"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "filmcraft-export",
- "filmcraft-frame",
- "filmcraft-geom",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-render",
- "filmcraft-time",
- "image",
- "log",
- "pollster 1.0.1",
- "rayon",
- "wgpu",
-]
-
-[[package]]
-name = "filmcraft-h264"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-h264enc"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-hevc"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-interchange"
-version = "0.17.0"
-dependencies = [
- "filmcraft-cfb",
- "filmcraft-color",
- "filmcraft-geom",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-time",
- "proptest",
- "roxmltree",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-isobmff"
-version = "0.17.0"
-dependencies = [
- "craft-media",
- "filmcraft-testkit",
- "proptest",
- "serde_json",
-]
-
-[[package]]
-name = "filmcraft-matroska"
-version = "0.17.0"
-dependencies = [
- "craft-media",
- "filmcraft-testkit",
- "serde_json",
-]
-
-[[package]]
-name = "filmcraft-media"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "filmcraft-dng",
- "filmcraft-frame",
- "filmcraft-testkit",
- "filmcraft-time",
- "image",
- "png",
- "rayon",
- "serde",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-mpa"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-mpeg2v"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-mpegts"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-mxf"
-version = "0.17.0"
-dependencies = [
- "chrono",
- "filmcraft-testkit",
-]
-
-[[package]]
-name = "filmcraft-ogg"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
-]
-
-[[package]]
-name = "filmcraft-opus"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
-]
-
-[[package]]
-name = "filmcraft-platform"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-codecs",
- "filmcraft-color",
- "filmcraft-export",
- "filmcraft-frame",
- "filmcraft-h264",
- "filmcraft-hevc",
- "filmcraft-isobmff",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-render",
- "filmcraft-testkit",
- "filmcraft-time",
- "libloading",
- "log",
- "objc2-core-foundation",
- "objc2-core-media",
- "objc2-core-video",
- "objc2-video-toolbox",
- "windows 0.62.2",
-]
-
-[[package]]
-name = "filmcraft-project"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "filmcraft-geom",
- "filmcraft-media",
- "filmcraft-time",
- "proptest",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "url",
-]
-
-[[package]]
-name = "filmcraft-prores"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-render"
-version = "0.17.0"
-dependencies = [
- "filmcraft-audio-dsp",
- "filmcraft-captions",
- "filmcraft-color",
- "filmcraft-frame",
- "filmcraft-geom",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-text",
- "filmcraft-time",
- "image",
- "rayon",
- "rustix 1.1.5",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "filmcraft-scopes"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "filmcraft-speech"
-version = "0.17.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "filmcraft-project",
- "filmcraft-time",
- "rayon",
- "rustls",
- "rustls-rustcrypto",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror 2.0.21",
- "ureq",
-]
-
-[[package]]
-name = "filmcraft-testkit"
-version = "0.17.0"
-dependencies = [
- "chrono",
- "png",
- "tempfile",
-]
-
-[[package]]
-name = "filmcraft-text"
-version = "0.17.0"
-dependencies = [
- "filmcraft-color",
- "harfrust",
- "skrifa",
- "tempfile",
- "unicode-bidi",
- "unicode-linebreak",
- "unicode-segmentation",
-]
-
-[[package]]
-name = "filmcraft-time"
-version = "0.17.0"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "filmcraft-tts"
-version = "0.17.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "filmcraft-audio-dsp",
- "filmcraft-tts-text",
- "serde",
- "serde_json",
- "sha2",
- "thiserror 2.0.21",
- "zip 7.2.0",
-]
-
-[[package]]
-name = "filmcraft-tts-text"
-version = "0.17.0"
-dependencies = [
- "serde",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-ui-egui"
-version = "0.17.0"
-dependencies = [
- "cpu-time",
- "craft-ui",
- "craft-update",
- "eframe",
- "egui",
- "egui_kittest",
- "filmcraft-audio-dsp",
- "filmcraft-captions",
- "filmcraft-codecs",
- "filmcraft-color",
- "filmcraft-edit",
- "filmcraft-engine",
- "filmcraft-export",
- "filmcraft-frame",
- "filmcraft-geom",
- "filmcraft-gpu",
- "filmcraft-interchange",
- "filmcraft-media",
- "filmcraft-platform",
- "filmcraft-project",
- "filmcraft-render",
- "filmcraft-scopes",
- "filmcraft-text",
- "filmcraft-time",
- "filmcraft-tts",
- "image",
- "log",
- "pollster 1.0.1",
- "rayon",
- "rustix 1.1.5",
- "serde",
- "serde_json",
- "tempfile",
- "toml 1.1.6+spec-1.1.0",
- "unicode-bidi",
- "web-time",
-]
-
-[[package]]
-name = "filmcraft-vp8"
-version = "0.17.0"
-dependencies = [
- "filmcraft-testkit",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-vp9"
-version = "0.17.0"
-dependencies = [
- "filmcraft-bitstream",
- "filmcraft-testkit",
- "rayon",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "filmcraft-web"
-version = "0.17.0"
-dependencies = [
- "eframe",
- "egui",
- "filmcraft-codecs",
- "filmcraft-color",
- "filmcraft-engine",
- "filmcraft-format",
- "filmcraft-frame",
- "filmcraft-isobmff",
- "filmcraft-media",
- "filmcraft-time",
- "filmcraft-ui-egui",
- "js-sys",
- "log",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
 ]
 
 [[package]]
@@ -8047,7 +8047,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 name = "xtask"
 version = "0.17.0"
 dependencies = [
- "filmcraft-testkit",
+ "epsicut-testkit",
  "serde_json",
 ]
 

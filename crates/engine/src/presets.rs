@@ -19,9 +19,9 @@
 
 use std::path::{Path, PathBuf};
 
-use filmcraft_geom::{Affine, Vec2};
-use filmcraft_project::{ClipId, EffectInstance, Keyframe, Mask, MaskPath, Param, ParamValue, TrackItem, TrackKind};
-use filmcraft_time::{TICKS_PER_SECOND, Tick};
+use epsicut_geom::{Affine, Vec2};
+use epsicut_project::{ClipId, EffectInstance, Keyframe, Mask, MaskPath, Param, ParamValue, TrackItem, TrackKind};
+use epsicut_time::{TICKS_PER_SECOND, Tick};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -111,7 +111,7 @@ impl PresetLibrary {
         let Some(d) = &self.dir else { return Ok(()) };
         let _ = std::fs::create_dir_all(d);
         let bytes = file_bytes(&self.user);
-        filmcraft_format::atomic_write(&d.join(LIBRARY_FILE), &bytes).map_err(|e| e.to_string())
+        epsicut_format::atomic_write(&d.join(LIBRARY_FILE), &bytes).map_err(|e| e.to_string())
     }
     /// Built-in and user presets (user presets shadow built-ins of the same name).
     pub fn all(&self) -> Vec<EffectPreset> {
@@ -154,7 +154,7 @@ fn kf(t_secs: f64, v: ParamValue) -> Keyframe {
 /// A fresh instance of a built-in effect (a bare instance named `id` if the registry lacks it,
 /// which the preset tests rule out).
 pub(crate) fn effect_instance(id: &str) -> EffectInstance {
-    filmcraft_project::find_effect(id).map(|d| d.instance()).unwrap_or_else(|| EffectInstance {
+    epsicut_project::find_effect(id).map(|d| d.instance()).unwrap_or_else(|| EffectInstance {
         effect: id.to_string(),
         enabled: true,
         params: Default::default(),
@@ -194,7 +194,7 @@ fn preset(name: &str, description: &str, keyframes: KeyframeMode, secs: f64, eff
     }
 }
 
-/// Presets that ship with FilmCraft (original work: parameter values chosen by us).
+/// Presets that ship with EpsiCut (original work: parameter values chosen by us).
 pub fn builtin_presets() -> Vec<EffectPreset> {
     let f = ParamValue::Float;
     let mut blur_in = effect("gaussian_blur", &[]);
@@ -317,7 +317,7 @@ pub fn instantiate(p: &EffectPreset, target: &TrackItem, size: (u32, u32)) -> Ve
         // Point params scale only when they are positions (the def kind says so)
         let point_ids: Vec<String> = e
             .def()
-            .map(|d| d.params.iter().filter(|q| matches!(q.kind, filmcraft_project::ParamKind::Point)).map(|q| q.id.to_string()).collect())
+            .map(|d| d.params.iter().filter(|q| matches!(q.kind, epsicut_project::ParamKind::Point)).map(|q| q.id.to_string()).collect())
             .unwrap_or_default();
         for (id, prm) in e.params.iter_mut() {
             for k in &mut prm.keyframes {
@@ -441,7 +441,7 @@ fn list(s: &mut Session, _: &Value) -> Result<Value> {
 }
 
 fn clip_size(s: &Session, it: &TrackItem) -> (u32, u32) {
-    filmcraft_render::source_size(&s.project, it.item).or_else(|| s.active_sequence().map(|q| (q.settings.width, q.settings.height))).unwrap_or(hd())
+    epsicut_render::source_size(&s.project, it.item).or_else(|| s.active_sequence().map(|q| (q.settings.width, q.settings.height))).unwrap_or(hd())
 }
 
 fn save(s: &mut Session, p: &Value) -> Result<Value> {
@@ -458,7 +458,7 @@ fn save(s: &mut Session, p: &Value) -> Result<Value> {
         None => (0..it.effects.len())
             .filter(|i| {
                 let e = &it.effects[*i];
-                e.def().is_some_and(|d| !d.intrinsic) && !filmcraft_project::graphic::is_layer(e) && !e.essential
+                e.def().is_some_and(|d| !d.intrinsic) && !epsicut_project::graphic::is_layer(e) && !e.essential
             })
             .collect(),
     };
@@ -490,7 +490,7 @@ fn apply(s: &mut Session, p: &Value) -> Result<Value> {
     if clips.is_empty() {
         return Err(bad("presets.apply", "select clips first"));
     }
-    let audio = preset.effects.iter().all(|e| e.def().is_some_and(|d| d.kind == filmcraft_project::EffectKind::Audio));
+    let audio = preset.effects.iter().all(|e| e.def().is_some_and(|d| d.kind == epsicut_project::EffectKind::Audio));
     let sizes: Vec<(ClipId, (u32, u32))> = {
         let seq = s.active_sequence().ok_or(EngineError::NoSequence)?;
         clips.iter().filter_map(|c| seq.find_item(*c).map(|(_, it)| (*c, clip_size(s, it)))).collect()

@@ -16,7 +16,7 @@
 //! the thread pool and took longer than the hardware encode (20 ms a 1080p frame), leaving the
 //! encoder waiting. On the planar path ([`VtEncoder::new`], [`VtEncoder::encode`]) pictures go in as
 //! 8-bit 4:2:0 (NV12) pixel buffers filled from planar BT.709 limited-range Y'CbCr, the layout of
-//! `filmcraft_export::rgba_to_yuv420_8`, so the colours match the built-in encoder's; it is the
+//! `epsicut_export::rgba_to_yuv420_8`, so the colours match the built-in encoder's; it is the
 //! fallback for a VideoToolbox that does not take RGB input. VideoToolbox encodes asynchronously;
 //! its output callback (on a VideoToolbox thread) copies each compressed frame (length-prefixed NAL
 //! units) into a queue that [`VtEncoder::encode_picture`] and [`VtEncoder::flush`] drain.

@@ -6,14 +6,14 @@
 
 use std::sync::Arc;
 
-use filmcraft_export::{BitrateMode, ExportSettings, Format, HardwareEncoding, Progress, export, hw_encode_stats};
-use filmcraft_media::generators::GeneratorSource;
-use filmcraft_media::{DemoScene, FrameRequest, Generator, MediaSource};
-use filmcraft_project::{ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
-use filmcraft_render::SourceMap;
-use filmcraft_time::{FrameRate, Tick, TimeRange};
+use epsicut_export::{BitrateMode, ExportSettings, Format, HardwareEncoding, Progress, export, hw_encode_stats};
+use epsicut_media::generators::GeneratorSource;
+use epsicut_media::{DemoScene, FrameRequest, Generator, MediaSource};
+use epsicut_project::{ItemKind, Label, MediaClip, MediaRef, Project, SequenceSettings, TrackKind};
+use epsicut_render::SourceMap;
+use epsicut_time::{FrameRate, Tick, TimeRange};
 
-fn project(w: u32, h: u32, frames: i64) -> (Arc<Project>, filmcraft_project::ItemId, SourceMap) {
+fn project(w: u32, h: u32, frames: i64) -> (Arc<Project>, epsicut_project::ItemId, SourceMap) {
     let rate = FrameRate::FPS_24;
     let mut p = Project::new("x");
     let g = GeneratorSource::new(Generator::Demo(DemoScene::OceanSunset), w, h, rate, rate.tick_of(frames));
@@ -48,15 +48,15 @@ fn tmp(name: &str) -> String {
     d.join(name).to_string_lossy().to_string()
 }
 
-fn decode(path: &str) -> Vec<Arc<filmcraft_frame::VideoFrame>> {
+fn decode(path: &str) -> Vec<Arc<epsicut_frame::VideoFrame>> {
     let bytes: Arc<[u8]> = std::fs::read(path).unwrap().into();
-    let src = filmcraft_codecs::open_bytes(path, bytes).unwrap();
+    let src = epsicut_codecs::open_bytes(path, bytes).unwrap();
     let rate = src.info().frame_rate();
     let n = rate.frame_at(src.info().duration);
     (0..n).map(|i| src.video_frame(FrameRequest::full(rate.tick_of(i))).unwrap()).collect()
 }
 
-fn luma_psnr(a: &filmcraft_frame::VideoFrame, b: &filmcraft_frame::VideoFrame) -> f64 {
+fn luma_psnr(a: &epsicut_frame::VideoFrame, b: &epsicut_frame::VideoFrame) -> f64 {
     let (x, y) = (a.luma8(), b.luma8());
     let mse = x.iter().zip(&y).map(|(p, q)| (f64::from(*p) - f64::from(*q)).powi(2)).sum::<f64>() / x.len() as f64;
     if mse == 0.0 { 99.0 } else { 10.0 * (255.0f64 * 255.0 / mse).log10() }
@@ -77,7 +77,7 @@ fn settings(path: String, hw: HardwareEncoding) -> ExportSettings {
 #[test]
 fn hardware_export_matches_the_software_export() {
     let _one = crate::common::NVENC_SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    filmcraft_platform::register();
+    epsicut_platform::register();
     let (p, seq, m) = project(1280, 720, 72);
     let soft_path = tmp("soft.mp4");
     let before_soft = hw_encode_stats();
@@ -106,7 +106,7 @@ fn hardware_export_matches_the_software_export() {
     eprintln!("software {} bytes, hardware {} bytes, worst luma PSNR between them {worst:.1} dB", size(&soft_path), size(&hw_path));
 
     // the file plays: ffmpeg decodes it without errors (external oracle only)
-    if let Some(ff) = filmcraft_testkit::ffmpeg() {
+    if let Some(ff) = epsicut_testkit::ffmpeg() {
         let out = std::process::Command::new(ff).args(["-v", "error", "-i", &hw_path, "-f", "null", "-"]).output().unwrap();
         assert!(out.stderr.is_empty(), "ffmpeg: {}", String::from_utf8_lossy(&out.stderr));
     }
@@ -115,7 +115,7 @@ fn hardware_export_matches_the_software_export() {
 #[test]
 fn what_nvenc_does_not_take_goes_to_the_software_encoder() {
     let _one = crate::common::NVENC_SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    filmcraft_platform::register();
+    epsicut_platform::register();
     let (p, seq, m) = project(640, 360, 24);
     let run = |name: &str, f: &dyn Fn(&mut ExportSettings)| {
         let mut s = settings(tmp(name), HardwareEncoding::Auto);
@@ -131,12 +131,12 @@ fn what_nvenc_does_not_take_goes_to_the_software_encoder() {
     assert_eq!(
         run("mxf.mxf", &|s| {
             s.format = Format::MxfOp1a;
-            s.mxf_video_codec = filmcraft_export::MxfVideoCodec::H264;
+            s.mxf_video_codec = epsicut_export::MxfVideoCodec::H264;
         }),
         (0, 1)
     );
     // an odd frame size is rounded to even by the pipeline, so NVENC still takes it
-    let hardware_available = filmcraft_platform::nvenc::available();
+    let hardware_available = epsicut_platform::nvenc::available();
     let odd = run("odd.mp4", &|s| s.frame_size = Some((641, 359)));
     assert_eq!(odd, if hardware_available { (24, 0) } else { (0, 1) });
     // Off never touches the hardware encoder

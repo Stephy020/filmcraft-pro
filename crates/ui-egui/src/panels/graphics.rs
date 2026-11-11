@@ -24,15 +24,15 @@
 use crate::widgets::CenteredDialog as _;
 use egui::ime_context::ImeTarget;
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
-use filmcraft_engine::Session;
-use filmcraft_geom::{Affine, Vec2};
-use filmcraft_project::graphic::{self, LayerContent, LayerSpec, eval_layer, layer_display_name, layer_indices};
-use filmcraft_project::{ClipId, EffectInstance, ItemKind, ParamValue, TrackItem};
-use filmcraft_render::graphic_clip::{layer_local_bounds, layer_matrix, text_layout};
-use filmcraft_time::Tick;
+use epsicut_engine::Session;
+use epsicut_geom::{Affine, Vec2};
+use epsicut_project::graphic::{self, LayerContent, LayerSpec, eval_layer, layer_display_name, layer_indices};
+use epsicut_project::{ClipId, EffectInstance, ItemKind, ParamValue, TrackItem};
+use epsicut_render::graphic_clip::{layer_local_bounds, layer_matrix, text_layout};
+use epsicut_time::Tick;
 use serde_json::{Value, json};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::icons::{self, Icon};
 use crate::state::{GfxEdit, TextPropsDialog, Tool};
 use crate::theme::Tokens;
@@ -93,7 +93,7 @@ impl LayerView {
 }
 
 /// Whether a clip id is a graphic clip in the active sequence.
-pub fn is_graphic_clip(app: &FilmcraftApp, c: ClipId) -> bool {
+pub fn is_graphic_clip(app: &EpsicutApp, c: ClipId) -> bool {
     app.session
         .active_sequence()
         .and_then(|q| q.find_item(c))
@@ -102,13 +102,13 @@ pub fn is_graphic_clip(app: &FilmcraftApp, c: ClipId) -> bool {
 }
 
 /// The selected graphic clip, if any.
-pub fn selected_graphic(app: &FilmcraftApp) -> Option<(ClipId, TrackItem)> {
+pub fn selected_graphic(app: &EpsicutApp) -> Option<(ClipId, TrackItem)> {
     let q = app.session.active_sequence()?;
     app.session.state.selection.iter().copied().find(|c| is_graphic_clip(app, *c)).and_then(|c| q.find_item(c).map(|(_, it)| (c, it.clone())))
 }
 
 /// Whether the Properties panel should show the graphic editor.
-pub fn graphic_selected(app: &FilmcraftApp) -> bool {
+pub fn graphic_selected(app: &EpsicutApp) -> bool {
     selected_graphic(app).is_some()
 }
 
@@ -205,11 +205,11 @@ mod ime_byte_delete_tests {
     /// typed every later event into the old layer.
     #[test]
     fn pointer_press_rejects_text_paste_and_ime_later_in_the_same_raw_batch() {
-        use filmcraft_geom::{Affine, Vec2};
-        use filmcraft_project::ClipId;
-        use filmcraft_project::graphic::{Appearance, LayerContent, LayerSpec, LayerTransform, TextProps};
+        use epsicut_geom::{Affine, Vec2};
+        use epsicut_project::ClipId;
+        use epsicut_project::graphic::{Appearance, LayerContent, LayerSpec, LayerTransform, TextProps};
 
-        let mut app = crate::FilmcraftApp::new(filmcraft_engine::Session::default());
+        let mut app = crate::EpsicutApp::new(epsicut_engine::Session::default());
         let ed = GfxEdit { clip: 1, layer: 0, caret: 3, anchor: 3, ..Default::default() };
         app.ui.gfx_edit = Some(ed.clone());
         let props = TextProps {

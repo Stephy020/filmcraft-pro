@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex, PoisonError};
 
 use base64::Engine as _;
-use filmcraft_engine::Session;
+use epsicut_engine::Session;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ContentBlock as Content};
@@ -33,7 +33,7 @@ fn join_error(e: tokio::task::JoinError) -> AutomationError {
 }
 
 #[derive(Clone)]
-pub struct FilmcraftMcp {
+pub struct EpsicutMcp {
     backend: Arc<Backend>,
     /// Bridge `render_frame` moves the app's one playhead and screenshots the one Program monitor, so
     /// calls (which MCP clients may send in parallel) take turns instead of seeing each other's frame.
@@ -288,7 +288,7 @@ fn wrap(r: Result<Value, AutomationError>) -> Result<CallToolResult, McpError> {
 /// Parse-error replies queued for the writer before the reader waits for it to catch up.
 const MAX_QUEUED_PARSE_ERRORS: usize = 64;
 
-impl FilmcraftMcp {
+impl EpsicutMcp {
     pub fn headless(session: Session) -> Self {
         Self { backend: Arc::new(Backend::Headless(Arc::new(Mutex::new(session)))), render_lock: Arc::default(), tool_router: Self::tool_router() }
     }
@@ -411,15 +411,15 @@ impl FilmcraftMcp {
     async fn ui(&self, method: &str, params: Value) -> Result<CallToolResult, McpError> {
         match self.bridge_client() {
             Some(b) => wrap(b.call(method, params).await),
-            None => Ok(fail(
-                "this tool drives the live app: run `filmcraft-cli mcp --bridge 127.0.0.1:<port>` with the app started as `filmcraft --control <port>`",
-            )),
+            None => {
+                Ok(fail("this tool drives the live app: run `epsicut-cli mcp --bridge 127.0.0.1:<port>` with the app started as `epsicut --control <port>`"))
+            }
         }
     }
 }
 
 #[tool_router]
-impl FilmcraftMcp {
+impl EpsicutMcp {
     #[tool(
         title = "List commands",
         description = "List every command (id, label, menu path, shortcut, parameter doc, enabled now). Menus, shortcuts, panels and timeline gestures all map to these ids.",
@@ -580,7 +580,7 @@ impl FilmcraftMcp {
                 let r = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, AutomationError> {
                     let g = s.lock().unwrap_or_else(PoisonError::into_inner);
                     // read-only: render at `seconds` without moving the playhead (#114)
-                    let t = p.seconds.map_or_else(|| g.playhead(), filmcraft_time::Tick::from_seconds_f64);
+                    let t = p.seconds.map_or_else(|| g.playhead(), epsicut_time::Tick::from_seconds_f64);
                     let (w, h) =
                         g.active_sequence().map(|q| (q.settings.width, q.settings.height)).ok_or_else(|| AutomationError::Other("no sequence".into()))?;
                     let scale = render_scale(max, w, h);
@@ -711,7 +711,7 @@ impl FilmcraftMcp {
     }
 }
 
-impl FilmcraftMcp {
+impl EpsicutMcp {
     async fn screenshot(&self, b: &BridgeClient, panel: Option<String>, max: u32) -> Result<CallToolResult, McpError> {
         // The desktop bridge needs a pathname, so use a freshly-created,
         // owner-only directory rather than exposing image bytes at a
@@ -736,11 +736,11 @@ impl FilmcraftMcp {
             }
             Err(_) => bytes,
         };
-        Ok(png_result(&bytes, "screenshot of the live FilmCraft window"))
+        Ok(png_result(&bytes, "screenshot of the live EpsiCut window"))
     }
 }
 
-impl FilmcraftMcp {
+impl EpsicutMcp {
     /// The first argument `tool` doesn't take, as a message naming the ones it does.
     fn unknown_arg(&self, tool: &str, args: Option<&rmcp::model::JsonObject>) -> Option<String> {
         let def = self.tool_router.get(tool)?;
@@ -752,7 +752,7 @@ impl FilmcraftMcp {
     }
 }
 
-const INSTRUCTIONS: &str = "FilmCraft video editor (Premiere Pro-class). Spend few tokens: let FilmCraft do the work. \
+const INSTRUCTIONS: &str = "EpsiCut video editor (Premiere Pro-class). Spend few tokens: let EpsiCut do the work. \
 1) `workflow_list`, then `workflow_run` a recipe: stage `prepare` with params.media (absolute paths) builds the sequence and answers the transcript as paragraphs; \
 pick what to keep; stage `finish` with params.keep {paragraphs:[…]} and params.export {path} (wait=true) cuts, captions, checks and exports. One undo step. \
 2) `transcript_text` reads the transcript as paragraphs; `qa_check` verifies an edit as text (use it instead of screenshots); `sequence_inspect` with detail=\"summary\" is the compact timeline. \
@@ -762,8 +762,8 @@ In bridge mode the `ui_*` tools drive the live app: `ui_elements` lists clickabl
 Time is in ticks: 254016000000 per second (commands also accept `seconds`, `frame` or `timecode`).";
 
 /// Resources: the project (as `doc_inspect`) and the command catalog (as `command_list`).
-const DOCUMENT_URI: &str = "filmcraft://document";
-const COMMANDS_URI: &str = "filmcraft://commands";
+const DOCUMENT_URI: &str = "epsicut://document";
+const COMMANDS_URI: &str = "epsicut://commands";
 
 /// MCP 2026-07-28 clients (current Claude Code) require `ttlMs` and `cacheScope` on list and read
 /// results; rmcp fills `resultType` and leaves the cache hints to the server, as the generated
@@ -773,10 +773,10 @@ fn cache_hints(context: &rmcp::service::RequestContext<rmcp::RoleServer>, ttl_ms
 }
 
 #[tool_handler(router = self.tool_router)]
-impl ServerHandler for FilmcraftMcp {
+impl ServerHandler for EpsicutMcp {
     fn get_info(&self) -> rmcp::model::ServerConfig {
         rmcp::model::ServerConfig::new(rmcp::model::ServerCapabilities::builder().enable_tools().enable_resources().build())
-            .with_server_info(rmcp::model::Implementation::new("filmcraft", env!("CARGO_PKG_VERSION")))
+            .with_server_info(rmcp::model::Implementation::new("epsicut", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS.to_string())
     }
 

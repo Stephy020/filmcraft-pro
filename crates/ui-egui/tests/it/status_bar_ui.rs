@@ -8,15 +8,15 @@ use std::sync::mpsc::{Sender, channel};
 use egui::{Event, Modifiers, PointerButton, Pos2, Rect, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use filmcraft_engine::{Job, Session};
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::{Job, Session};
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 const MESSAGE: &str = "Could not open /media/day 2/A012C003.mov: unsupported codec";
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     /// Text the app put on the system clipboard.
     copied: Vec<String>,
@@ -27,13 +27,13 @@ impl Driver {
         let (tx, rx) = channel();
         let mut s = Session::default();
         s.execute("file.openDemoProject", json!({})).unwrap();
-        let app = FilmcraftApp::new(s).with_control(rx);
+        let app = EpsicutApp::new(s).with_control(rx);
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_step_dt(1.0 / 60.0).with_max_steps(10_000).build_eframe(move |_cc| app);
         let mut d = Driver { harness, tx, copied: Vec::new() };
         d.frames(4);
         d
     }
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
     fn frames(&mut self, n: usize) {

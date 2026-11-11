@@ -1,10 +1,10 @@
-use super::{ClipId, FilmcraftApp, MarkerId, Rect, Sense, Sequence, TrackId, TrackItem, Value, json};
+use super::{ClipId, EpsicutApp, MarkerId, Rect, Sense, Sequence, TrackId, TrackItem, Value, json};
 
 /// The clip context menu: groups (separated by rules) of (label, command id). Entries marked `…`
 /// open their dialog through `menus::invoke`, like the same item in the Clip menu.
 /// The menu of a right-clicked Timeline marker (automation ids `timeline.markerMenu.<command>`);
 /// the marker is under the playhead, where Clear Selected Marker looks for it (#695).
-pub(super) fn marker_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &mut egui::Ui, marker: MarkerId) {
+pub(super) fn marker_menu(app: &mut EpsicutApp, ctx: &egui::Context, ui: &mut egui::Ui, marker: MarkerId) {
     let Some(marker) = app.session.active_sequence().and_then(|q| q.markers.iter().find(|m| m.id == marker)).cloned() else {
         ui.close();
         return;
@@ -78,37 +78,37 @@ pub(super) struct EditPointTarget {
 }
 
 impl EditPointTarget {
-    pub(super) fn at(seq: &Sequence, track: TrackId, clip: ClipId, edge: filmcraft_edit::Edge) -> Option<Self> {
+    pub(super) fn at(seq: &Sequence, track: TrackId, clip: ClipId, edge: epsicut_edit::Edge) -> Option<Self> {
         let tr = seq.track(track)?;
         let it = tr.item(clip)?;
         Some(match edge {
-            filmcraft_edit::Edge::Out => Self { left: Some(clip), right: tr.items.iter().find(|x| x.start == it.end()).map(|x| x.id) },
-            filmcraft_edit::Edge::In => Self { left: tr.items.iter().find(|x| x.end() == it.start).map(|x| x.id), right: Some(clip) },
+            epsicut_edit::Edge::Out => Self { left: Some(clip), right: tr.items.iter().find(|x| x.start == it.end()).map(|x| x.id) },
+            epsicut_edit::Edge::In => Self { left: tr.items.iter().find(|x| x.end() == it.start).map(|x| x.id), right: Some(clip) },
         })
     }
 }
 
 /// The edit point menu's trim types: label, id (`timeline.editPointMenu.<id>`), trim kind, and
 /// which side of the cut it selects (the incoming clip's In or the outgoing clip's Out).
-pub(crate) const EDIT_POINT_TYPES: &[(&str, &str, &str, filmcraft_edit::Edge)] = &[
-    ("Ripple Trim In", "rippleIn", "ripple", filmcraft_edit::Edge::In),
-    ("Ripple Trim Out", "rippleOut", "ripple", filmcraft_edit::Edge::Out),
-    ("Roll Edit", "roll", "roll", filmcraft_edit::Edge::Out),
-    ("Trim In", "trimIn", "trim", filmcraft_edit::Edge::In),
-    ("Trim Out", "trimOut", "trim", filmcraft_edit::Edge::Out),
+pub(crate) const EDIT_POINT_TYPES: &[(&str, &str, &str, epsicut_edit::Edge)] = &[
+    ("Ripple Trim In", "rippleIn", "ripple", epsicut_edit::Edge::In),
+    ("Ripple Trim Out", "rippleOut", "ripple", epsicut_edit::Edge::Out),
+    ("Roll Edit", "roll", "roll", epsicut_edit::Edge::Out),
+    ("Trim In", "trimIn", "trim", epsicut_edit::Edge::In),
+    ("Trim Out", "trimOut", "trim", epsicut_edit::Edge::Out),
 ];
 
 /// The edit point context menu (#219).
-pub(super) fn edit_point_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &mut egui::Ui, seq: &Sequence, target: EditPointTarget) {
+pub(super) fn edit_point_menu(app: &mut EpsicutApp, ctx: &egui::Context, ui: &mut egui::Ui, seq: &Sequence, target: EditPointTarget) {
     let selected = app.session.state.edit_points.first().copied();
     for &(label, id, kind, edge) in EDIT_POINT_TYPES {
         let clip = match edge {
-            filmcraft_edit::Edge::In => target.right,
-            filmcraft_edit::Edge::Out => target.left,
+            epsicut_edit::Edge::In => target.right,
+            epsicut_edit::Edge::Out => target.left,
         };
         // a roll needs a clip on both sides of the cut
         let clip = clip.filter(|_| kind != "roll" || (target.left.is_some() && target.right.is_some()));
-        let out = edge == filmcraft_edit::Edge::Out;
+        let out = edge == epsicut_edit::Edge::Out;
         let current = selected.is_some_and(|ep| Some(ep.clip) == clip && ep.out == out && serde_json::to_value(ep.kind).ok() == Some(json!(kind)));
         let label = crate::i18n::t(label);
         let text = if current { format!("✓ {label}") } else { label.to_string() };
@@ -135,7 +135,7 @@ pub(super) fn edit_point_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &
         ui.close();
     }
     // only this cut (and its linked partners), and only when it is a through edit
-    let through = filmcraft_edit::through::through_edits(seq).iter().any(|e| Some(e.left) == target.left && Some(e.right) == target.right);
+    let through = epsicut_edit::through::through_edits(seq).iter().any(|e| Some(e.left) == target.left && Some(e.right) == target.right);
     let label = tl!("Join Through Edits");
     let r = ui.add_enabled(through, egui::Button::new(label));
     app.auto.add("timeline.editPointMenu.joinThroughEdits", r.rect, label);
@@ -151,7 +151,7 @@ pub(super) fn edit_point_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &
 
 /// The menu of a right-click on the header column away from any track: the Add Tracks and Delete
 /// Tracks dialogs. Automation ids `timeline.tracks.menu.<item>`.
-pub(super) fn track_column_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, picked: &mut Option<(String, Value)>) {
+pub(super) fn track_column_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, picked: &mut Option<(String, Value)>) {
     for (key, text, command) in [("addTracks", tl!("Add Tracks…"), "sequence.addTracks"), ("deleteTracks", tl!("Delete Tracks…"), "sequence.deleteTracks")]
     {
         let button = ui.add_enabled(app.session.is_enabled(command), egui::Button::new(text));
@@ -172,7 +172,7 @@ const RULER_MENU: &[&[(&str, &str)]] = &[
     &[("Add Marker", "markers.add")],
 ];
 
-pub(super) fn ruler_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &mut egui::Ui) {
+pub(super) fn ruler_menu(app: &mut EpsicutApp, ctx: &egui::Context, ui: &mut egui::Ui) {
     for (i, group) in RULER_MENU.iter().enumerate() {
         if i > 0 {
             ui.separator();
@@ -194,7 +194,7 @@ pub(super) fn ruler_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &mut e
 /// The menu of a right-clicked track header: add or delete tracks here, or through the dialogs of
 /// Sequence ▸ Add Tracks… / Delete Tracks… (#1117). The command picked goes to `picked`; automation
 /// ids `timeline.track.<V1|A1…>.menu.<item>`.
-fn track_header_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, label: &str, track: TrackId, video: bool, picked: &mut Option<(String, Value)>) {
+fn track_header_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, label: &str, track: TrackId, video: bool, picked: &mut Option<(String, Value)>) {
     let mut item = |ui: &mut egui::Ui, key: &str, text: &str, command: &str, params: Value| {
         let button = ui.add_enabled(app.session.is_enabled(command), egui::Button::new(text));
         app.auto.add(&format!("timeline.track.{label}.menu.{key}"), button.rect, text);
@@ -214,7 +214,7 @@ fn track_header_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, label: &str, tra
 /// Opens the track header menu on a right-click anywhere on `visible`, a header, even over its
 /// buttons, which take only the click.
 pub(super) fn track_header_popup(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &mut egui::Ui,
     visible: Rect,
     label: &str,
@@ -231,7 +231,7 @@ pub(super) fn track_header_popup(
 }
 
 /// Runs the command picked in a track header's menu, if any.
-pub(super) fn run_track_menu(app: &mut FilmcraftApp, ui: &egui::Ui, picked: Option<(String, Value)>) {
+pub(super) fn run_track_menu(app: &mut EpsicutApp, ui: &egui::Ui, picked: Option<(String, Value)>) {
     if let Some((cmd, params)) = picked
         && let Err(e) = crate::menus::invoke(app, &ui.ctx().clone(), &cmd, params)
     {
@@ -240,7 +240,7 @@ pub(super) fn run_track_menu(app: &mut FilmcraftApp, ui: &egui::Ui, picked: Opti
 }
 
 /// The menu of a right-clicked gap: Ripple Delete closes it.
-pub(super) fn gap_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &mut egui::Ui) {
+pub(super) fn gap_menu(app: &mut EpsicutApp, ctx: &egui::Context, ui: &mut egui::Ui) {
     let label = tl!("Ripple Delete");
     let r = ui.add_enabled(app.session.state.gap_selection.is_some(), egui::Button::new(label));
     app.auto.add("timeline.gapMenu.edit.rippleDelete", r.rect, label);
@@ -254,7 +254,7 @@ pub(super) fn gap_menu(app: &mut FilmcraftApp, ctx: &egui::Context, ui: &mut egu
 
 /// The clip menu's Multi-Camera submenu: Enable, Flatten, and the cameras of the selected nested
 /// sequence clips (greyed out when none of the selected clips is a nested sequence).
-pub(super) fn multicam_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, picked: &[&TrackItem]) {
+pub(super) fn multicam_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, picked: &[&TrackItem]) {
     let nests: Vec<&TrackItem> = picked.iter().copied().filter(|it| app.session.project.sequence(it.item).is_some()).collect();
     let enabled = !nests.is_empty() && nests.iter().all(|it| it.multicam.is_some_and(|m| m.enabled));
     // camera names of the first selected nest, and the angle it shows

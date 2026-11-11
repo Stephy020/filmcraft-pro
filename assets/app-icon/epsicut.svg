@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#151a3a"/>
+      <stop offset="1" stop-color="#07080f"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- tile -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <!-- hexagon frame -->
+  <path d="M256 82 L407 169 V343 L256 430 L105 343 V169 Z" fill="#0b0d1c" fill-opacity="0.6" stroke="url(#ring)" stroke-width="24" stroke-linejoin="round"/>
+  <!-- epsilon, drawn on the hexagon's own angles -->
+  <path d="M322 218 L256 180 L190 218 L256 256 L190 294 L256 332 L322 294" fill="none" stroke="#ffffff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- play head in the open side -->
+  <path d="M304 237 L337 256 L304 275 Z" fill="#fbbf24" stroke="#fbbf24" stroke-width="8" stroke-linejoin="round"/>
+</svg>

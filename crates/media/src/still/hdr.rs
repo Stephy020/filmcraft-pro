@@ -9,9 +9,9 @@
 
 use std::sync::Arc;
 
-use filmcraft_color::{ColorInfo, Transfer};
-use filmcraft_frame::VideoFrame;
-use filmcraft_time::FrameRate;
+use epsicut_color::{ColorInfo, Transfer};
+use epsicut_frame::VideoFrame;
+use epsicut_time::FrameRate;
 
 use super::{DEFAULT_STILL_DURATION, StillSource};
 use crate::{MediaError, MediaInfo, MediaKind, Result, VideoStreamInfo};

@@ -21,12 +21,12 @@
 //! Right, Lower Left).
 
 use egui::{Color32, CursorIcon, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
-use filmcraft_geom::{Affine, Vec2};
-use filmcraft_project::{ClipId, EffectDef, EffectInstance, TrackItem};
-use filmcraft_time::Tick;
+use epsicut_geom::{Affine, Vec2};
+use epsicut_project::{ClipId, EffectDef, EffectInstance, TrackItem};
+use epsicut_time::Tick;
 use serde_json::{Value, json};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::panels::graphics::{frame_to_screen, handle_points, unscale};
 use crate::state::Tool;
 
@@ -145,12 +145,12 @@ fn within<const N: usize>(points: [Pos2; N], view: Rect) -> [Pos2; N] {
 
 /// The box of effect `e` (Motion or Transform) of clip `it` at media time `mt`, on the monitor
 /// picture `pic` showing a `frame`-sized sequence, with its handles kept inside `reach`.
-fn placement(app: &FilmcraftApp, it: &TrackItem, e: &EffectInstance, mt: Tick, pic: Rect, reach: Rect, frame: (u32, u32)) -> Option<Placement> {
+fn placement(app: &EpsicutApp, it: &TrackItem, e: &EffectInstance, mt: Tick, pic: Rect, reach: Rect, frame: (u32, u32)) -> Option<Placement> {
     let seq = app.session.active_sequence()?;
     let project = &app.session.project;
-    let size = filmcraft_render::source_size(project, it.item).unwrap_or(frame);
+    let size = epsicut_render::source_size(project, it.item).unwrap_or(frame);
     let view = frame_to_screen(pic, frame);
-    let motion = view.then_apply(&filmcraft_render::motion_matrix(seq, it, size, filmcraft_render::source_par(project, it.item), mt));
+    let motion = view.then_apply(&epsicut_render::motion_matrix(seq, it, size, epsicut_render::source_par(project, it.item), mt));
     // "auto" points (NaN) are where the render puts them
     let point = |id: &str, auto: Vec2| {
         let v = e.param(id).map_or(auto, |p| p.vec2_at(mt));
@@ -162,7 +162,7 @@ fn placement(app: &FilmcraftApp, it: &TrackItem, e: &EffectInstance, mt: Tick, p
     let (outer, to_screen, position, anchor) = if e.effect == "transform" {
         let (anchor, position) = (point("anchor", centre), point("position", centre));
         let (sh, sw) = (height / 100.0, if uniform { height } else { width } / 100.0);
-        // as the render places it (`filmcraft_render::gpufx`, "transform")
+        // as the render places it (`epsicut_render::gpufx`, "transform")
         let axis = e.f64_at("skew_axis", mt);
         let shear = Affine { c: e.f64_at("skew", mt).to_radians().tan(), ..Affine::IDENTITY };
         let skew = Affine::rotate_deg(axis).then_apply(&shear).then_apply(&Affine::rotate_deg(-axis));
@@ -195,7 +195,7 @@ fn placement(app: &FilmcraftApp, it: &TrackItem, e: &EffectInstance, mt: Tick, p
 
 /// The selected effect (its clip and index), its clip and its definition, while it is an enabled
 /// effect of a selected clip under the playhead.
-fn selected_effect(app: &FilmcraftApp) -> Option<(Target, &TrackItem, &EffectInstance, &'static EffectDef)> {
+fn selected_effect(app: &EpsicutApp) -> Option<(Target, &TrackItem, &EffectInstance, &'static EffectDef)> {
     let sel = app.session.state.selected_effect.as_ref()?;
     if !app.session.state.selection.contains(&sel.clip) {
         return None;
@@ -212,7 +212,7 @@ fn selected_effect(app: &FilmcraftApp) -> Option<(Target, &TrackItem, &EffectIns
 
 /// The selected effect (its clip and index) and its box, while it is Motion or Transform of a
 /// selected clip under the playhead.
-fn selected_placement(app: &FilmcraftApp, pic: Rect, reach: Rect, frame: (u32, u32)) -> Option<(Target, &'static EffectDef, Placement)> {
+fn selected_placement(app: &EpsicutApp, pic: Rect, reach: Rect, frame: (u32, u32)) -> Option<(Target, &'static EffectDef, Placement)> {
     let (sel, it, e, def) = selected_effect(app).filter(|s| s.3.id == "motion" || s.3.id == "transform")?;
     let pl = placement(app, it, e, it.effect_time_at(app.session.playhead()), pic, reach, frame)?;
     Some((sel, def, pl))
@@ -232,19 +232,19 @@ struct Pins {
 
 /// The selected effect (its clip and index) and its corners, while it is Corner Pin of a selected
 /// clip under the playhead.
-fn selected_pins(app: &FilmcraftApp, pic: Rect, reach: Rect, frame: (u32, u32)) -> Option<(Target, Pins)> {
+fn selected_pins(app: &EpsicutApp, pic: Rect, reach: Rect, frame: (u32, u32)) -> Option<(Target, Pins)> {
     let (sel, it, e, _) = selected_effect(app).filter(|s| s.3.id == "corner_pin")?;
     let seq = app.session.active_sequence()?;
     let project = &app.session.project;
     let mt = it.effect_time_at(app.session.playhead());
-    let size = filmcraft_render::source_size(project, it.item).unwrap_or(frame);
-    // Corner Pin warps the clip's own pixels before Motion places them (`filmcraft_render::vfx::corner_pin`)
-    let to_screen = frame_to_screen(pic, frame).then_apply(&filmcraft_render::motion_matrix(seq, it, size, filmcraft_render::source_par(project, it.item), mt));
+    let size = epsicut_render::source_size(project, it.item).unwrap_or(frame);
+    // Corner Pin warps the clip's own pixels before Motion places them (`epsicut_render::vfx::corner_pin`)
+    let to_screen = frame_to_screen(pic, frame).then_apply(&epsicut_render::motion_matrix(seq, it, size, epsicut_render::source_par(project, it.item), mt));
     let (w, h) = (f64::from(size.0), f64::from(size.1));
     let points = PIN_CORNERS.map(|id| {
         let v = e.param(id).map_or(Vec2::new(f64::NAN, f64::NAN), |p| p.vec2_at(mt));
         // "auto" points (NaN) are the clip's corners, where the render puts them
-        let (fx, fy) = filmcraft_project::effect::auto_point("corner_pin", id).unwrap_or((0.5, 0.5));
+        let (fx, fy) = epsicut_project::effect::auto_point("corner_pin", id).unwrap_or((0.5, 0.5));
         Vec2::new(if v.x.is_nan() { w * fx } else { v.x }, if v.y.is_nan() { h * fy } else { v.y })
     });
     let at = points.map(|p| sp(&to_screen, p));
@@ -262,7 +262,7 @@ struct PinDrag {
 
 /// Corner Pin's corners on the Program monitor: the outline through them and a handle on each.
 /// Dragging a handle moves its corner; dragging inside the outline moves all four together.
-fn pin_overlay(app: &mut FilmcraftApp, ui: &mut egui::Ui, sel: Target, pins: &Pins, actions: &mut Vec<(String, Value)>) {
+fn pin_overlay(app: &mut EpsicutApp, ui: &mut egui::Ui, sel: Target, pins: &Pins, actions: &mut Vec<(String, Value)>) {
     let accent = app.tokens.accent;
     let id = egui::Id::unique("program-corner-pin");
     let grab = vec2(GRAB, GRAB) * 2.0;
@@ -434,7 +434,7 @@ fn angle_deg(v: egui::Vec2) -> f64 {
 
 /// Draws the box over the whole monitor (the ui's clip), not just the picture, so its handles show
 /// beside the frame as well as on it.
-fn draw(app: &mut FilmcraftApp, ui: &egui::Ui, pl: &Placement, name: &str) {
+fn draw(app: &mut EpsicutApp, ui: &egui::Ui, pl: &Placement, name: &str) {
     let accent = app.tokens.accent;
     let painter = ui.painter();
     painter.add(egui::Shape::closed_line(pl.quad.to_vec(), Stroke::new(1.0, accent)));
@@ -512,21 +512,21 @@ fn rotate_pointer(painter: &egui::Painter, at: Pos2, out: egui::Vec2) {
 }
 
 /// The top-most clip at the playhead whose picture is under `p`.
-fn clip_under(app: &FilmcraftApp, pic: Rect, frame: (u32, u32), p: Pos2) -> Option<ClipId> {
+fn clip_under(app: &EpsicutApp, pic: Rect, frame: (u32, u32), p: Pos2) -> Option<ClipId> {
     let seq = app.session.active_sequence()?;
     let t = app.session.playhead();
     let view = frame_to_screen(pic, frame);
     let project = &app.session.project;
     seq.video_tracks.iter().rev().filter(|tr| tr.enabled).filter_map(|tr| tr.item_at(t)).filter(|it| it.enabled).find_map(|it| {
-        let size = filmcraft_render::source_size(project, it.item).unwrap_or(frame);
-        let m = view.then_apply(&filmcraft_render::motion_matrix(seq, it, size, filmcraft_render::source_par(project, it.item), it.effect_time_at(t)));
+        let size = epsicut_render::source_size(project, it.item).unwrap_or(frame);
+        let m = view.then_apply(&epsicut_render::motion_matrix(seq, it, size, epsicut_render::source_par(project, it.item), it.effect_time_at(t)));
         inside(&quad_of(&m, size), p).then_some(it.id)
     })
 }
 
 /// The selected effect's box (or Corner Pin's corners) on the Program monitor picture `pic`, and
 /// double-clicking a clip's picture to select its Motion.
-pub fn monitor_overlay(app: &mut FilmcraftApp, ui: &mut egui::Ui, pic: Rect, frame: (u32, u32)) {
+pub fn monitor_overlay(app: &mut EpsicutApp, ui: &mut egui::Ui, pic: Rect, frame: (u32, u32)) {
     if app.ui.tool != Tool::Selection || app.ui.mask_pen.is_some() {
         return;
     }

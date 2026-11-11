@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an improvement to a FilmCraft workflow.
+description: Suggest an improvement to a EpsiCut workflow.
 labels: [enhancement]
 body:
   - type: markdown

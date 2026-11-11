@@ -1,5 +1,5 @@
 [package]
-name = "filmcraft-isobmff"
+name = "epsicut-isobmff"
 description = "Clean-room ISO BMFF (MP4) and QuickTime (MOV) demuxer and muxer"
 version.workspace = true
 edition.workspace = true
@@ -13,6 +13,6 @@ workspace = true
 craft-media = { workspace = true, features = ["isobmff"] }
 
 [dev-dependencies]
-filmcraft-testkit = { workspace = true }
+epsicut-testkit = { workspace = true }
 proptest = { workspace = true }
 serde_json = { workspace = true }

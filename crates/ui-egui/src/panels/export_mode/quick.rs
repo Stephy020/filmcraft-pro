@@ -1,12 +1,12 @@
 use super::settings::{draft_text, location_link};
-use super::{Align2, Color32, DEFAULT_PRESET, FilmcraftApp, Reg, Sense, Tokens, builtin_presets, is_export_busy, json, pos2, preset_key, vec2};
+use super::{Align2, Color32, DEFAULT_PRESET, EpsicutApp, Reg, Sense, Tokens, builtin_presets, is_export_busy, json, pos2, preset_key, vec2};
 
 // ---------------------------------------------------------------------------------------------
 // Quick Export (header)
 // ---------------------------------------------------------------------------------------------
 
 /// Presets offered by Quick Export: favourites first, then the common delivery presets.
-fn quick_presets(app: &FilmcraftApp) -> Vec<String> {
+fn quick_presets(app: &EpsicutApp) -> Vec<String> {
     let mut v: Vec<String> =
         app.session.export_presets.all().iter().filter(|p| app.session.export_presets.is_favorite(&p.name)).map(|p| p.name.clone()).collect();
     for p in builtin_presets().into_iter().filter(|p| p.category == "Match Source" || p.category == "Web & Social").map(|p| p.name) {
@@ -20,7 +20,7 @@ fn quick_presets(app: &FilmcraftApp) -> Vec<String> {
 /// The Quick Export path for the preset's extension `ext`, or None when `path` already fits. No
 /// folder means the default one and no file name the sequence's; another format's extension is
 /// swapped and any other kept, so a typed or chosen name survives a preset change.
-fn quick_file(app: &FilmcraftApp, path: &str, seq_name: &str, ext: &str) -> Option<String> {
+fn quick_file(app: &EpsicutApp, path: &str, seq_name: &str, ext: &str) -> Option<String> {
     let p = std::path::Path::new(path);
     let folder = path.ends_with(['/', '\\']);
     let dir = if folder { Some(p) } else { p.parent() }.filter(|d| !d.as_os_str().is_empty());
@@ -32,19 +32,19 @@ fn quick_file(app: &FilmcraftApp, path: &str, seq_name: &str, ext: &str) -> Opti
     let file = match name {
         // Sequence names come from the project, not from this Quick Export interaction. Keep
         // metadata in one filename component before joining it to the selected/default folder.
-        None => format!("{}.{}", filmcraft_engine::export_tools::file_safe(seq_name), ext),
+        None => format!("{}.{}", epsicut_engine::export_tools::file_safe(seq_name), ext),
         Some(n) if cur.eq_ignore_ascii_case(ext) => n.to_string(),
         Some(n) if !cur.is_empty() && app.session.export_presets.all().iter().any(|x| x.settings.extension().eq_ignore_ascii_case(cur)) => {
             std::path::Path::new(n).with_extension(ext).to_string_lossy().to_string()
         }
         Some(n) => format!("{n}.{ext}"),
     };
-    let dir = dir.map(std::path::Path::to_path_buf).unwrap_or_else(|| filmcraft_engine::export_tools::default_export_dir(&app.session));
+    let dir = dir.map(std::path::Path::to_path_buf).unwrap_or_else(|| epsicut_engine::export_tools::default_export_dir(&app.session));
     Some(dir.join(file).to_string_lossy().to_string())
 }
 
 /// The Quick Export popup under the header button at `anchor`.
-pub fn quick_export(app: &mut FilmcraftApp, ctx: &egui::Context, anchor: egui::Pos2) {
+pub fn quick_export(app: &mut EpsicutApp, ctx: &egui::Context, anchor: egui::Pos2) {
     if !app.ui.export.quick_open {
         return;
     }

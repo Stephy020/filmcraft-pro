@@ -6,12 +6,12 @@
 mod common;
 
 use common::*;
-use filmcraft_codecs::MpegSource;
-use filmcraft_media::{FrameRequest, MediaSource};
+use epsicut_codecs::MpegSource;
+use epsicut_media::{FrameRequest, MediaSource};
 
 #[test]
 fn seek_restarts_at_recovery_point_not_at_idr() {
-    let ff = filmcraft_testkit::require_ffmpeg!();
+    let ff = epsicut_testkit::require_ffmpeg!();
     // same fixture as `mpeg_oracle`: after the first picture every I picture is a non-IDR one
     // with a recovery point SEI, one per 12 pictures
     let args = [
@@ -38,9 +38,9 @@ fn seek_restarts_at_recovery_point_not_at_idr() {
     let n = rate.frame_at(src.info().duration);
     assert!(n >= 48, "{n} frames");
     // a frame in the last GOP: from the IDR it is 48+ samples away, from its recovery key at most 12
-    let g0 = filmcraft_codecs::gop_stats();
+    let g0 = epsicut_codecs::gop_stats();
     src.video_frame(FrameRequest::full(rate.tick_of(n - 3))).unwrap();
-    let g1 = filmcraft_codecs::gop_stats();
+    let g1 = epsicut_codecs::gop_stats();
     let (seeks, decoded) = (g1.seeks - g0.seeks, g1.decoded - g0.decoded);
     assert_eq!(seeks, 1, "one decoder restart");
     assert!(decoded <= 30, "{decoded} samples decoded for frame {} of {n}: the seek went back to the IDR", n - 3);

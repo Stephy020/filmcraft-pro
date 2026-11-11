@@ -22,7 +22,7 @@ pub struct Interpretation {
     pub invert_alpha: bool,
     /// Color Management ▸ override the colour space detected from the file's metadata.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub color_space: Option<filmcraft_color::ColorSpace>,
+    pub color_space: Option<epsicut_color::ColorSpace>,
     /// Modify ▸ Audio Channels: how the source channels map to the audio clips made when the item
     /// is edited into a sequence. None = one stereo clip of the first two channels.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -220,11 +220,11 @@ impl ProjectItem {
     pub fn type_label(&self) -> &'static str {
         match &self.kind {
             ItemKind::Media(m) => match m.info.kind {
-                filmcraft_media::MediaKind::Movie => "Movie",
-                filmcraft_media::MediaKind::AudioOnly => "Audio",
-                filmcraft_media::MediaKind::Still => "Still Image",
-                filmcraft_media::MediaKind::ImageSequence => "Image Sequence",
-                filmcraft_media::MediaKind::Synthetic => "Synthetic",
+                epsicut_media::MediaKind::Movie => "Movie",
+                epsicut_media::MediaKind::AudioOnly => "Audio",
+                epsicut_media::MediaKind::Still => "Still Image",
+                epsicut_media::MediaKind::ImageSequence => "Image Sequence",
+                epsicut_media::MediaKind::Synthetic => "Synthetic",
             },
             ItemKind::Sequence(s) if s.multicam.is_some() => "Multi-Camera Source Sequence",
             ItemKind::Sequence(s) if s.merged.is_some() => "Merged Clip",

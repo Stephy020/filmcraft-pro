@@ -1,6 +1,6 @@
 //! Distort and Transform effects (geometry).
 
-use filmcraft_project::EffectInstance;
+use epsicut_project::EffectInstance;
 use rayon::prelude::*;
 
 use super::{

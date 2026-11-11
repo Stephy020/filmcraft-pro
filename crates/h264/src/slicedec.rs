@@ -11,7 +11,7 @@ use crate::picture::{Frame, FrameRef, MbKind, MbState, Planes, RefPic};
 use crate::slice::{SliceHeader, SliceType};
 use crate::tables::{BLK4_XY, QPC_TABLE, RASTER_TO_BLK4, ZIGZAG4, ZIGZAG8};
 use crate::transform::{self, LevelScale};
-use filmcraft_bitstream::BitReader;
+use epsicut_bitstream::BitReader;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 

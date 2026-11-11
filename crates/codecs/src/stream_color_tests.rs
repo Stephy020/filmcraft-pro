@@ -6,11 +6,11 @@
 use std::io::Cursor;
 use std::sync::Arc;
 
-use filmcraft_bitstream::{BitWriter, escape_rbsp};
-use filmcraft_color::{ColorInfo, ColorSpace, Matrix, Primaries, Range, Transfer};
-use filmcraft_isobmff::{Av1Config, AvcConfig, Brand, CodecConfig, HevcConfig, HevcNalArray, Mp4Writer, SampleEntry, TrackConfig, WriteSample, WriterOptions};
-use filmcraft_matroska::{MkvWriter, MuxOptions, TrackKind, TrackSpec};
-use filmcraft_media::MediaSource;
+use epsicut_bitstream::{BitWriter, escape_rbsp};
+use epsicut_color::{ColorInfo, ColorSpace, Matrix, Primaries, Range, Transfer};
+use epsicut_isobmff::{Av1Config, AvcConfig, Brand, CodecConfig, HevcConfig, HevcNalArray, Mp4Writer, SampleEntry, TrackConfig, WriteSample, WriterOptions};
+use epsicut_matroska::{MkvWriter, MuxOptions, TrackKind, TrackSpec};
+use epsicut_media::MediaSource;
 
 use crate::stream_color::{ColorCodes, from_codec_config, resolve};
 
@@ -188,11 +188,11 @@ fn av1(obus: Vec<u8>) -> CodecConfig {
 }
 
 /// A one-sample MP4 with `codec` (the sample is never decoded) and, when given, a `colr` box.
-fn mp4(codec: CodecConfig, w: u16, h: u16, colr: Option<filmcraft_isobmff::ColorInfo>) -> Arc<[u8]> {
+fn mp4(codec: CodecConfig, w: u16, h: u16, colr: Option<epsicut_isobmff::ColorInfo>) -> Arc<[u8]> {
     let mut entry = match codec {
         CodecConfig::Avc(c) => SampleEntry::avc(c, w, h),
         CodecConfig::Hevc(c) => SampleEntry::hevc(c, w, h),
-        other => SampleEntry::video(filmcraft_isobmff::FourCc(*b"av01"), other, w, h),
+        other => SampleEntry::video(epsicut_isobmff::FourCc(*b"av01"), other, w, h),
     };
     if let Some(v) = entry.video.as_mut() {
         v.color = colr;
@@ -203,7 +203,7 @@ fn mp4(codec: CodecConfig, w: u16, h: u16, colr: Option<filmcraft_isobmff::Color
     mux.finish().expect("finish").into_inner().into()
 }
 
-fn mp4_color(codec: CodecConfig, w: u16, h: u16, colr: Option<filmcraft_isobmff::ColorInfo>) -> ColorInfo {
+fn mp4_color(codec: CodecConfig, w: u16, h: u16, colr: Option<epsicut_isobmff::ColorInfo>) -> ColorInfo {
     let src = crate::Mp4Source::open("clip.mp4", mp4(codec, w, h, colr)).expect("open");
     src.info().video.as_ref().expect("video").color
 }
@@ -246,7 +246,7 @@ fn unspecified_or_missing_vui_keeps_the_size_defaults() {
 
 #[test]
 fn colr_wins_over_the_bitstream() {
-    use filmcraft_isobmff::ColorInfo::{Nclc, Nclx};
+    use epsicut_isobmff::ColorInfo::{Nclc, Nclx};
     let sps = || hevc(hevc_sps(1920, 1080, Some(PQ_2020)));
     // a BT.709 nclx box beats a PQ VUI, and is what the decoder's frames are tagged with
     let colr = Nclx { primaries: 1, transfer: 1, matrix: 1, full_range: false };
@@ -263,7 +263,7 @@ fn colr_wins_over_the_bitstream() {
     let nclc = Nclc { primaries: 1, transfer: 1, matrix: 1 };
     assert_eq!(mp4_color(avc(h264_sps(80, 45, Some(FULL_ONLY))), 1280, 720, Some(nclc)).range, Range::Full);
     // an ICC profile has no code points: the bitstream decides
-    let icc = filmcraft_isobmff::ColorInfo::Icc { kind: filmcraft_isobmff::FourCc(*b"prof"), profile: vec![0; 8] };
+    let icc = epsicut_isobmff::ColorInfo::Icc { kind: epsicut_isobmff::FourCc(*b"prof"), profile: vec![0; 8] };
     assert_eq!(mp4_color(sps(), 1920, 1080, Some(icc)).transfer, Transfer::Pq);
 }
 
@@ -292,7 +292,7 @@ fn matroska_without_colour_uses_the_bitstream() {
     let c = src.info().video.as_ref().expect("video").color;
     assert_eq!(ColorSpace::from_info(&c), ColorSpace::Rec2100Pq);
     assert_eq!((c.primaries, c.matrix), (Primaries::Bt2020, Matrix::Bt2020Ncl));
-    assert_eq!(src.info().video.as_ref().expect("video").color_assumed, Some(filmcraft_color::ColorAssumed::default()), "all three from the VUI");
+    assert_eq!(src.info().video.as_ref().expect("video").color_assumed, Some(epsicut_color::ColorAssumed::default()), "all three from the VUI");
 }
 
 #[test]
@@ -311,8 +311,8 @@ fn resolve_takes_each_field_from_the_first_source_that_knows_it() {
 /// file and one tagged BT.709 decode with the same colour, and only this tells them apart.
 #[test]
 fn values_no_tag_gives_are_reported_as_assumed() {
-    use filmcraft_isobmff::ColorInfo::Nclx;
-    let probe = |codec: CodecConfig, colr: Option<filmcraft_isobmff::ColorInfo>| {
+    use epsicut_isobmff::ColorInfo::Nclx;
+    let probe = |codec: CodecConfig, colr: Option<epsicut_isobmff::ColorInfo>| {
         let src = crate::Mp4Source::open("clip.mp4", mp4(codec, 1280, 720, colr)).expect("open");
         let v = src.info().video.as_ref().expect("video").color;
         (v, serde_json::to_value(src.info()).expect("json")["video"]["color_assumed"].clone())

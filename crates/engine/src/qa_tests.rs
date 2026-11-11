@@ -6,9 +6,9 @@ use serde_json::{Value, json};
 
 use crate::Session;
 use crate::media_test_util::{make_movie, session_with, tmp_dir};
-use filmcraft_media::DemoScene;
-use filmcraft_project::ClipId;
-use filmcraft_time::Tick;
+use epsicut_media::DemoScene;
+use epsicut_project::ClipId;
+use epsicut_time::Tick;
 
 fn kinds(r: &Value) -> Vec<String> {
     r["issues"].as_array().unwrap().iter().map(|i| i["kind"].as_str().unwrap().to_string()).collect()

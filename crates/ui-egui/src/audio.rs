@@ -28,14 +28,14 @@ pub(crate) fn shuttle_mix_rate(device_rate: u32, speed: f64) -> Option<u32> {
 /// The program mix that playback plays: `mix(device_frame, interleaved, channels)` renders the
 /// active sequence at device rate `sr` from `device_frame`, with the live project snapshot (edits
 /// made while playing are heard), Output Mapping, the 5.1 mixdown and voice-over cues.
-pub fn playback_mix(session: &Session, seq_id: filmcraft_project::ItemId, sr: u32) -> impl FnMut(i64, &mut [f32], usize) + Send + 'static {
+pub fn playback_mix(session: &Session, seq_id: epsicut_project::ItemId, sr: u32) -> impl FnMut(i64, &mut [f32], usize) + Send + 'static {
     let project = session.project.clone();
     let provider = session.media.provider(project.clone(), session.services.clone());
     let previews = session.previews.clone();
     // Settings ▸ Audio Hardware ▸ Output Mapping
     let map = [session.prefs.audio_hardware.map_left, session.prefs.audio_hardware.map_right];
     // Preferences ▸ Audio ▸ 5.1 Mixdown Type: how a 5.1 Mix plays on a stereo device
-    let mixdown = filmcraft_audio_dsp::channels::Mixdown::from_id(&session.prefs.audio.mixdown_type).unwrap_or_default();
+    let mixdown = epsicut_audio_dsp::channels::Mixdown::from_id(&session.prefs.audio.mixdown_type).unwrap_or_default();
     let cues = panels::voiceover::cues(session, sr);
     previews.live.publish_project(project.clone());
     let mut resampler = None;
@@ -49,25 +49,25 @@ pub fn playback_mix(session: &Session, seq_id: filmcraft_project::ItemId, sr: u3
         let n = buf.len() / ch.max(1);
         let seq_sr = seq.settings.sample_rate;
         // a 5.1 Mix plays as six channels (L, R, C, LFE, Ls, Rs) on a device with at least six
-        use filmcraft_audio_dsp::channels::Layout;
-        let layout = if ch >= 6 && seq.settings.audio_master == filmcraft_project::AudioChannels::Surround51 { Layout::Surround51 } else { Layout::Stereo };
+        use epsicut_audio_dsp::channels::Layout;
+        let layout = if ch >= 6 && seq.settings.audio_master == epsicut_project::AudioChannels::Surround51 { Layout::Surround51 } else { Layout::Stereo };
         let mix = if seq_sr == sr {
-            previews.mix_layout(&project, seq_id, cursor, n, &provider, filmcraft_engine::previews::MixOutput { layout, mixdown })
+            previews.mix_layout(&project, seq_id, cursor, n, &provider, epsicut_engine::previews::MixOutput { layout, mixdown })
         } else {
             // Mix at the sequence rate as one continuous stream, interpolated to the device rate
             // (started afresh when the rate or the channel layout changes while playing).
             let key = (seq_sr, layout);
             if resampler.as_ref().is_none_or(|(k, _)| *k != key) {
-                resampler = Some((key, filmcraft_audio_dsp::resample::StreamResampler::new(seq_sr, sr)));
+                resampler = Some((key, epsicut_audio_dsp::resample::StreamResampler::new(seq_sr, sr)));
             }
             let Some((_, r)) = resampler.as_mut() else {
                 buf.fill(0.0);
                 return;
             };
             let channels = r.process(cursor, n, |s0, m| {
-                previews.mix_layout(&project, seq_id, s0, m, &provider, filmcraft_engine::previews::MixOutput { layout, mixdown }).channels
+                previews.mix_layout(&project, seq_id, s0, m, &provider, epsicut_engine::previews::MixOutput { layout, mixdown }).channels
             });
-            filmcraft_frame::AudioBuffer { sample_rate: sr, channels }
+            epsicut_frame::AudioBuffer { sample_rate: sr, channels }
         };
         if layout == Layout::Surround51 {
             buf.fill(0.0);
@@ -77,7 +77,7 @@ pub fn playback_mix(session: &Session, seq_id: filmcraft_project::ItemId, sr: u3
                 }
             }
         } else {
-            filmcraft_engine::settings::map_output(&mix.channels[0], &mix.channels[1.min(mix.channels.len() - 1)], buf, ch, map);
+            epsicut_engine::settings::map_output(&mix.channels[0], &mix.channels[1.min(mix.channels.len() - 1)], buf, ch, map);
         }
         panels::voiceover::mix_cues(buf, ch, cursor, &cues);
     }

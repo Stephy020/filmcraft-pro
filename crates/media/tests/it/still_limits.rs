@@ -1,7 +1,7 @@
 //! A still whose header declares more pixels than the RGBA copy may hold is refused before any
 //! pixel is decoded. Hand-built PNG headers: the test never allocates the declared size.
 
-use filmcraft_media::still::decode_raster;
+use epsicut_media::still::decode_raster;
 
 fn crc32(data: &[u8]) -> u32 {
     let mut c = !0u32;

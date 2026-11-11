@@ -687,7 +687,7 @@ mod tests {
     #[test]
     fn adobe_fonts_folders_are_scanned() {
         // #1878: macOS keeps activated fonts as hidden `.r/.<id>.otf`, Windows as `r/<id>` without an extension
-        let root = std::env::temp_dir().join(format!("filmcraft-livetype-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("epsicut-livetype-{}", std::process::id()));
         for d in [".r", "r"] {
             std::fs::create_dir_all(root.join(d)).expect("temp dir");
         }
@@ -712,7 +712,7 @@ mod tests {
 
     #[test]
     fn covers_text_does_not_keep_file_bytes() {
-        let path = std::env::temp_dir().join(format!("filmcraft-covers-text-{}.ttf", std::process::id()));
+        let path = std::env::temp_dir().join(format!("epsicut-covers-text-{}.ttf", std::process::id()));
         std::fs::write(&path, INTER_REGULAR).expect("write temp font");
         let info = FaceInfo {
             family: "Inter".into(),

@@ -2,7 +2,7 @@
 
 > **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-30 · **Change:** minor (German covers the whole interface; Czech and Polish interface catalogs; Swedish and Russian cover the whole interface; Turkish catalog; Bosnian covers the whole interface) · **Target:** Adobe Premiere Pro 2026 (26.5.2)
 
-Per-language status of FilmCraft's interface. Premiere 26.5.2 ships 10 interface languages (the
+Per-language status of EpsiCut's interface. Premiere 26.5.2 ships 10 interface languages (the
 installed bundle's `.lproj` folders): German, English, Spanish, French, Italian, Japanese, Korean,
 Portuguese (Brazil), Russian, Simplified Chinese.
 

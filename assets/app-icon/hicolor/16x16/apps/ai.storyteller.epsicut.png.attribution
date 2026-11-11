@@ -1,0 +1,9 @@
+asset:        ai.storyteller.epsicut.png
+title:        EpsiCut app icon, 16 px render
+author:       Stephen Abudu (EpsiCut owner), drawn with Claude (agent)
+source:       original work: a hexagon holding an epsilon with a play mark, after a hexagon-and-figure sketch supplied by the owner
+license:      MIT OR Apache-2.0
+license-file: assets/app-icon/LICENSE.txt
+added:        2026-11-11 by Claude (agent) for Stephen Abudu
+notes:        Rendered from assets/app-icon/epsicut.svg (sizes up to 32 px from epsicut-small.svg). Colours: navy tile #151a3a to #07080f,
+              ring gradient #22d3ee / #8b5cf6 / #f472b6, white epsilon, amber play mark #fbbf24. Replaces the FilmCraft owl icon.

@@ -8,12 +8,12 @@
 //! only the end for Start at Cut and only the beginning for End at Cut. A one-sided transition (a
 //! fade from or to nothing) starts or ends at its clip's edge.
 //!
-//! Premiere limits a transition by the media its clips have beyond the cut (handles). FilmCraft
+//! Premiere limits a transition by the media its clips have beyond the cut (handles). EpsiCut
 //! does not check handles when applying one, so here a transition may cover at most the clips it
 //! joins: from the outgoing clip's start to the incoming clip's end.
 
-use filmcraft_project::{Sequence, Track, Transition, TransitionAlign, TransitionId};
-use filmcraft_time::Tick;
+use epsicut_project::{Sequence, Track, Transition, TransitionAlign, TransitionId};
+use epsicut_time::Tick;
 
 use crate::{Edge, EditError, Result};
 
@@ -204,8 +204,8 @@ pub fn remove(seq: &mut Sequence, ids: &[TransitionId]) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmcraft_project::{ClipId, ItemId, Label, Project, SequenceSettings, TrackItem, find_effect};
-    use filmcraft_time::FrameRate;
+    use epsicut_project::{ClipId, ItemId, Label, Project, SequenceSettings, TrackItem, find_effect};
+    use epsicut_time::FrameRate;
 
     const R: FrameRate = FrameRate::FPS_24;
 

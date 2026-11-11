@@ -2,18 +2,18 @@
 //! about its anchor point, a paragraph-text box is resized, a shape's Size follows the handle
 //! while its opposite side and anchor point stay (docs/graphics.md).
 //!
-//! With `FILMCRAFT_UI_SHOTS=<dir>` the tests also render the UI with wgpu and save PNGs there.
+//! With `EPSICUT_UI_SHOTS=<dir>` the tests also render the UI with wgpu and save PNGs there.
 
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     shots: Option<std::path::PathBuf>,
     // Real Context output tokens, retained across later idle/control-channel frames.
@@ -25,19 +25,19 @@ impl Driver {
         Self::new_with(|_| {})
     }
 
-    fn new_with(configure: impl FnOnce(&mut FilmcraftApp)) -> Self {
+    fn new_with(configure: impl FnOnce(&mut EpsicutApp)) -> Self {
         let mut s = Session::default();
         s.execute("file.openDemoProject", json!({})).unwrap();
         let (tx, rx) = channel();
-        let mut app = FilmcraftApp::new(s).with_control(rx);
+        let mut app = EpsicutApp::new(s).with_control(rx);
         configure(&mut app);
-        let shots = std::env::var_os("FILMCRAFT_UI_SHOTS").map(std::path::PathBuf::from);
+        let shots = std::env::var_os("EPSICUT_UI_SHOTS").map(std::path::PathBuf::from);
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_step_dt(1.0 / 60.0).with_max_steps(10_000);
         if shots.is_some() {
             b = b.wgpu().with_pixels_per_point(1.0);
         }
         let harness = b.build_eframe(move |cc| {
-            filmcraft_ui_egui::install_ime_reset_callbacks(&cc.egui_ctx);
+            epsicut_ui_egui::install_ime_reset_callbacks(&cc.egui_ctx);
             app
         });
         let mut d = Driver { harness, tx, shots, reset_requests: Vec::new() };
@@ -1222,10 +1222,10 @@ fn ime_reset_hidden_logic_or_missing_geometry_rearms_the_same_model_caret_once()
                 assert!(output.platform_output.ime.is_none());
             }
         } else {
-            d.harness.state_mut().ui.mode = filmcraft_ui_egui::state::Mode::Import;
+            d.harness.state_mut().ui.mode = epsicut_ui_egui::state::Mode::Import;
             d.frames(3);
             assert!(d.ime().is_none());
-            d.harness.state_mut().ui.mode = filmcraft_ui_egui::state::Mode::Edit;
+            d.harness.state_mut().ui.mode = epsicut_ui_egui::state::Mode::Edit;
         }
         assert_eq!(d.harness.state().ui.gfx_edit, edit, "the model target/caret stayed the same");
         d.frames(1);
@@ -1375,8 +1375,8 @@ fn ime_reset_discarded_pass_keeps_the_same_custom_request_and_admits_a_fresh_suf
 /// without allocating a NEW request; leaving it rearms exactly one fresh boundary.
 #[test]
 fn ime_reset_native_picker_and_in_app_modal_do_not_allocate_a_new_request() {
-    use filmcraft_ui_egui::Dialog;
-    use filmcraft_ui_egui::native_dialogs::FileDialog;
+    use epsicut_ui_egui::Dialog;
+    use epsicut_ui_egui::native_dialogs::FileDialog;
     use std::sync::{Arc, Mutex};
     let senders: Arc<Mutex<Vec<Sender<Vec<String>>>>> = Arc::new(Mutex::new(Vec::new()));
     let picker_senders = Arc::clone(&senders);
@@ -1858,9 +1858,9 @@ fn polygon_handles_keep_the_opposite_corner() {
 /// The Corner Radius of the shape layer of graphic clip `clip`.
 fn corner_radius(d: &mut Driver, clip: u64) -> f64 {
     let s = &d.harness.state().session;
-    let (_, it) = s.active_sequence().unwrap().find_item(filmcraft_project::ClipId(clip)).unwrap();
+    let (_, it) = s.active_sequence().unwrap().find_item(epsicut_project::ClipId(clip)).unwrap();
     let e = it.effects.iter().find(|e| e.effect == "graphic_shape").unwrap();
-    e.param("corner_radius").unwrap().value_at(filmcraft_time::Tick::ZERO).as_f64().unwrap()
+    e.param("corner_radius").unwrap().value_at(epsicut_time::Tick::ZERO).as_f64().unwrap()
 }
 
 #[test]

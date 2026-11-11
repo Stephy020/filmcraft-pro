@@ -1,5 +1,5 @@
 use super::layout::{min_pps, timeline_extent};
-use super::{Drag, FilmcraftApp, Rect, Sense, Stroke, Tokens, pos2, vec2};
+use super::{Drag, EpsicutApp, Rect, Sense, Stroke, Tokens, pos2, vec2};
 use crate::widgets::ZoomThumbPart;
 
 /// The narrowest the zoom scroll bar's thumb gets: room for its two handles and a part between
@@ -22,7 +22,7 @@ fn zoom_thumb(bar: Rect, seq_seconds: f64, scroll: f64, pps: f64) -> (f32, f32, 
 
 /// Draw the zoom scroll bar: the thumb reflects the visible range, a press beside it centres the thumb under the pointer, and the thumb and track are
 /// registered for automation.
-pub(super) fn zoom_scrollbar(app: &mut FilmcraftApp, ui: &mut egui::Ui, bar: Rect, seq_seconds: f64, t: &Tokens) {
+pub(super) fn zoom_scrollbar(app: &mut EpsicutApp, ui: &mut egui::Ui, bar: Rect, seq_seconds: f64, t: &Tokens) {
     let p = ui.painter();
     p.rect_filled(bar, bar.height() / 2.0, t.separator);
     let v = &mut app.ui.timeline;

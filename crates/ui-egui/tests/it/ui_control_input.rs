@@ -7,12 +7,12 @@ use std::sync::{
 
 use egui::{Event, Key, Modifiers, vec2};
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::{FilmcraftApp, control::ControlRequest, dock::PanelKind};
+use epsicut_engine::Session;
+use epsicut_ui_egui::{EpsicutApp, control::ControlRequest, dock::PanelKind};
 use serde_json::{Value, json};
 
 struct Driver {
-    h: Harness<'static, FilmcraftApp>,
+    h: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
 }
 
@@ -21,7 +21,7 @@ impl Driver {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).unwrap();
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session);
+        let app = EpsicutApp::new(session);
         let app = if isolated { app.with_control_input_only(rx) } else { app.with_control(rx) };
         let mut driver = Self { h: Harness::builder().with_size(vec2(1400.0, 900.0)).build_eframe(move |_| app), tx };
         driver.frames(4, true);
@@ -58,7 +58,7 @@ impl Driver {
     }
 }
 
-fn native_key(h: &mut Harness<'_, FilmcraftApp>, key: Key) {
+fn native_key(h: &mut Harness<'_, EpsicutApp>, key: Key) {
     for pressed in [true, false] {
         // The backend supplies native events before raw_input_hook. Harness::event would
         // instead append them after that hook and bypass the input boundary under test.
@@ -108,7 +108,7 @@ fn background_divider(isolated: bool) {
     let before_project = d.h.state().session.project.clone();
     let before_playheads = d.h.state().session.state.playheads.clone();
     let divider = craft_ui::docking::DockArea::<PanelKind>::hit_id(
-        filmcraft_ui_egui::dock_area_id(),
+        epsicut_ui_egui::dock_area_id(),
         &craft_ui::docking::Hit::Divider(craft_ui::docking::Divider::Split(vec![])),
     );
     d.h.ctx.memory_mut(|memory| memory.request_focus(divider));
@@ -188,7 +188,7 @@ fn isolation_preserves_close_and_screenshot_delivery_without_claiming_os_focus()
         "native input is dropped; screenshot results use callbacks, not raw events"
     );
     assert!(raw.hovered_files.is_empty() && raw.dropped_files.is_empty());
-    let state = filmcraft_ui_egui::control::inspect(d.h.state(), &ctx);
+    let state = epsicut_ui_egui::control::inspect(d.h.state(), &ctx);
     assert_eq!(state["input"]["nativeWindowFocused"], false);
 }
 
@@ -214,7 +214,7 @@ fn focus_reports_real_widget_ownership_and_rejects_bad_targets_without_changing_
     ] {
         let (request, _) = ControlRequest::new("ui.focus", params);
         let ctx = d.h.ctx.clone();
-        let filmcraft_ui_egui::control::Outcome::Done(result) = filmcraft_ui_egui::control::handle(d.h.state_mut(), &ctx, &request) else {
+        let epsicut_ui_egui::control::Outcome::Done(result) = epsicut_ui_egui::control::handle(d.h.state_mut(), &ctx, &request) else {
             panic!("bad focus target must fail immediately");
         };
         assert_eq!(result["ok"], false, "{result}");

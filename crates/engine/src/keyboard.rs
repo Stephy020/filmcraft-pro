@@ -33,11 +33,11 @@
 //! Navigation and targeting are editor state (not undoable, as in Premiere); everything that
 //! changes the project is one undo step.
 
-use filmcraft_edit as edit;
-pub use filmcraft_export::still::StillFormat;
-use filmcraft_geom::Vec2;
-use filmcraft_project::{ClipId, ItemKind, ParamValue, Sequence, TrackId, TrackKind};
-use filmcraft_time::Tick;
+use epsicut_edit as edit;
+pub use epsicut_export::still::StillFormat;
+use epsicut_geom::Vec2;
+use epsicut_project::{ClipId, ItemKind, ParamValue, Sequence, TrackId, TrackKind};
+use epsicut_time::Tick;
 use serde_json::{Value, json};
 
 use crate::commands::{CommandSpec, always, bad, has_selection, has_seq, item_p, slip_together, time_p, with_links};
@@ -54,7 +54,7 @@ fn spec(id: &'static str, label: &'static str, shortcut: Option<&'static str>, p
 pub const POSTER_FRAME_KEY: &str = "Poster Frame";
 
 /// An item's poster frame (Set Poster Frame), if one is set.
-pub fn poster_frame(item: &filmcraft_project::ProjectItem) -> Option<Tick> {
+pub fn poster_frame(item: &epsicut_project::ProjectItem) -> Option<Tick> {
     item.metadata.get(POSTER_FRAME_KEY).and_then(|v| v.parse::<i64>().ok()).map(Tick)
 }
 
@@ -102,11 +102,11 @@ fn go_to_selected(s: &mut Session, end: bool) -> Result<Value> {
 
 /// The clip Reveal Nested Sequence opens: the first selected nested sequence clip, else the
 /// topmost one under the playhead on a targeted track.
-fn nested_to_reveal(s: &Session) -> Option<filmcraft_project::TrackItem> {
+fn nested_to_reveal(s: &Session) -> Option<epsicut_project::TrackItem> {
     let ph = s.playhead();
     let tg = s.targeting().targeted;
     let seq = s.active_sequence()?;
-    let is_nest = |it: &filmcraft_project::TrackItem| s.project.sequence(it.item).is_some();
+    let is_nest = |it: &epsicut_project::TrackItem| s.project.sequence(it.item).is_some();
     s.state
         .selection
         .iter()
@@ -382,7 +382,7 @@ fn toggle_targeted_tracks(s: &mut Session, kind: TrackKind, what: &'static str) 
     };
     s.edit_sequence(label, |q, _, _| {
         // all on → all off, else all on
-        let get = |t: &filmcraft_project::Track| match what {
+        let get = |t: &epsicut_project::Track| match what {
             "mute" => t.muted,
             "solo" => t.solo,
             _ => !t.enabled,
@@ -452,7 +452,7 @@ fn text_layer_targets(s: &Session) -> Result<(ClipId, Vec<usize>)> {
     let clip = crate::graphics::target_clip(s, &Value::Null).ok_or_else(|| EngineError::Other("select a graphic clip".into()))?;
     let seq = s.active_sequence().ok_or(EngineError::NoSequence)?;
     let (_, it) = seq.find_item(clip).ok_or_else(|| EngineError::Other("no such clip".into()))?;
-    let idx = filmcraft_project::graphic::layer_indices(&it.effects);
+    let idx = epsicut_project::graphic::layer_indices(&it.effects);
     if idx.is_empty() {
         return Err(EngineError::Other("the graphic has no layers".into()));
     }
@@ -469,7 +469,7 @@ fn edit_layers(s: &mut Session, label: &str, param: &'static str, text_only: boo
     let (clip, layers) = text_layer_targets(s)?;
     let tl = s.playhead();
     let n = s.edit_sequence(label, |q, _, _| {
-        let (_, it) = q.find_item_mut(clip).ok_or(filmcraft_edit::EditError::NoItem(clip))?;
+        let (_, it) = q.find_item_mut(clip).ok_or(epsicut_edit::EditError::NoItem(clip))?;
         let mt = it.source_time_at(tl.clamp(it.start, it.end() - Tick(1)));
         let mut n = 0;
         for ei in &layers {
@@ -562,7 +562,7 @@ fn sanitize(name: &str) -> String {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FrameExportTarget {
     pub source: bool,
-    pub item: filmcraft_project::ItemId,
+    pub item: epsicut_project::ItemId,
     pub time: Tick,
     pub name: String,
     pub width: u32,
@@ -580,13 +580,13 @@ pub fn frame_export_target(s: &Session, p: &Value) -> Result<FrameExportTarget> 
     };
     let key = if source { "item" } else { "sequence" };
     let item = match p.get(key) {
-        Some(v) => filmcraft_project::ItemId(v.as_u64().ok_or_else(|| bad(CMD, format!("{key} must be an item id")))?),
+        Some(v) => epsicut_project::ItemId(v.as_u64().ok_or_else(|| bad(CMD, format!("{key} must be an item id")))?),
         None => if source { s.state.source_item } else { s.state.active_sequence }
             .ok_or_else(|| bad(CMD, "open a video clip or sequence in the requested monitor"))?,
     };
     let pi = s.project.item(item).ok_or_else(|| bad(CMD, "the requested item is unavailable"))?;
     let (width, height) = s.project.source_size(item).ok_or_else(|| bad(CMD, "the requested Source clip has no video frame"))?;
-    filmcraft_project::validate_frame_size(width, height).map_err(|e| bad(CMD, e.to_string()))?;
+    epsicut_project::validate_frame_size(width, height).map_err(|e| bad(CMD, e.to_string()))?;
     let (rate, current, bounds) = if source {
         let v = crate::clip_ops::source_view(s, item).ok_or_else(|| bad(CMD, "Source clip is unavailable"))?;
         if v.start.0 < 0 || v.end <= v.start {
@@ -605,7 +605,7 @@ pub fn frame_export_target(s: &Session, p: &Value) -> Result<FrameExportTarget> 
         return Err(bad(CMD, "frame rate must be positive and time non-negative"));
     }
     let invalid = || bad(CMD, "frame time exceeds the supported range");
-    let unit = i128::from(filmcraft_time::TICKS_PER_SECOND).checked_mul(i128::from(rate.den)).ok_or_else(invalid)?;
+    let unit = i128::from(epsicut_time::TICKS_PER_SECOND).checked_mul(i128::from(rate.den)).ok_or_else(invalid)?;
     let fd = unit / i128::from(rate.num);
     if fd <= 0 || fd > i128::from(i64::MAX) {
         return Err(invalid());
@@ -627,7 +627,7 @@ fn export_frame(s: &mut Session, p: &Value) -> Result<Value> {
         None => "png".to_string(),
         Some(v) => v.as_str().ok_or_else(|| bad("file.exportFrame", "format must be a string"))?.to_ascii_lowercase(),
     };
-    let format = filmcraft_export::still::StillFormat::parse(&fmt).map_err(|e| bad("file.exportFrame", e.to_string()))?;
+    let format = epsicut_export::still::StillFormat::parse(&fmt).map_err(|e| bad("file.exportFrame", e.to_string()))?;
     let depth = match p.get("depth") {
         None => 8,
         Some(v) => u8::try_from(v.as_u64().ok_or_else(|| bad("file.exportFrame", "depth must be 8 or 16"))?)
@@ -658,14 +658,14 @@ fn export_frame(s: &mut Session, p: &Value) -> Result<Value> {
     // On the web a frame can still be decoding (WebCodecs) or its bytes loading (Blob reads): the
     // render then leaves that clip out, so saving it would pass a blank or partial picture off as
     // the requested frame (#228). Report it instead and write nothing; a later call succeeds.
-    let _ = filmcraft_media::pending::take();
+    let _ = epsicut_media::pending::take();
     let img = if target.source {
-        filmcraft_render::render_item(&s.project, target.item, target.time, 1.0, &provider)
+        epsicut_render::render_item(&s.project, target.item, target.time, 1.0, &provider)
     } else {
-        let opts = filmcraft_render::RenderOptions { scale: 1.0, captions: true, ..Default::default() };
-        Some(filmcraft_render::render_sequence(&s.project, target.item, target.time, opts, &provider))
+        let opts = epsicut_render::RenderOptions { scale: 1.0, captions: true, ..Default::default() };
+        Some(epsicut_render::render_sequence(&s.project, target.item, target.time, opts, &provider))
     };
-    if filmcraft_media::pending::take() {
+    if epsicut_media::pending::take() {
         return Err(EngineError::Other("the frame is still loading; export it again in a moment".into()));
     }
     let img = img.ok_or_else(|| bad("file.exportFrame", "cannot decode the Source video frame"))?;
@@ -673,7 +673,7 @@ fn export_frame(s: &mut Session, p: &Value) -> Result<Value> {
         u32::try_from(img.w).map_err(|_| bad("file.exportFrame", "image width exceeds limits"))?,
         u32::try_from(img.h).map_err(|_| bad("file.exportFrame", "image height exceeds limits"))?,
     );
-    let bytes = filmcraft_export::still::encode(&img, format, depth).map_err(|e| EngineError::Other(e.to_string()))?;
+    let bytes = epsicut_export::still::encode(&img, format, depth).map_err(|e| EngineError::Other(e.to_string()))?;
     s.services.write_file(&path, &bytes).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
     let mut out =
         json!({"path": path, "width": w, "height": h, "depth": depth, "target": if target.source { "source" } else { "program" }, "time": target.time.0});
@@ -686,7 +686,7 @@ fn export_frame(s: &mut Session, p: &Value) -> Result<Value> {
 
 /// The item Set / Clear Poster Frame acts on, and the frame: `item` + time, else the Source
 /// monitor clip at its playhead, else the first Project panel selection (its current poster).
-fn poster_target(s: &Session, p: &Value) -> Option<(filmcraft_project::ItemId, Tick)> {
+fn poster_target(s: &Session, p: &Value) -> Option<(epsicut_project::ItemId, Tick)> {
     if let Some(i) = item_p(p, "item") {
         return Some((i, time_p(s, p, "").unwrap_or_default()));
     }
@@ -818,7 +818,7 @@ pub fn commands() -> Vec<CommandSpec> {
         spec("graphics.nudgeUp5", "Nudge Selected Object up by five", None, "{}", has_graphic_or_selection, |s, _| nudge_object(s, 0.0, -5.0)),
         spec("graphics.nudgeDown5", "Nudge Selected Object down by five", None, "{}", has_graphic_or_selection, |s, _| nudge_object(s, 0.0, 5.0)),
         // ---- export frame, poster frame
-        // Shift+E is Clip > Enable in FilmCraft Default; the Premiere preset moves it here
+        // Shift+E is Clip > Enable in EpsiCut Default; the Premiere preset moves it here
         spec(
             "file.exportFrame",
             "Export Frame",

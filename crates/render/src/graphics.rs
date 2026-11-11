@@ -1,9 +1,9 @@
-//! Text and vector graphics drawn with `filmcraft-text`: the Timecode / Clip Name burn-ins and
+//! Text and vector graphics drawn with `epsicut-text`: the Timecode / Clip Name burn-ins and
 //! (see below) graphic clips' text and shape layers.
 
-use filmcraft_color::srgb_to_linear;
-use filmcraft_geom::Vec2;
-use filmcraft_text::{Align, Mask, ParagraphStyle, TextStyle, layout, render};
+use epsicut_color::srgb_to_linear;
+use epsicut_geom::Vec2;
+use epsicut_text::{Align, Mask, ParagraphStyle, TextStyle, layout, render};
 use rayon::prelude::*;
 
 use crate::image::Image;
@@ -75,16 +75,16 @@ pub fn burn_text(img: &mut Image, text: &str, family: &str, pos: Vec2, px: f32, 
     }
     let st = TextStyle { family: family.into(), style: "Regular".into(), size: px, ..Default::default() };
     let l = layout(text, &st, &ParagraphStyle { align: Align::Center, ..Default::default() });
-    let vm = filmcraft_text::fonts::face(filmcraft_text::resolve(family, "Regular").face).metrics(px);
+    let vm = epsicut_text::fonts::face(epsicut_text::resolve(family, "Regular").face).metrics(px);
     // centre the cap height on pos
     let (bx, by) = (pos.x as f32, pos.y as f32 + vm.cap_height / 2.0);
     let pad = px * 0.25;
     let b = l.bounds;
-    let boxp = filmcraft_text::Path::rect(bx + b[0] - pad, by - vm.cap_height - pad, bx + b[2] + pad, by + vm.descent * 0.6 + pad);
+    let boxp = epsicut_text::Path::rect(bx + b[0] - pad, by - vm.cap_height - pad, bx + b[2] + pad, by + vm.descent * 0.6 + pad);
     if let Some(bb) = boxp.bounds() {
         let (x0, y0) = (bb.0.floor() as i32, bb.1.floor() as i32);
         if let Some((w, h)) = bounded_raster_size(bb.2 - x0 as f32, bb.3 - y0 as f32) {
-            let m = filmcraft_text::raster::fill(&boxp, w, h, -x0 as f32, -y0 as f32);
+            let m = epsicut_text::raster::fill(&boxp, w, h, -x0 as f32, -y0 as f32);
             paint_mask(img, &m, x0, y0, [0.0, 0.0, 0.0, 1.0], box_alpha);
         }
     }

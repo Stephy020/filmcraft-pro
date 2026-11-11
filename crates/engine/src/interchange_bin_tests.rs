@@ -1,7 +1,7 @@
 //! Interchange documents (EDL, FCP7 XML, AAF, …) imported while a bin is open in the Project
 //! panel land in that bin, as media files do, not at the project root (#2036).
 
-use filmcraft_project::{BinId, ItemId};
+use epsicut_project::{BinId, ItemId};
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -78,7 +78,7 @@ fn sequences_of(r: &Value) -> Vec<ItemId> {
 #[test]
 fn an_interchange_document_lands_in_the_bin_it_was_imported_into() {
     let d = tmp_dir("ix-bin");
-    make_movie(&d.join("shot.mov"), filmcraft_media::DemoScene::OceanSunset, 64, 36, 24);
+    make_movie(&d.join("shot.mov"), epsicut_media::DemoScene::OceanSunset, 64, 36, 24);
     std::fs::write(d.join("cut.xml"), fcp7_xml()).unwrap();
     std::fs::write(d.join("cut.edl"), EDL).unwrap();
     for doc in ["cut.xml", "cut.edl"] {
@@ -127,7 +127,7 @@ fn an_interchange_document_aimed_at_an_unknown_bin_lands_at_the_root() {
 fn an_aaf_lands_in_the_bin_from_file_import_and_file_import_aaf() {
     let d = tmp_dir("ix-bin-aaf");
     let a = d.join("a.mov");
-    make_movie(&a, filmcraft_media::DemoScene::Aurora, 64, 36, 24);
+    make_movie(&a, epsicut_media::DemoScene::Aurora, 64, 36, 24);
     let (mut s, _, seq) = session_with(&[&a]);
     let aaf = d.join("cut.aaf").to_string_lossy().into_owned();
     s.execute("file.exportAaf", json!({"path": aaf, "audio": "embedded", "sequence": seq.0})).unwrap();

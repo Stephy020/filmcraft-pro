@@ -4,9 +4,9 @@ use crate::support;
 
 use std::collections::HashSet;
 
-use filmcraft_interchange::{ExportOptions, Format, detect, export, import, merge_into, rebase_source_timecode};
-use filmcraft_project::{ItemKind, Project, TrackKind, TransitionAlign};
-use filmcraft_time::FrameRate;
+use epsicut_interchange::{ExportOptions, Format, detect, export, import, merge_into, rebase_source_timecode};
+use epsicut_project::{ItemKind, Project, TrackKind, TransitionAlign};
+use epsicut_time::FrameRate;
 use support::*;
 
 #[test]
@@ -67,7 +67,7 @@ fn merge_reallocates_ids_and_keeps_links() {
 
 #[test]
 fn otio_import_merges_saved_palette_without_duplicates_or_overflow() {
-    use filmcraft_project::HexColor;
+    use epsicut_project::HexColor;
     let mut src = Project::new("source");
     src.custom_colors = vec![HexColor([1, 2, 3]), HexColor([4, 5, 6]), HexColor([4, 5, 6])];
     src.custom_color_names.insert(HexColor([4, 5, 6]), "Review".into());
@@ -91,7 +91,7 @@ fn otio_import_merges_saved_palette_without_duplicates_or_overflow() {
 fn review_unused_saved_palette_warns_for_lossy_exports() {
     let mut project = Project::new("Palette only");
     let seq = sequence(&mut project, "Sequence", FrameRate::FPS_25, false);
-    project.custom_colors.push(filmcraft_project::HexColor([18, 52, 86]));
+    project.custom_colors.push(epsicut_project::HexColor([18, 52, 86]));
     project.custom_color_names.insert(project.custom_colors[0], "Review".into());
     for format in [Format::Edl, Format::Fcp7Xml, Format::Fcpxml, Format::Aaf, Format::Omf] {
         let (_, report) = export(&project, seq, format, &ExportOptions::default()).unwrap();
@@ -103,7 +103,7 @@ fn review_unused_saved_palette_warns_for_lossy_exports() {
 
 #[test]
 fn review_palette_import_fills_missing_names_at_capacity_without_orphans() {
-    use filmcraft_project::HexColor;
+    use epsicut_project::HexColor;
     let unnamed = HexColor([1, 0, 0]);
     let named = HexColor([2, 0, 0]);
     let excluded = HexColor([255, 255, 255]);
@@ -117,7 +117,7 @@ fn review_palette_import_fills_missing_names_at_capacity_without_orphans() {
         fragment.custom_color_names.insert(excluded, "New color".into());
         fragment.custom_color_names.insert(unnamed, "Imported name".into());
         fragment.custom_color_names.insert(named, "Do not overwrite".into());
-        merge_into(&mut target, filmcraft_interchange::Imported { project: fragment, sequences: vec![] }, None);
+        merge_into(&mut target, epsicut_interchange::Imported { project: fragment, sequences: vec![] }, None);
         assert_eq!(target.custom_color_names.get(&unnamed).map(String::as_str), Some("Imported name"));
         assert_eq!(target.custom_color_names.get(&named).map(String::as_str), Some("Keep target name"));
         assert_eq!(target.custom_colors.len(), if count == 64 { 64 } else { 4 });

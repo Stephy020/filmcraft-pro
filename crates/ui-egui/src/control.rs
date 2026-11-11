@@ -45,7 +45,7 @@ fn bounded_repetitions(params: &Value, key: &str, default: u64, minimum: u64, ma
     Ok(value.max(minimum))
 }
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::dock::PanelKind;
 use crate::state::{Mode, PlaybackRes, ThumbnailMode, Tool};
 
@@ -105,7 +105,7 @@ fn as_pressed(mut m: egui::Modifiers) -> egui::Modifiers {
 }
 
 /// Resolve a point from `{id}` (element centre) or `{x, y}`.
-fn point(app: &FilmcraftApp, p: &Value) -> Result<egui::Pos2, String> {
+fn point(app: &EpsicutApp, p: &Value) -> Result<egui::Pos2, String> {
     if let Some(id) = p.get("id").and_then(Value::as_str) {
         let e = app.auto.find(id).ok_or_else(|| format!("{RETRY}no element `{id}` (see ui.elements)"))?;
         let fx = p.get("fx").and_then(Value::as_f64).unwrap_or(0.5) as f32;
@@ -117,7 +117,7 @@ fn point(app: &FilmcraftApp, p: &Value) -> Result<egui::Pos2, String> {
     Ok(egui::pos2(x as f32, y as f32))
 }
 
-fn handle_ui_set(app: &mut FilmcraftApp, ctx: &egui::Context, p: &Value) -> Outcome {
+fn handle_ui_set(app: &mut EpsicutApp, ctx: &egui::Context, p: &Value) -> Outcome {
     let s = |k: &str| p.get(k).and_then(Value::as_str);
     // Text to Speech panel draft (voice, pitch, pace, text…), merged into the current one
     if let Some(patch) = p.get("tts") {
@@ -250,7 +250,7 @@ fn handle_ui_set(app: &mut FilmcraftApp, ctx: &egui::Context, p: &Value) -> Outc
 
 /// The `timeline` part of a `ui.set` payload: playback zoom and scroll, fit, track heights
 /// and the thumbnail mode.
-fn set_timeline(app: &mut FilmcraftApp, p: &Value) -> Result<(), String> {
+fn set_timeline(app: &mut EpsicutApp, p: &Value) -> Result<(), String> {
     let Some(tl) = p.get("timeline") else { return Ok(()) };
     if let Some(v) = tl.get("pps").and_then(Value::as_f64) {
         app.ui.timeline.target_pps = v;
@@ -290,7 +290,7 @@ fn set_timeline(app: &mut FilmcraftApp, p: &Value) -> Result<(), String> {
 
 /// The `gfxEdit` part of a `ui.set` payload: which layer the Type tool edits. Resolves that
 /// layer's identity from the document and refreshes the IME target when it changes.
-fn set_gfx_edit(app: &mut FilmcraftApp, v: &Value) -> Result<(), String> {
+fn set_gfx_edit(app: &mut EpsicutApp, v: &Value) -> Result<(), String> {
     match serde_json::from_value::<Option<crate::state::GfxEdit>>(v.clone()) {
         Ok(mut e) => {
             // An explicit `ui.set.gfxEdit {clip, layer}` names the layer currently at
@@ -340,7 +340,7 @@ fn set_gfx_edit(app: &mut FilmcraftApp, v: &Value) -> Result<(), String> {
 
 /// The `program` / `source` parts of a `ui.set` payload: serde fields of `MonitorView`,
 /// merged into the current state.
-fn set_monitor_views(app: &mut FilmcraftApp, p: &Value) -> Result<(), String> {
+fn set_monitor_views(app: &mut EpsicutApp, p: &Value) -> Result<(), String> {
     // Monitor view state (serde fields of `MonitorView`), merged into the current state.
     for k in ["program", "source"] {
         let Some(patch) = p.get(k).and_then(Value::as_object) else { continue };
@@ -361,7 +361,7 @@ fn set_monitor_views(app: &mut FilmcraftApp, p: &Value) -> Result<(), String> {
 
 /// The `projectPanel` / `mediaBrowser` parts of a `ui.set` payload: each panel's view state,
 /// merged.
-fn set_panel_views(app: &mut FilmcraftApp, p: &Value) -> Result<(), String> {
+fn set_panel_views(app: &mut EpsicutApp, p: &Value) -> Result<(), String> {
     // Project panel / Media Browser view state (`panels::project`, `panels::media_browser`), merged
     for (k, which) in [("projectPanel", 0), ("mediaBrowser", 1)] {
         let Some(patch) = p.get(k) else { continue };
@@ -379,7 +379,7 @@ fn set_panel_views(app: &mut FilmcraftApp, p: &Value) -> Result<(), String> {
     Ok(())
 }
 
-fn handle_synthetic_input(app: &mut FilmcraftApp, p: &Value, method: &str) -> Outcome {
+fn handle_synthetic_input(app: &mut EpsicutApp, p: &Value, method: &str) -> Outcome {
     let s = |key: &str| p.get(key).and_then(Value::as_str);
     match method {
         "ui.click" | "ui.move" => {
@@ -485,7 +485,7 @@ fn handle_synthetic_input(app: &mut FilmcraftApp, p: &Value, method: &str) -> Ou
 
 /// Execute one control request. Synthetic input is capped by `MAX_SYNTHETIC_EVENTS` before queueing, screenshot crops stay symbolic until capture, and
 /// `gfxEdit` layer identity is resolved from the document.
-pub fn handle(app: &mut FilmcraftApp, ctx: &egui::Context, req: &ControlRequest) -> Outcome {
+pub fn handle(app: &mut EpsicutApp, ctx: &egui::Context, req: &ControlRequest) -> Outcome {
     let p = &req.params;
     let s = |k: &str| p.get(k).and_then(Value::as_str);
     if matches!(req.method.as_str(), "ui.click" | "ui.move" | "ui.drag" | "ui.scroll" | "ui.key" | "ui.type") && app.synthetic.len() >= MAX_SYNTHETIC_EVENTS {
@@ -630,7 +630,7 @@ fn merge(v: &mut Value, patch: &Value) {
 }
 
 /// Read-only JSON snapshot; focus and element counts come from the current accepted registry pass.
-pub fn inspect(app: &FilmcraftApp, ctx: &egui::Context) -> Value {
+pub fn inspect(app: &EpsicutApp, ctx: &egui::Context) -> Value {
     let size = ctx.content_rect().size();
     let keyboard_focus = ctx.memory(|memory| memory.focused()).map(|id| {
         let elements: Vec<_> = app.auto.all().iter().filter(|element| element.response_id == Some(id)).collect();
@@ -714,7 +714,7 @@ pub fn save_screenshot_with_ppp(image: &egui::ColorImage, path: Option<&str>, cr
             Err(e) => json!({"ok": false, "error": e}),
         };
     }
-    let path = path.map(str::to_string).unwrap_or_else(|| filmcraft_engine::temp_dir().join("filmcraft-screenshot.png").to_string_lossy().to_string());
+    let path = path.map(str::to_string).unwrap_or_else(|| epsicut_engine::temp_dir().join("epsicut-screenshot.png").to_string_lossy().to_string());
     match encode_png(&rgba, cw as u32, ch as u32) {
         Ok(png) => match std::fs::write(&path, png) {
             Ok(()) => json!({"ok": true, "result": {"path": path, "width": cw, "height": ch}}),
@@ -802,19 +802,19 @@ mod input_bounds_tests {
     use super::*;
 
     /// Create an empty editor session for inspecting queued synthetic input without a window.
-    fn app() -> FilmcraftApp {
-        FilmcraftApp::new(filmcraft_engine::Session::default())
+    fn app() -> EpsicutApp {
+        EpsicutApp::new(epsicut_engine::Session::default())
     }
 
     /// Dispatch a control request and fail the test if hostile parameters cause a panic.
-    fn request(app: &mut FilmcraftApp, method: &str, params: Value) -> Outcome {
+    fn request(app: &mut EpsicutApp, method: &str, params: Value) -> Outcome {
         let (req, _) = ControlRequest::new(method, params);
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handle(app, &egui::Context::default(), &req)))
             .expect("hostile control parameters must not panic")
     }
 
     /// Require an immediate error naming `field`, with all previously queued input unchanged.
-    fn assert_rejected(app: &mut FilmcraftApp, method: &str, params: Value, field: &str) {
+    fn assert_rejected(app: &mut EpsicutApp, method: &str, params: Value, field: &str) {
         let before = app.synthetic.clone();
         let Outcome::Done(reply) = request(app, method, params) else { panic!("invalid input must return an error immediately") };
         assert_eq!(reply["ok"], false);

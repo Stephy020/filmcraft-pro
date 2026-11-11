@@ -1,5 +1,5 @@
 [package]
-name = "filmcraft-gpu"
+name = "epsicut-gpu"
 description = "wgpu compositor: YUV/RGB layer sampling, linear-light premultiplied compositing in WGSL"
 version.workspace = true
 edition.workspace = true
@@ -10,12 +10,12 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-filmcraft-color = { workspace = true }
-filmcraft-frame = { workspace = true }
-filmcraft-geom = { workspace = true }
-filmcraft-project = { workspace = true }
-filmcraft-render = { workspace = true }
-filmcraft-time = { workspace = true }
+epsicut-color = { workspace = true }
+epsicut-frame = { workspace = true }
+epsicut-geom = { workspace = true }
+epsicut-project = { workspace = true }
+epsicut-render = { workspace = true }
+epsicut-time = { workspace = true }
 wgpu = { version = "30", default-features = false, features = ["wgsl"] }
 log = { workspace = true }
 pollster = "1"
@@ -23,8 +23,8 @@ rayon = { workspace = true }
 
 [dev-dependencies]
 pollster = "1"
-filmcraft-export = { workspace = true }
+epsicut-export = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 wgpu = { version = "30", features = ["wgsl", "metal", "vulkan", "dx12", "gles"] }
-filmcraft-media = { workspace = true }
-filmcraft-time = { workspace = true }
+epsicut-media = { workspace = true }
+epsicut-time = { workspace = true }

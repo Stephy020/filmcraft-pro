@@ -1,4 +1,4 @@
-use super::{DIVIDER_H, FilmcraftApp, MASTER_H, Rect, Sequence, Tick, TimelineView, TrackId, TrackKind, pos2};
+use super::{DIVIDER_H, EpsicutApp, MASTER_H, Rect, Sequence, Tick, TimelineView, TrackId, TrackKind, pos2};
 
 /// Geometry of one visible track row.
 #[derive(Clone, Debug)]
@@ -124,7 +124,7 @@ pub fn scroll_to_reveal(ph: f64, scroll: f64, pps: f64, width: f64) -> Option<f6
 }
 
 /// Explicit navigation reveals the playhead even when its time has not changed (#1188).
-pub(crate) fn reveal_playhead(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub(crate) fn reveal_playhead(app: &mut EpsicutApp, ctx: &egui::Context) {
     let ph = app.session.playhead().seconds();
     let v = &mut app.ui.timeline;
     if let Some(scroll) = scroll_to_reveal(ph, v.target_scroll, v.target_pps, f64::from(app.last_timeline_width)) {

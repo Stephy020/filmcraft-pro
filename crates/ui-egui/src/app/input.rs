@@ -1,6 +1,6 @@
-use super::{FilmcraftApp, PanelKind, dock_ui, json};
+use super::{EpsicutApp, PanelKind, dock_ui, json};
 
-impl FilmcraftApp {
+impl EpsicutApp {
     /// Import dropped files, on the main window and on dock panels in their own OS windows.
     /// With Timeline ▸ drop imports to the timeline, the new items are also queued to be placed
     /// at the pointer (see `timeline::interact`).
@@ -50,8 +50,8 @@ impl FilmcraftApp {
             && let Some((pos, viewport)) = pointer
             && self.session.prefs.timeline.drop_import_to_timeline
         {
-            let items: Vec<filmcraft_engine::project::ItemId> =
-                v["items"].as_array().map(|a| a.iter().filter_map(|i| i.as_u64()).map(filmcraft_engine::project::ItemId).collect()).unwrap_or_default();
+            let items: Vec<epsicut_engine::project::ItemId> =
+                v["items"].as_array().map(|a| a.iter().filter_map(|i| i.as_u64()).map(epsicut_engine::project::ItemId).collect()).unwrap_or_default();
             if !items.is_empty() {
                 self.pending_timeline_drop = Some((items, pos, viewport));
             }
@@ -116,7 +116,7 @@ impl FilmcraftApp {
     }
 }
 
-/// Whether a dropped file is a FilmCraft project (opened, not imported).
+/// Whether a dropped file is a EpsiCut project (opened, not imported).
 fn is_project_file(path: &str) -> bool {
     std::path::Path::new(path).extension().is_some_and(|e| e.eq_ignore_ascii_case("fcproj"))
 }

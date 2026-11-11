@@ -10,13 +10,13 @@
 //! | `out` | the Out point (exclusive end) |
 //! | `timecode` | −(start timecode), optionally ignoring hours |
 //! | `marker` | the first clip marker (or the first one named `marker`) |
-//! | `audio` | from the waveform cross-correlation against the reference clip ([`filmcraft_audio_dsp::sync`]) |
+//! | `audio` | from the waveform cross-correlation against the reference clip ([`epsicut_audio_dsp::sync`]) |
 //!
 //! `offset` (frames) shifts every clip but the reference by that much (a known delay to correct).
 
-use filmcraft_audio_dsp::sync::{SyncOptions, SyncResult, find_offset, mixdown};
-use filmcraft_project::{ItemId, Project, TrackItem};
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
+use epsicut_audio_dsp::sync::{SyncOptions, SyncResult, find_offset, mixdown};
+use epsicut_project::{ItemId, Project, TrackItem};
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange};
 use serde_json::{Value, json};
 
 use crate::{EngineError, Result, Session};
@@ -77,11 +77,11 @@ pub struct SyncClip {
 }
 
 /// The media item behind an item (subclips resolve to their parent) and its subclip range.
-fn media_of(p: &Project, item: ItemId) -> Option<(ItemId, &filmcraft_project::MediaClip, Option<TimeRange>)> {
+fn media_of(p: &Project, item: ItemId) -> Option<(ItemId, &epsicut_project::MediaClip, Option<TimeRange>)> {
     p.resolve_media(item)
 }
 
-fn start_timecode(m: &filmcraft_project::MediaClip) -> Tick {
+fn start_timecode(m: &epsicut_project::MediaClip) -> Tick {
     let rate = m.frame_rate();
     m.info.start_timecode.map(|f| rate.tick_of(f)).unwrap_or(Tick::ZERO)
 }
@@ -127,12 +127,12 @@ pub fn timeline_clip(p: &Project, ti: &TrackItem) -> SyncClip {
 /// Frames per analysis read: [`ANALYSIS_CHUNK_SECONDS`], shortened so the decoder's buffer for the
 /// stream at its own sample rate and channel count (plus the frames it reads past the window)
 /// stays under the audio buffer limit, e.g. for a multichannel high-rate stream.
-fn chunk_frames(stream: Option<&filmcraft_media::AudioStreamInfo>) -> usize {
+fn chunk_frames(stream: Option<&epsicut_media::AudioStreamInfo>) -> usize {
     let wanted = (ANALYSIS_CHUNK_SECONDS * ANALYSIS_RATE as u64) as usize;
     let Some(a) = stream else { return wanted };
     let per_frame = (a.channels.max(1) as usize).saturating_mul(std::mem::size_of::<f32>());
     // source frames one buffer can hold, less a margin for the decoder's extra frames
-    let room = (filmcraft_media::MAX_AUDIO_BUFFER_BYTES / per_frame).saturating_sub(64);
+    let room = (epsicut_media::MAX_AUDIO_BUFFER_BYTES / per_frame).saturating_sub(64);
     let fits = (room as u128 * ANALYSIS_RATE as u128 / a.sample_rate.max(1) as u128) as usize;
     wanted.min(fits).max(ANALYSIS_RATE as usize / 100)
 }
@@ -263,7 +263,7 @@ pub fn report(clips: &[SyncClip], anchors: &[Anchor], starts: &[Tick], rate: Fra
 #[cfg(test)]
 mod chunk_tests {
     use super::*;
-    use filmcraft_media::{AudioStreamInfo, MAX_AUDIO_BUFFER_BYTES};
+    use epsicut_media::{AudioStreamInfo, MAX_AUDIO_BUFFER_BYTES};
 
     fn stream(sample_rate: u32, channels: u32) -> AudioStreamInfo {
         AudioStreamInfo { sample_rate, channels, codec: String::new(), bits_per_sample: None }

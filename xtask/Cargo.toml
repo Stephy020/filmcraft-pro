@@ -10,4 +10,4 @@ workspace = true
 
 [dependencies]
 serde_json = { workspace = true }
-filmcraft-testkit = { workspace = true }
+epsicut-testkit = { workspace = true }

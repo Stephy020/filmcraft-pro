@@ -1,9 +1,9 @@
 //! Modal dialogs (About; Keyboard Shortcuts in `shortcuts_dialog`; Settings in `settings`;
 //! Recovery/Revert in `file_dialogs`).
 
-use crate::{Dialog, FilmcraftApp};
+use crate::{Dialog, EpsicutApp};
 
-pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut EpsicutApp, ctx: &egui::Context) {
     crate::panels::marker_properties::show(app, ctx);
     crate::panels::custom_colors::show(app, ctx);
     crate::panels::palette_manager::show(app, ctx);
@@ -38,8 +38,8 @@ pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
     let mut open = true;
     match d {
         Dialog::About => {
-            egui::Window::new(tl!("About FilmCraft"))
-                .id(egui::Id::unique("About FilmCraft"))
+            egui::Window::new(tl!("About EpsiCut"))
+                .id(egui::Id::unique("About EpsiCut"))
                 .open(&mut open)
                 .collapsible(false)
                 .resizable(false)
@@ -104,7 +104,7 @@ pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
 ///
 /// Automation ids: `audioGain.<set|adjust|normalizeMax|normalizeAll>` (radio buttons),
 /// `audioGain.<mode>.value` (dB fields), `audioGain.peak`, `audioGain.ok`, `audioGain.cancel`.
-fn audio_gain(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
+fn audio_gain(app: &mut EpsicutApp, ctx: &egui::Context) -> bool {
     let peak_id = egui::Id::unique("audio-gain-peak");
     let rev = app.session.revision;
     let cached: Option<(u64, Option<f64>)> = ctx.data(|d| d.get_temp(peak_id));
@@ -198,9 +198,9 @@ fn audio_gain(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
 /// (n tracks before the new ones; 0 = Before First Track); `addTracks.<audio|submix>.type` and
 /// `addTracks.<audio|submix>.type.option.<standard|stereo|5.1|adaptive|mono>`; `addTracks.ok`,
 /// `addTracks.cancel`.
-fn add_tracks(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
+fn add_tracks(app: &mut EpsicutApp, ctx: &egui::Context) -> bool {
     let Some(seq) = app.session.active_sequence() else { return false };
-    let names = |tracks: &[filmcraft_engine::project::Track]| tracks.iter().map(|t| t.name.clone()).collect::<Vec<_>>();
+    let names = |tracks: &[epsicut_engine::project::Track]| tracks.iter().map(|t| t.name.clone()).collect::<Vec<_>>();
     let (vnames, anames, snames) = (names(&seq.video_tracks), names(&seq.audio_tracks), names(&seq.submix_tracks));
     let mut d = app.ui.add_tracks.clone();
     crate::widgets::revert_drag_on_escape(ctx, egui::Id::unique("add-tracks-before-drag"), &mut d);
@@ -330,7 +330,7 @@ fn add_tracks(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
 /// Automation ids: `deleteTracks.video`, `deleteTracks.audio`, `deleteTracks.captions` (checkboxes),
 /// `deleteTracks.<kind>.target` (track menus), `deleteTracks.<kind>.option.<empty|V1|A2|C1…>`
 /// (menu entries while open), `deleteTracks.ok`, `deleteTracks.cancel`.
-fn delete_tracks(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
+fn delete_tracks(app: &mut EpsicutApp, ctx: &egui::Context) -> bool {
     let Some(seq) = app.session.active_sequence() else { return false };
     let names = |n: usize, p: &str| (1..=n).map(|i| format!("{p}{i}")).collect::<Vec<_>>();
     let vnames = names(seq.video_tracks.len(), "V");
@@ -420,13 +420,13 @@ fn delete_tracks(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
     keep
 }
 
-/// Help ▸ About FilmCraft, in three tabs: About (version and the ArtCraft community links),
+/// Help ▸ About EpsiCut, in three tabs: About (version and the ArtCraft community links),
 /// Contributors and Models (the credits compiled in from `contributors/contributors.json`, see
 /// `crate::credits` and docs/contributors.md).
 ///
 /// Automation ids: `about.tab.about`, `about.tab.contributors`, `about.tab.models`; the About tab's
 /// links and the credits controls are listed on [`about_tab`] and [`crate::credits::contributors_ui`].
-fn about(app: &mut FilmcraftApp, ui: &mut egui::Ui) {
+fn about(app: &mut EpsicutApp, ui: &mut egui::Ui) {
     let tab_id = egui::Id::unique("about_tab");
     let mut tab = ui.data_mut(|d| d.get_temp::<u8>(tab_id)).unwrap_or(0);
     ui.horizontal(|ui| {
@@ -455,23 +455,21 @@ fn about(app: &mut FilmcraftApp, ui: &mut egui::Ui) {
     }
 }
 
-/// About ▸ About: version, licence and the ArtCraft community links. Joining the Discord is the
-/// first, accented button.
+/// About ▸ About: version, licence and the project links.
 ///
-/// Automation ids: `about.discord`, `about.website`, `about.appPage`, `about.github`,
-/// `about.reportIssue`.
-fn about_tab(app: &mut FilmcraftApp, ui: &mut egui::Ui) {
+/// Automation ids: `about.github`, `about.reportIssue`.
+fn about_tab(app: &mut EpsicutApp, ui: &mut egui::Ui) {
     use crate::icons::{self, Icon};
     use crate::links;
     let t = app.tokens;
     ui.set_width(380.0);
-    // ArtCraft wordmark (first-party trademark, docs/brand/).
+    // EpsiCut wordmark: the app icon and the name.
     let (r, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 30.0), egui::Sense::hover());
     crate::brand::paint_wordmark(ui, egui::pos2(r.min.x, r.center().y), 20.0, app.ui.dark);
     ui.add_space(6.0);
-    ui.heading("FilmCraft");
+
     ui.label(tlf!("Version {version}", version = env!("CARGO_PKG_VERSION")));
-    ui.label(tl!("A clean-room, pure-Rust non-linear video editor. Part of the ArtCraft family."));
+    ui.label(tl!("A clean-room, pure-Rust non-linear video editor."));
     ui.add_space(10.0);
     let mut link = |ui: &mut egui::Ui, id: &str, icon: Icon, label: &str, url: &str, primary: bool| {
         let size = egui::vec2(ui.available_width(), if primary { 36.0 } else { 28.0 });
@@ -500,11 +498,8 @@ fn about_tab(app: &mut FilmcraftApp, ui: &mut egui::Ui) {
             links::open(app, ui.ctx(), url);
         }
     };
-    link(ui, "discord", Icon::Chat, tl!("Join the ArtCraft Discord"), links::DISCORD, true);
+    link(ui, "github", Icon::Code, tl!("Source code on GitHub"), links::GITHUB, true);
     ui.add_space(6.0);
-    link(ui, "website", Icon::Globe, "getartcraft.com", links::WEBSITE, false);
-    link(ui, "appPage", Icon::Globe, tl!("FilmCraft on getartcraft.com"), links::APP_PAGE, false);
-    link(ui, "github", Icon::Code, tl!("Source code on GitHub"), links::GITHUB, false);
     link(ui, "reportIssue", Icon::Code, tl!("Report an issue"), links::ISSUES, false);
     ui.add_space(10.0);
     ui.label(egui::RichText::new(tl!("MIT OR Apache-2.0. Fonts: Inter, Noto Serif and JetBrains Mono (SIL OFL 1.1).")).small().color(t.text_dim));

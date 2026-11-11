@@ -14,7 +14,7 @@
 
 use serde_json::{Map, Value, json};
 
-use filmcraft_project::{ClipId, ItemId, ParamValue};
+use epsicut_project::{ClipId, ItemId, ParamValue};
 
 use crate::commands::{CommandSpec, always, bad, bool_p, secs_ms, str_p};
 use crate::{EngineError, Result, Session};
@@ -279,7 +279,7 @@ fn reframe(s: &mut Session, focus_x: f64) -> Result<usize> {
                 && let Some(prm) = it.effect_mut("motion").and_then(|m| m.param_mut("position"))
             {
                 prm.keyframes.clear();
-                prm.value = ParamValue::Vec2(filmcraft_geom::Vec2::new(*x, fh / 2.0));
+                prm.value = ParamValue::Vec2(epsicut_geom::Vec2::new(*x, fh / 2.0));
             }
         }
         Ok(())

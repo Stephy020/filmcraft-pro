@@ -1,6 +1,6 @@
 use super::settings::{DragOptions, combo, drag};
 use super::{
-    Align2, CUSTOM, Color32, ExportUi, FilmcraftApp, FrameKey, Rect, Reg, Scaling, Sense, Target, Tick, Tokens, active_export_job, export_params, format_bytes,
+    Align2, CUSTOM, Color32, EpsicutApp, ExportUi, FrameKey, Rect, Reg, Scaling, Sense, Target, Tick, Tokens, active_export_job, export_params, format_bytes,
     is_export_busy, json, output_path, pos2, vec2,
 };
 
@@ -10,7 +10,7 @@ use super::{
 
 pub(crate) const RANGES: [(&str, &str); 4] = [("entire", "Entire Source"), ("inOut", "Source In/Out"), ("workArea", "Work Area"), ("custom", "Custom")];
 
-pub(super) fn preview_column(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, seq_id: filmcraft_engine::project::ItemId) {
+pub(super) fn preview_column(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect, seq_id: epsicut_engine::project::ItemId) {
     let t = app.tokens;
     let mut reg = Reg::default();
     let Some(q) = app.session.active_sequence().cloned() else { return };
@@ -66,7 +66,7 @@ pub(super) fn preview_column(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Re
                 drag(ui, &mut reg, "export.range.end", &mut ex.custom_end, DragOptions { range: 0.0..=86_400.0, speed: 0.04, suffix: " s", decimals: 2 });
             }
             let (start, end) = range_ticks(ex, &q);
-            let span = filmcraft_time::TimeRange::from_bounds(start, end);
+            let span = epsicut_time::TimeRange::from_bounds(start, end);
             let frames = rate.frame_at(end - Tick(1)).saturating_add(1).saturating_sub(rate.frame_at(start)).max(0);
             let seconds = format!("{:.3}", span.duration.seconds());
             let label = if frames == 1 {
@@ -78,7 +78,7 @@ pub(super) fn preview_column(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Re
             reg.add("export.range.duration", resp.rect, label);
         });
         let (start, end) = range_ticks(ex, &q);
-        if ex.range == "inOut" && filmcraft_engine::export_tools::single_frame_in_out(&q, filmcraft_time::TimeRange::from_bounds(start, end)) {
+        if ex.range == "inOut" && epsicut_engine::export_tools::single_frame_in_out(&q, epsicut_time::TimeRange::from_bounds(start, end)) {
             let warning = tl!("Source In/Out is only 1 frame. Choose Entire Source to export the whole sequence.");
             let resp = child.add(egui::Label::new(egui::RichText::new(warning).color(t.danger)).wrap());
             reg.add("export.range.warning", resp.rect, warning);
@@ -211,7 +211,7 @@ pub(super) fn preview_column(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Re
 }
 
 /// The export range in sequence ticks (for the summary).
-fn range_ticks(ex: &ExportUi, q: &filmcraft_engine::project::Sequence) -> (Tick, Tick) {
+fn range_ticks(ex: &ExportUi, q: &epsicut_engine::project::Sequence) -> (Tick, Tick) {
     let fd = q.settings.frame_rate.frame_duration();
     let end = q.duration().max(fd);
     match ex.range.as_str() {

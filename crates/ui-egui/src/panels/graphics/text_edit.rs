@@ -1,8 +1,8 @@
 use super::ime::{graphics_ime_target, ime_event_is_stale, local_reset_destination};
 use super::overlay::{TEXT_EDIT_ID, end_edit};
-use super::{FilmcraftApp, GfxEdit, ImeTarget, LayerContent, LayerSpec, LayerView, Rect, Sense, json, text_layout};
+use super::{EpsicutApp, GfxEdit, ImeTarget, LayerContent, LayerSpec, LayerView, Rect, Sense, json, text_layout};
 
-pub(super) fn text_of(spec: &LayerSpec) -> Option<&filmcraft_project::graphic::TextProps> {
+pub(super) fn text_of(spec: &LayerSpec) -> Option<&epsicut_project::graphic::TextProps> {
     match &spec.content {
         LayerContent::Text(t) => Some(t),
         _ => None,
@@ -57,7 +57,7 @@ impl TextEditState {
 
 /// The per-event prologue: sync the live destination, consume IME-reset completions, and reject
 /// events while a reset blocks IME input. `None` is the original loop's `continue`.
-fn begin_text_event(app: &mut FilmcraftApp, ui: &egui::Ui, state: &TextEditState, target: ImeTarget, event: &egui::Event) -> Option<(bool, bool)> {
+fn begin_text_event(app: &mut EpsicutApp, ui: &egui::Ui, state: &TextEditState, target: ImeTarget, event: &egui::Event) -> Option<(bool, bool)> {
     let destination = local_reset_destination(app, &state.ed, &state.text, target);
     if state.custom_mutations {
         app.sync_live_ime_destination(ui.ctx(), destination);
@@ -80,7 +80,7 @@ fn begin_text_event(app: &mut FilmcraftApp, ui: &egui::Ui, state: &TextEditState
 
 /// The per-step epilogue: remember or terminal-acknowledge an IME step's destination, or keep
 /// the live destination in sync for ordinary application edits.
-fn finish_text_event(app: &mut FilmcraftApp, ui: &egui::Ui, state: &TextEditState, target: ImeTarget, from_ime: bool, terminal: bool) {
+fn finish_text_event(app: &mut EpsicutApp, ui: &egui::Ui, state: &TextEditState, target: ImeTarget, from_ime: bool, terminal: bool) {
     let current = local_reset_destination(app, &state.ed, &state.text, target);
     if from_ime {
         if terminal {
@@ -95,7 +95,7 @@ fn finish_text_event(app: &mut FilmcraftApp, ui: &egui::Ui, state: &TextEditStat
 
 /// Track this viewport's IME preedit target. Empty preedit becomes `TerminalPending` so a
 /// following empty commit still belongs to the same composition; non-empty becomes `Active`.
-fn apply_preedit(app: &mut FilmcraftApp, viewport: egui::ViewportId, target: ImeTarget, text: &str) {
+fn apply_preedit(app: &mut EpsicutApp, viewport: egui::ViewportId, target: ImeTarget, text: &str) {
     app.ime_composition_viewport = Some(viewport);
     if text.is_empty() {
         app.ime_composition = Some(crate::ImeComposition::TerminalPending(target));
@@ -107,7 +107,7 @@ fn apply_preedit(app: &mut FilmcraftApp, viewport: egui::ViewportId, target: Ime
 /// Apply a UTF-8 byte-count surrounding deletion after the staleness check. Only whole
 /// characters fully inside the reported byte ranges are removed, the selection is preserved
 /// and a stale event skips.
-fn apply_delete_surrounding_bytes(app: &FilmcraftApp, state: &mut TextEditState, target: ImeTarget, before_bytes: usize, after_bytes: usize) -> EventFlow {
+fn apply_delete_surrounding_bytes(app: &EpsicutApp, state: &mut TextEditState, target: ImeTarget, before_bytes: usize, after_bytes: usize) -> EventFlow {
     if ime_event_is_stale(app, target) {
         return EventFlow::Skip;
     }
@@ -122,7 +122,7 @@ fn apply_delete_surrounding_bytes(app: &FilmcraftApp, state: &mut TextEditState,
 
 /// Apply a character-count surrounding deletion after the staleness check. The selection is
 /// preserved, deletion stops at either text end, and a stale event skips.
-fn apply_delete_surrounding_chars(app: &FilmcraftApp, state: &mut TextEditState, target: ImeTarget, before_chars: usize, after_chars: usize) -> EventFlow {
+fn apply_delete_surrounding_chars(app: &EpsicutApp, state: &mut TextEditState, target: ImeTarget, before_chars: usize, after_chars: usize) -> EventFlow {
     if ime_event_is_stale(app, target) {
         return EventFlow::Skip;
     }
@@ -155,7 +155,7 @@ fn apply_text_input(state: &mut TextEditState, input: &str) -> EventFlow {
 
 /// Apply an IME commit after the staleness check: clear the composition, insert sanitized
 /// committed text, or delete the selection when the commit is empty; a stale commit skips.
-fn apply_ime_commit(app: &mut FilmcraftApp, state: &mut TextEditState, target: ImeTarget, input: &str) -> EventFlow {
+fn apply_ime_commit(app: &mut EpsicutApp, state: &mut TextEditState, target: ImeTarget, input: &str) -> EventFlow {
     if ime_event_is_stale(app, target) {
         return EventFlow::Skip;
     }
@@ -194,7 +194,7 @@ fn apply_copy_cut(ui: &egui::Ui, state: &mut TextEditState, cut: bool) -> EventF
 
 /// Caret destination for Left: with no Shift collapse a selection to its start, otherwise
 /// move to the line start (Command), previous word (Alt) or previous character boundary.
-fn left_target(state: &TextEditState, layout: &filmcraft_text::Layout, shift: bool, command: bool, alt: bool) -> usize {
+fn left_target(state: &TextEditState, layout: &epsicut_text::Layout, shift: bool, command: bool, alt: bool) -> usize {
     let (a, _) = state.selection();
     if !shift && state.ed.caret != state.ed.anchor {
         a
@@ -209,7 +209,7 @@ fn left_target(state: &TextEditState, layout: &filmcraft_text::Layout, shift: bo
 
 /// Caret destination for Right: with no Shift collapse a selection to its end, otherwise
 /// move to the line end (Command), next word (Alt) or next character boundary.
-fn right_target(state: &TextEditState, layout: &filmcraft_text::Layout, shift: bool, command: bool, alt: bool) -> usize {
+fn right_target(state: &TextEditState, layout: &epsicut_text::Layout, shift: bool, command: bool, alt: bool) -> usize {
     let (_, b) = state.selection();
     if !shift && state.ed.caret != state.ed.anchor {
         b
@@ -224,7 +224,7 @@ fn right_target(state: &TextEditState, layout: &filmcraft_text::Layout, shift: b
 
 /// Caret destination for Up/Down: hit-test the same x on the adjacent line's baseline,
 /// clamping to the text start/end when there is no line in that direction.
-fn vertical_target(state: &TextEditState, layout: &filmcraft_text::Layout, up: bool) -> usize {
+fn vertical_target(state: &TextEditState, layout: &epsicut_text::Layout, up: bool) -> usize {
     let (x, _, line) = layout.caret(state.ed.caret);
     let target = if up { line.checked_sub(1) } else { Some(line + 1).filter(|next| *next < layout.lines.len()) };
     match target {
@@ -237,7 +237,7 @@ fn vertical_target(state: &TextEditState, layout: &filmcraft_text::Layout, up: b
 /// Apply a layout-derived caret destination after re-clamping it to a UTF-8 boundary in the
 /// current (possibly already edited) text. Without Shift the anchor collapses to the caret;
 /// any actual selection change invalidates the IME composition.
-fn apply_moved_caret(app: &mut FilmcraftApp, state: &mut TextEditState, moved: Option<usize>, shift: bool) {
+fn apply_moved_caret(app: &mut EpsicutApp, state: &mut TextEditState, moved: Option<usize>, shift: bool) {
     if let Some(m) = moved {
         let previous_selection = (state.ed.caret, state.ed.anchor);
         // `m` comes from the layout of the text at the start of this batch, but an
@@ -257,10 +257,10 @@ fn apply_moved_caret(app: &mut FilmcraftApp, state: &mut TextEditState, moved: O
 /// Command+A selects all and arrows/Home/End move the caret. Text edits mark an application
 /// mutation; Escape stops editing and suspends IME input. Only Escape returns `Skip`.
 fn apply_key_event(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &egui::Ui,
     state: &mut TextEditState,
-    layout: &filmcraft_text::Layout,
+    layout: &epsicut_text::Layout,
     key: egui::Key,
     modifiers: egui::Modifiers,
 ) -> EventFlow {
@@ -388,11 +388,11 @@ fn step_origin(step: &TextStep, commits: &mut Vec<String>) -> (bool, bool) {
 /// Apply one step. `Skip` is a stale or empty input-method or text step, which leaves the IME
 /// destination as it was.
 fn apply_text_step(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &egui::Ui,
     state: &mut TextEditState,
     target: ImeTarget,
-    layout: &filmcraft_text::Layout,
+    layout: &epsicut_text::Layout,
     step: TextStep,
     from_ime: bool,
 ) -> EventFlow {
@@ -425,7 +425,7 @@ fn apply_text_step(
 }
 
 /// Keyboard handling while a text layer is being edited.
-pub(super) fn text_edit(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &LayerView, ed: GfxEdit, resp: &egui::Response) {
+pub(super) fn text_edit(app: &mut EpsicutApp, ui: &mut egui::Ui, v: &LayerView, ed: GfxEdit, resp: &egui::Response) {
     let _ = resp;
     let window_focused = ui.input(|input| input.viewport().focused.unwrap_or(input.focused));
     if !window_focused || app.ime_modal_blocks_input() || !ui.is_enabled() {
@@ -550,7 +550,7 @@ pub(super) fn text_edit(app: &mut FilmcraftApp, ui: &mut egui::Ui, v: &LayerView
 
 /// The editor doesn't take the keyboard in this pass: the composer turns the IME off, and the
 /// fence's controls stay inert.
-fn ime_off(app: &mut FilmcraftApp, ui: &egui::Ui) {
+fn ime_off(app: &mut EpsicutApp, ui: &egui::Ui) {
     let _ = app.ime_composer.update(ui.ctx(), false);
     app.suspended_ime_controls(ui.ctx());
 }
@@ -563,7 +563,7 @@ pub(super) fn clamp_edit_offsets(text: &str, ed: &mut GfxEdit) {
 
 /// The two ranges `DeleteSurroundingBytes` deletes: whole characters fully contained in the
 /// bytes before and after the sorted selection. The selection itself and any pre-edit (absent
-/// from FilmCraft's committed model) are excluded. A byte count that ends inside a character
+/// from EpsiCut's committed model) are excluded. A byte count that ends inside a character
 /// leaves that character whole.
 pub(super) fn surrounding_byte_deletion_ranges(
     text: &str,

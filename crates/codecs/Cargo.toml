@@ -1,5 +1,5 @@
 [package]
-name = "filmcraft-codecs"
+name = "epsicut-codecs"
 description = "Container + codec hub: MP4/MOV, Matroska, MXF, Ogg and MPEG TS/PS sources, image sequences, GOP-aware seeking, decoder registry, audio decoding"
 version.workspace = true
 edition.workspace = true
@@ -10,30 +10,30 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-filmcraft-time = { workspace = true }
-filmcraft-color = { workspace = true }
-filmcraft-frame = { workspace = true }
-filmcraft-media = { workspace = true }
-filmcraft-avi = { workspace = true }
-filmcraft-isobmff = { workspace = true }
-filmcraft-matroska = { workspace = true }
-filmcraft-mxf = { workspace = true }
-filmcraft-mpegts = { workspace = true }
-filmcraft-mpeg2v = { workspace = true }
-filmcraft-ac3 = { workspace = true }
-filmcraft-mpa = { workspace = true }
-filmcraft-ogg = { workspace = true }
-filmcraft-bitstream = { workspace = true }
-filmcraft-h264 = { workspace = true }
-filmcraft-hevc = { workspace = true }
-filmcraft-vp8 = { workspace = true }
-filmcraft-vp9 = { workspace = true }
-filmcraft-prores = { workspace = true }
-filmcraft-dnx = { workspace = true }
-filmcraft-av1 = { workspace = true }
-filmcraft-apv = { workspace = true }
-filmcraft-aac = { workspace = true }
-filmcraft-opus = { workspace = true }
+epsicut-time = { workspace = true }
+epsicut-color = { workspace = true }
+epsicut-frame = { workspace = true }
+epsicut-media = { workspace = true }
+epsicut-avi = { workspace = true }
+epsicut-isobmff = { workspace = true }
+epsicut-matroska = { workspace = true }
+epsicut-mxf = { workspace = true }
+epsicut-mpegts = { workspace = true }
+epsicut-mpeg2v = { workspace = true }
+epsicut-ac3 = { workspace = true }
+epsicut-mpa = { workspace = true }
+epsicut-ogg = { workspace = true }
+epsicut-bitstream = { workspace = true }
+epsicut-h264 = { workspace = true }
+epsicut-hevc = { workspace = true }
+epsicut-vp8 = { workspace = true }
+epsicut-vp9 = { workspace = true }
+epsicut-prores = { workspace = true }
+epsicut-dnx = { workspace = true }
+epsicut-av1 = { workspace = true }
+epsicut-apv = { workspace = true }
+epsicut-aac = { workspace = true }
+epsicut-opus = { workspace = true }
 rayon = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
@@ -44,5 +44,5 @@ image = { version = "0.25", default-features = false, features = ["jpeg"] }
 symphonia = { version = "0.5.5", default-features = false, features = ["aac", "mp1", "mp2", "mp3", "flac", "alac", "pcm", "wav", "aiff", "ogg", "vorbis", "isomp4"] }
 
 [dev-dependencies]
-filmcraft-testkit = { workspace = true }
+epsicut-testkit = { workspace = true }
 serde_json = { workspace = true }

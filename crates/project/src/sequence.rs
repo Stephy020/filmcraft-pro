@@ -24,11 +24,11 @@ pub struct SequenceSettings {
     /// Colour pipeline: working space (Rec. 709 / Rec. 2100 PQ / HLG), wide-gamut compositing,
     /// Auto Tone Map Media.
     #[serde(default = "default_color_pipeline")]
-    pub color: filmcraft_color::ColorPipeline,
+    pub color: epsicut_color::ColorPipeline,
 }
 
-fn default_color_pipeline() -> filmcraft_color::ColorPipeline {
-    filmcraft_color::ColorPipeline::REC709
+fn default_color_pipeline() -> epsicut_color::ColorPipeline {
+    epsicut_color::ColorPipeline::REC709
 }
 
 impl Default for SequenceSettings {
@@ -46,7 +46,7 @@ impl Default for SequenceSettings {
             max_bit_depth: false,
             max_render_quality: false,
             working_space: "Rec. 709".into(),
-            color: filmcraft_color::ColorPipeline::REC709,
+            color: epsicut_color::ColorPipeline::REC709,
         }
     }
 }

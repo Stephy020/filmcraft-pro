@@ -1,7 +1,7 @@
 //! Sequence review notes as a spreadsheet-safe CSV, using the host's atomic file service.
 
-use filmcraft_project::Label;
-use filmcraft_time::{Tick, format_timecode_frames};
+use epsicut_project::Label;
+use epsicut_time::{Tick, format_timecode_frames};
 use serde_json::{Value, json};
 
 use crate::commands::bad;
@@ -97,16 +97,16 @@ pub(crate) fn export(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"path": path, "markers": seq.markers.len(), "bytes": csv.len()}))
 }
 
-fn marker_color_name(s: &Session, marker: &filmcraft_project::Marker) -> String {
-    marker.custom_color.map_or_else(|| label_name(s, marker.color).to_string(), filmcraft_project::HexColor::hex)
+fn marker_color_name(s: &Session, marker: &epsicut_project::Marker) -> String {
+    marker.custom_color.map_or_else(|| label_name(s, marker.color).to_string(), epsicut_project::HexColor::hex)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Services;
-    use filmcraft_project::{Label, Marker, MarkerId, MarkerKind};
-    use filmcraft_time::FrameRate;
+    use epsicut_project::{Label, Marker, MarkerId, MarkerKind};
+    use epsicut_time::FrameRate;
     use std::sync::{Arc, Mutex};
 
     #[derive(Default)]
@@ -161,7 +161,7 @@ mod tests {
         let files = Arc::new(Files::default());
         let mut s = session(files.clone());
         let mut m = marker(100, Tick::ZERO, Tick::ZERO, "Note");
-        m.custom_color = filmcraft_project::HexColor::parse("#ffffff");
+        m.custom_color = epsicut_project::HexColor::parse("#ffffff");
         m.author = "Editor 日本語".into();
         m.url = "https://example.com/review?q=1,2&take=\"B\"".into();
         set_markers(&mut s, vec![m]);
@@ -280,7 +280,7 @@ mod tests {
         assert!(files.writes.lock().unwrap().is_empty());
         s.execute(CMD, json!({"path":"recovered.csv"})).unwrap();
     }
-    fn q_reset(s: &mut Session, id: filmcraft_project::ItemId) {
+    fn q_reset(s: &mut Session, id: epsicut_project::ItemId) {
         let q = Arc::make_mut(&mut s.project).sequence_mut(id).unwrap();
         q.start_timecode = 0;
         q.markers.clear();

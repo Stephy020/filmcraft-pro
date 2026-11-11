@@ -247,9 +247,9 @@ mod tests {
                     chroma: Chroma::C420,
                     alpha: None,
                 },
-                color: filmcraft_color::ColorInfo::SRGB_FULL,
+                color: epsicut_color::ColorInfo::SRGB_FULL,
                 par: (1, 1),
-                pts: filmcraft_time::Tick::ZERO,
+                pts: epsicut_time::Tick::ZERO,
             })
         };
         let plane_ptrs = |frame: &VideoFrame| match &frame.data {

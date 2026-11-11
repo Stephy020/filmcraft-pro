@@ -11,7 +11,7 @@ pub struct GeneralPrefs {
     /// `zh-cn`, `de`, `ru`, `fr`, `id`, `it`, `ko`, `cs`, `pl`, `sv`, `tr`, or `system` (the default: the operating system's preferred language when the
     /// interface has it, otherwise English).
     pub interface_language: String,
-    /// "At Startup": `showHome` (FilmCraft: the demo project), `openMostRecent`, `emptyProject`.
+    /// "At Startup": `showHome` (EpsiCut: the demo project), `openMostRecent`, `emptyProject`.
     pub at_startup: String,
     /// "When Opening a Project": `showOpenDialog` | `showHome`.
     pub when_opening_project: String,
@@ -286,7 +286,7 @@ impl Default for MediaAnalysisPrefs {
             speaker_labeling: "on".into(),
             language_auto_detect: false,
             default_language: "en".into(),
-            whisper_model: filmcraft_speech::models::DEFAULT_MODEL.into(),
+            whisper_model: epsicut_speech::models::DEFAULT_MODEL.into(),
         }
     }
 }

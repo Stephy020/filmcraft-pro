@@ -12,7 +12,7 @@ fn render_scale_zero_means_no_limit() {
 async fn headless_commands_and_render() {
     let mut s = Session::default();
     s.execute("file.openDemoProject", json!({})).unwrap();
-    let m = FilmcraftMcp::headless(s);
+    let m = EpsicutMcp::headless(s);
     let v = m.run("sequence.addEditAllTracks", json!({"seconds": 2.0})).await.unwrap();
     assert!(v["cuts"].as_u64().unwrap() >= 2);
     let r = m.render_frame(Parameters(RenderParams { seconds: Some(1.0), max_side: Some(320) })).await.unwrap();
@@ -24,7 +24,7 @@ async fn headless_commands_and_render() {
 /// the frame at `seconds`.
 #[tokio::test]
 async fn rendering_at_a_time_does_not_move_the_playhead() {
-    let m = FilmcraftMcp::headless(demo());
+    let m = EpsicutMcp::headless(demo());
     m.run("sequence.selectionFollowsPlayhead", json!({"on": true})).await.unwrap();
     m.run("playhead.set", json!({"seconds": 1.0})).await.unwrap();
     let before = m.run("sequence.inspect", json!({})).await.unwrap();
@@ -51,7 +51,7 @@ impl Client {
         use tokio::io::AsyncBufReadExt;
         let (tx, server_in) = tokio::io::duplex(1 << 22);
         let (server_out, rx) = tokio::io::duplex(1 << 22);
-        tokio::spawn(FilmcraftMcp::headless(s).serve_io(server_in, server_out));
+        tokio::spawn(EpsicutMcp::headless(s).serve_io(server_in, server_out));
         Self { tx, rx: tokio::io::BufReader::new(rx).lines() }
     }
     async fn send(&mut self, line: &str) {
@@ -78,7 +78,7 @@ impl Client {
 /// #499: `media_import` takes `paths` (a required array), and forwards `bin` / `image_sequence` to `file.import`.
 #[test]
 fn media_import_schema_and_params() {
-    let m = FilmcraftMcp::headless(Session::default());
+    let m = EpsicutMcp::headless(Session::default());
     let def = m.tool_router.get("media_import").unwrap();
     let schema = Value::Object((*def.input_schema).clone());
     assert_eq!(schema["properties"]["paths"]["type"], "array", "{schema}");
@@ -101,7 +101,7 @@ fn demo() -> Session {
 async fn tools_are_titled_and_annotated() {
     let mut c = Client::start(demo());
     let init = c.init().await;
-    assert_eq!(init["result"]["serverInfo"]["name"], "filmcraft");
+    assert_eq!(init["result"]["serverInfo"]["name"], "epsicut");
     let tools = c.ask(json!({"jsonrpc":"2.0","id":1,"method":"tools/list"})).await["result"]["tools"].as_array().cloned().unwrap();
     for t in &tools {
         assert!(t["title"].is_string(), "{} has no title", t["name"]);
@@ -208,7 +208,7 @@ async fn recipe_tools() {
     assert_eq!(r["error"]["code"], -32602, "{r}");
 }
 
-/// `filmcraft://document` and `filmcraft://commands` are listed and readable as JSON.
+/// `epsicut://document` and `epsicut://commands` are listed and readable as JSON.
 #[tokio::test(flavor = "multi_thread")]
 async fn resources_document_and_commands() {
     let mut c = Client::start(demo());
@@ -224,7 +224,7 @@ async fn resources_document_and_commands() {
     assert!(v["project"].is_object() && v["sequence"].is_object(), "{v}");
     let r = c.ask(json!({"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":COMMANDS_URI}})).await;
     assert!(r["result"]["contents"][0]["text"].as_str().unwrap().contains("timeline.razor"), "{r}");
-    let r = c.ask(json!({"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"filmcraft://nope"}})).await;
+    let r = c.ask(json!({"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"epsicut://nope"}})).await;
     assert!(r["error"]["code"].is_i64(), "{r}");
 }
 
@@ -264,7 +264,7 @@ async fn modern_clients_get_result_type_and_cache_hints() {
 /// it, deletes the partial file and sends no response.
 #[tokio::test(flavor = "multi_thread")]
 async fn export_progress_and_cancel() {
-    let dir = std::env::temp_dir().join(format!("filmcraft-mcp-progress-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("epsicut-mcp-progress-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut c = Client::start(demo());
     c.init().await;
@@ -374,7 +374,7 @@ async fn export_progress_and_cancel() {
 /// "session lock poisoned" until the server was restarted.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_poisoned_session_lock_keeps_serving() {
-    let m = FilmcraftMcp::headless(demo());
+    let m = EpsicutMcp::headless(demo());
     let Backend::Headless(s) = &*m.backend else { panic!("headless backend") };
     let s = s.clone();
     let _ = std::thread::spawn(move || {
@@ -418,7 +418,7 @@ async fn doc_inspect_pins_the_sequence_to_the_reported_active_id() {
             w.write_all(line.as_bytes()).await.unwrap();
         }
     });
-    let m = FilmcraftMcp::bridge(&addr).unwrap();
+    let m = EpsicutMcp::bridge(&addr).unwrap();
     let v = m.document().await.unwrap();
     assert_eq!(v["project"]["activeSequence"], json!(21), "{v}");
     assert_eq!(v["sequence"]["id"], json!(21), "sequence must describe the reported active id, not whatever is active now: {v}");
@@ -451,7 +451,7 @@ async fn doc_inspect_handles_an_active_sequence_id_above_i64_max() {
             w.write_all(line.as_bytes()).await.unwrap();
         }
     });
-    let m = FilmcraftMcp::bridge(&addr).unwrap();
+    let m = EpsicutMcp::bridge(&addr).unwrap();
     let v = m.document().await.unwrap();
     assert_eq!(v["project"]["activeSequence"].as_u64(), Some(HUGE), "{v}");
     assert_eq!(v["sequence"]["id"].as_u64(), Some(HUGE), "an id above i64::MAX must still be inspected, not dropped to a null sequence: {v}");
@@ -501,7 +501,7 @@ async fn parallel_bridge_render_frames_each_return_their_own_frame() {
             });
         }
     });
-    let m = FilmcraftMcp::bridge(&addr).unwrap();
+    let m = EpsicutMcp::bridge(&addr).unwrap();
     let call = |seconds: f64| m.render_frame(Parameters(RenderParams { seconds: Some(seconds), max_side: Some(640) }));
     let results = tokio::join!(call(5.0), call(20.0), call(35.0), call(50.0));
     for (res, want) in [(results.0, 5u8), (results.1, 20), (results.2, 35), (results.3, 50)] {
@@ -520,7 +520,7 @@ async fn unread_parse_errors_stall_the_input() {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
     let (mut tx, server_in) = tokio::io::duplex(4096);
     let (server_out, rx) = tokio::io::duplex(4096);
-    tokio::spawn(FilmcraftMcp::headless(Session::default()).serve_io(server_in, server_out));
+    tokio::spawn(EpsicutMcp::headless(Session::default()).serve_io(server_in, server_out));
     // Each 2-byte line answers with a ~100-byte error: far more than the pipes, the read buffer and the queue hold.
     const LINES: usize = 1 << 16;
     let junk = "x\n".repeat(LINES);
@@ -552,7 +552,7 @@ async fn failed_output_stops_the_reader() {
     let (mut tx, server_in) = tokio::io::duplex(4096);
     let (server_out, rx) = tokio::io::duplex(4096);
     drop(rx);
-    let server = tokio::spawn(FilmcraftMcp::headless(Session::default()).serve_io(server_in, server_out));
+    let server = tokio::spawn(EpsicutMcp::headless(Session::default()).serve_io(server_in, server_out));
     tx.write_all(b"x\n").await.unwrap(); // `tx` stays open: only a failed output can end the server
     let ended = tokio::time::timeout(std::time::Duration::from_secs(30), server).await;
     assert!(ended.is_ok(), "the server kept reading after its output failed");

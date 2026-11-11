@@ -27,8 +27,8 @@ fn sequence_summary_is_small_and_matches_the_full_inspect() {
         assert_eq!(rows.len(), clips.len(), "{kind}");
         for (r, c) in rows.iter().zip(&clips) {
             assert_eq!((&r[0], &r[1]), (&c["clip"], &c["item"]), "{r} {c}");
-            let start = c["start"].as_i64().unwrap() as f64 / filmcraft_time::TICKS_PER_SECOND as f64;
-            let end = c["end"].as_i64().unwrap() as f64 / filmcraft_time::TICKS_PER_SECOND as f64;
+            let start = c["start"].as_i64().unwrap() as f64 / epsicut_time::TICKS_PER_SECOND as f64;
+            let end = c["end"].as_i64().unwrap() as f64 / epsicut_time::TICKS_PER_SECOND as f64;
             assert!((r[3].as_f64().unwrap() - start).abs() < 0.001 && (r[4].as_f64().unwrap() - end).abs() < 0.001, "{r} {c}");
         }
     }

@@ -4,7 +4,7 @@
 //!
 //! Names, folders and parameter names follow the public effect list; parameter ranges/defaults are
 //! our own where the reference does not pin them. Pixel implementations live in
-//! `filmcraft_render::vfx`.
+//! `epsicut_render::vfx`.
 
 use super::{
     ADJUST, BLUR, COLOR_CORR, DISTORT, EffectDef, EffectKind, GENERATE, IMAGE_CONTROL, KEYING, PERSPECTIVE, ParamDef, ParamKind, ParamValue, STYLIZE,

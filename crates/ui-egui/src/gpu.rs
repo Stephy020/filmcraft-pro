@@ -1,5 +1,5 @@
 /// Largest texture side a plan needs on the GPU (output and every layer).
-pub(crate) fn plan_side(plan: &filmcraft_render::plan::FramePlan) -> usize {
+pub(crate) fn plan_side(plan: &epsicut_render::plan::FramePlan) -> usize {
     plan.max_side()
 }
 
@@ -44,7 +44,7 @@ pub fn gpu_compositor_unsupported(adapter: &eframe::wgpu::Adapter) -> Option<Str
 
 #[cfg(test)]
 mod gpu_fallback_tests {
-    use filmcraft_render::plan::{FramePlan, PlanLayer};
+    use epsicut_render::plan::{FramePlan, PlanLayer};
 
     /// Software rasterizers must not be treated as a GPU compositor: the preview crawled while
     /// "GPU" usage read 0 % because wgpu had silently fallen back to llvmpipe.
@@ -62,12 +62,12 @@ mod gpu_fallback_tests {
 
     #[test]
     fn plan_side_covers_output_and_every_layer() {
-        let frame = |w: u32, h: u32| std::sync::Arc::new(filmcraft_frame::VideoFrame::rgba_f32(w, h, vec![0.0; (w * h * 4) as usize]));
+        let frame = |w: u32, h: u32| std::sync::Arc::new(epsicut_frame::VideoFrame::rgba_f32(w, h, vec![0.0; (w * h * 4) as usize]));
         let layer = |w, h| PlanLayer {
             frame: frame(w, h),
-            matrix: filmcraft_geom::Affine::IDENTITY,
+            matrix: epsicut_geom::Affine::IDENTITY,
             opacity: 1.0,
-            blend: filmcraft_render::Blend::Normal,
+            blend: epsicut_render::Blend::Normal,
             fx: None,
             input: None,
         };
@@ -76,7 +76,7 @@ mod gpu_fallback_tests {
         assert_eq!(super::plan_side(&p), 3840);
         let p = FramePlan::Layers { width: 1920, height: 1080, layers: vec![] };
         assert_eq!(super::plan_side(&p), 1920);
-        let p = FramePlan::Image(filmcraft_render::Image::new(800, 4000));
+        let p = FramePlan::Image(epsicut_render::Image::new(800, 4000));
         assert_eq!(super::plan_side(&p), 4000);
     }
 }

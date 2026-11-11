@@ -10,12 +10,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use filmcraft_edit as edit;
-use filmcraft_project::{
+use epsicut_edit as edit;
+use epsicut_project::{
     AudioChannelMap, AudioChannels, BinEntry, ClipId, FieldOptions, FieldProcessing, ItemId, ItemKind, Label, MediaClip, MediaRef, ParamValue, Project,
     TimeInterpolation, TrackItem, TrackKind,
 };
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange, parse_timecode};
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeRange, parse_timecode};
 use serde_json::{Value, json};
 
 use crate::commands::{

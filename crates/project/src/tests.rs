@@ -1,9 +1,9 @@
 use super::*;
-use filmcraft_media::{DemoScene, MediaSource};
+use epsicut_media::{DemoScene, MediaSource};
 
 fn demo_project() -> (Project, ItemId, ItemId) {
     let mut p = Project::new("Test");
-    let src = filmcraft_media::generators::GeneratorSource::demo(DemoScene::OceanSunset);
+    let src = epsicut_media::generators::GeneratorSource::demo(DemoScene::OceanSunset);
     let info = src.info().clone();
     let clip = p.add_item(
         "Ocean_Sunset.mp4",

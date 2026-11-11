@@ -1,6 +1,6 @@
-# filmcraft-codecs
+# epsicut-codecs
 
-The L2 container and codec hub connects media sources to FilmCraft's software and registered
+The L2 container and codec hub connects media sources to EpsiCut's software and registered
 hardware decoders. It provides container openers, GOP-aware video seeking, packet audio decoding
 and standalone audio imports. See the crate-level API documentation in `src/lib.rs` and
 [`docs/architecture.md`](../../docs/architecture.md) for the source and decoder interfaces.
@@ -38,7 +38,7 @@ are generated in memory. Existing MP3, AIFF, FLAC and Vorbis tests cover the nor
 audio paths with FFmpeg used only as an external fixture generator/oracle.
 
 ```sh
-cargo test -p filmcraft-codecs --lib audio::panic_tests
-FILMCRAFT_REQUIRE_ORACLES=1 cargo test -p filmcraft-codecs
+cargo test -p epsicut-codecs --lib audio::panic_tests
+EPSICUT_REQUIRE_ORACLES=1 cargo test -p epsicut-codecs
 cargo xtask ci
 ```

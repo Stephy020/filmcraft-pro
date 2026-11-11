@@ -2,7 +2,7 @@
 //! creates a text layer on the Program monitor, typing and keys edit it, the Properties panel's
 //! controls style it, the Selection tool moves it.
 //!
-//! With `FILMCRAFT_UI_SHOTS=<dir>` the test also renders the UI with wgpu (works without a
+//! With `EPSICUT_UI_SHOTS=<dir>` the test also renders the UI with wgpu (works without a
 //! window or an unlocked screen) and writes PNGs there for review.
 
 use std::sync::mpsc::{Sender, channel};
@@ -10,13 +10,13 @@ use std::sync::mpsc::{Sender, channel};
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     shots: Option<std::path::PathBuf>,
 }
@@ -26,8 +26,8 @@ impl Driver {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
-        let shots = std::env::var_os("FILMCRAFT_UI_SHOTS").map(std::path::PathBuf::from);
+        let app = EpsicutApp::new(session).with_control(rx);
+        let shots = std::env::var_os("EPSICUT_UI_SHOTS").map(std::path::PathBuf::from);
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000);
         if shots.is_some() {
             b = b.wgpu().with_pixels_per_point(1.0);
@@ -169,7 +169,7 @@ fn choice_and_stroke_width_accessible_names_follow_language() {
 
     d.exec("prefs.set", json!({"key": "general.interfaceLanguage", "value": "es"}));
     d.frames(4);
-    let es = filmcraft_ui_egui::i18n::Language::Es;
+    let es = epsicut_ui_egui::i18n::Language::Es;
     for (label, value) in [("Shape", "Rectangle"), ("Fill Type", "Solid"), ("Stroke Type", "Outer"), ("Stroke 2 Type", "Outer")] {
         assert_eq!(
             d.harness.get_by_role_and_label(Role::ComboBox, es.tr(label)).value().as_deref(),
@@ -212,7 +212,7 @@ fn choice_and_stroke_width_accessible_names_follow_language() {
         Some("10.0"),
         "the second stroke width editor has its own translated label"
     );
-    filmcraft_ui_egui::i18n::set_current(filmcraft_ui_egui::i18n::Language::En);
+    epsicut_ui_egui::i18n::set_current(epsicut_ui_egui::i18n::Language::En);
 }
 
 /// Effect Controls' Text parameter (graphic layers' Source Text / name / font fields) names its
@@ -228,7 +228,7 @@ fn effect_controls_text_accessible_name_follows_language() {
 
     d.exec("prefs.set", json!({"key": "general.interfaceLanguage", "value": "es"}));
     d.frames(4);
-    let es = filmcraft_ui_egui::i18n::Language::Es;
+    let es = epsicut_ui_egui::i18n::Language::Es;
     assert_eq!(
         d.harness.get_by_role_and_label(Role::TextInput, es.tr("Source Text")).value().as_deref(),
         Some("Night Drive"),
@@ -239,15 +239,15 @@ fn effect_controls_text_accessible_name_follows_language() {
         elements.as_array().unwrap().iter().any(|e| e["id"].as_str().is_some_and(|id| id.ends_with(".text"))),
         "the Source Text automation id is unchanged: {elements}"
     );
-    filmcraft_ui_egui::i18n::set_current(filmcraft_ui_egui::i18n::Language::En);
+    epsicut_ui_egui::i18n::set_current(epsicut_ui_egui::i18n::Language::En);
 }
 
 /// The value of `param` on the text layer of graphic clip `clip`, at its first frame.
-fn text_param(d: &mut Driver, clip: u64, param: &str) -> Option<filmcraft_project::ParamValue> {
+fn text_param(d: &mut Driver, clip: u64, param: &str) -> Option<epsicut_project::ParamValue> {
     let s = &d.harness.state().session;
-    let (_, it) = s.active_sequence()?.find_item(filmcraft_project::ClipId(clip))?;
+    let (_, it) = s.active_sequence()?.find_item(epsicut_project::ClipId(clip))?;
     let e = it.effects.iter().find(|e| e.effect == "graphic_text")?;
-    Some(e.param(param)?.value_at(filmcraft_time::Tick::ZERO))
+    Some(e.param(param)?.value_at(epsicut_time::Tick::ZERO))
 }
 
 /// A drag of a property in the Properties panel is one undo step, so one Cmd+Z restores the
@@ -568,7 +568,7 @@ fn the_tracking_stopwatch_animates_letter_spacing() {
     }
     let keys = |d: &mut Driver| -> Vec<(i64, f64)> {
         let s = &d.harness.state().session;
-        let (_, it) = s.active_sequence().unwrap().find_item(filmcraft_project::ClipId(clip)).unwrap();
+        let (_, it) = s.active_sequence().unwrap().find_item(epsicut_project::ClipId(clip)).unwrap();
         let e = it.effects.iter().find(|e| e.effect == "graphic_text").unwrap();
         e.params.get("tracking").map(|p| p.keyframes.iter().map(|k| (k.time.0, k.value.as_f64().unwrap())).collect()).unwrap_or_default()
     };
@@ -593,9 +593,9 @@ fn the_tracking_stopwatch_animates_letter_spacing() {
     // letter spacing now animates: halfway between the keyframes the value is in between
     let mid = {
         let s = &d.harness.state().session;
-        let (_, it) = s.active_sequence().unwrap().find_item(filmcraft_project::ClipId(clip)).unwrap();
+        let (_, it) = s.active_sequence().unwrap().find_item(epsicut_project::ClipId(clip)).unwrap();
         let e = it.effects.iter().find(|e| e.effect == "graphic_text").unwrap();
-        e.param("tracking").unwrap().value_at(filmcraft_time::Tick((k[0].0 + k[1].0) / 2)).as_f64().unwrap()
+        e.param("tracking").unwrap().value_at(epsicut_time::Tick((k[0].0 + k[1].0) / 2)).as_f64().unwrap()
     };
     assert!(mid > 0.0 && mid < k[1].1, "{mid} between 0 and {}", k[1].1);
     d.ok("ui.click", json!({"id": "graphics.prop.tracking.stopwatch"}));
@@ -638,9 +638,9 @@ fn the_text_panels_graphics_tab_lists_and_edits_graphic_text() {
     // the timecode goes to the clip and selects its layer
     d.ok("ui.click", json!({"id": format!("text.graphics.{credits}.0.goto")}));
     d.frames(3);
-    let start = d.harness.state().session.active_sequence().unwrap().find_item(filmcraft_project::ClipId(credits)).unwrap().1.start;
+    let start = d.harness.state().session.active_sequence().unwrap().find_item(epsicut_project::ClipId(credits)).unwrap().1.start;
     assert_eq!(d.harness.state().session.playhead(), start);
-    assert_eq!(d.harness.state().session.state.selection, vec![filmcraft_project::ClipId(credits)]);
+    assert_eq!(d.harness.state().session.state.selection, vec![epsicut_project::ClipId(credits)]);
     assert_eq!(d.harness.state().session.state.graphic_layers, vec![0]);
     // edit the title's text in place
     let undo0 = d.exec("history.list", json!({}))["undo"].as_array().unwrap().len();
@@ -650,7 +650,7 @@ fn the_text_panels_graphics_tab_lists_and_edits_graphic_text() {
     d.ok("ui.click", json!({"id": "text.graphics.search"}));
     d.frames(3);
     let text = text_param(&mut d, title, "text");
-    assert_eq!(text, Some(filmcraft_project::ParamValue::Text("Night Drive".into())));
+    assert_eq!(text, Some(epsicut_project::ParamValue::Text("Night Drive".into())));
     assert_eq!(d.exec("history.list", json!({}))["undo"].as_array().unwrap().len(), undo0 + 1, "one undo step");
     assert_eq!(rows(&mut d), ["Night Drive", "Closing credits"]);
     d.shot("text-panel-graphics");
@@ -665,7 +665,7 @@ fn a_graphics_tab_edit_writes_keyframed_text_where_it_is_shown() {
     d.ok("ui.set", json!({"workspace": "Captions and Graphics"}));
     d.exec("playhead.set", json!({"seconds": 1.0}));
     let clip = d.exec("graphics.newText", json!({"text": "Start", "seconds": 2}))["clip"].as_u64().unwrap();
-    let it = d.harness.state().session.active_sequence().unwrap().find_item(filmcraft_project::ClipId(clip)).unwrap().1.clone();
+    let it = d.harness.state().session.active_sequence().unwrap().find_item(epsicut_project::ClipId(clip)).unwrap().1.clone();
     // animate the text: "Start" at the clip's start, "End" near its end
     d.exec("effects.toggleAnimation", json!({"clip": clip, "effect": "graphic_text", "param": "text"}));
     let late = it.start.0 + (it.duration.0 * 9) / 10;
@@ -680,12 +680,12 @@ fn a_graphics_tab_edit_writes_keyframed_text_where_it_is_shown() {
     d.ok("ui.click", json!({"id": "text.graphics.search"}));
     d.frames(3);
     let at = |d: &mut Driver, t: i64| {
-        let it = d.harness.state().session.active_sequence().unwrap().find_item(filmcraft_project::ClipId(clip)).unwrap().1.clone();
-        let mt = it.effect_time_at(filmcraft_time::Tick(t));
+        let it = d.harness.state().session.active_sequence().unwrap().find_item(epsicut_project::ClipId(clip)).unwrap().1.clone();
+        let mt = it.effect_time_at(epsicut_time::Tick(t));
         it.effects.iter().find(|e| e.effect == "graphic_text").unwrap().param("text").unwrap().value_at(mt)
     };
-    assert_eq!(at(&mut d, it.start.0), filmcraft_project::ParamValue::Text("Edited".into()), "the shown (start) value changed");
-    assert_eq!(at(&mut d, late), filmcraft_project::ParamValue::Text("End".into()), "the end keeps its own");
+    assert_eq!(at(&mut d, it.start.0), epsicut_project::ParamValue::Text("Edited".into()), "the shown (start) value changed");
+    assert_eq!(at(&mut d, late), epsicut_project::ParamValue::Text("End".into()), "the end keeps its own");
 }
 
 /// Click the entry labelled `label` of the open drop-down list with the pointer.
@@ -705,7 +705,7 @@ fn effect_controls_font_and_style_are_drop_downs_that_apply() {
     d.exec("timeline.select", json!({"clips": [clip]}));
     d.ok("ui.panel.show", json!({"panel": "Effect Controls"}));
     d.frames(4);
-    let fams = filmcraft_text::families();
+    let fams = epsicut_text::families();
     let fam = fams.iter().map(|(f, _)| f.clone()).find(|f| f != "Inter").expect("another family");
     let font = d
         .ok("ui.elements", json!({"prefix": "effectControls.text."}))
@@ -733,11 +733,11 @@ fn effect_controls_font_and_style_are_drop_downs_that_apply() {
     let want = format!("{font}.option.{fam}");
     assert!(opts.as_array().unwrap().iter().any(|e| e["id"].as_str() == Some(want.as_str())), "no {want}");
     pick(&mut d, &fam);
-    assert_eq!(text_param(&mut d, clip, "font"), Some(filmcraft_project::ParamValue::Text(fam.clone())), "picking a family applies it");
+    assert_eq!(text_param(&mut d, clip, "font"), Some(epsicut_project::ParamValue::Text(fam.clone())), "picking a family applies it");
     // the style list follows the family
     let style_id = font.replace(".font", ".font_style");
     d.ok("ui.click", json!({"id": style_id}));
     d.frames(3);
     pick(&mut d, "Bold Italic");
-    assert_eq!(text_param(&mut d, clip, "font_style"), Some(filmcraft_project::ParamValue::Text("Bold Italic".into())), "picking a style applies it");
+    assert_eq!(text_param(&mut d, clip, "font_style"), Some(epsicut_project::ParamValue::Text("Bold Italic".into())), "picking a style applies it");
 }

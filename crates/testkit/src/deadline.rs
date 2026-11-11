@@ -16,11 +16,11 @@ pub fn set_progress(label: &str) {
     p.push_str(label);
 }
 
-/// Run `f` on a worker thread and wait at most `secs` seconds (`FILMCRAFT_HOSTILE_TIMEOUT_SECS` overrides the
+/// Run `f` on a worker thread and wait at most `secs` seconds (`EPSICUT_HOSTILE_TIMEOUT_SECS` overrides the
 /// budget). A panic in `f` is re-raised here; a timeout panics with the last [`set_progress`] label. A hung
 /// worker is abandoned (the failing test process exits anyway).
 pub fn with_deadline(secs: u64, f: impl FnOnce() + Send + 'static) {
-    let secs = std::env::var("FILMCRAFT_HOSTILE_TIMEOUT_SECS").ok().and_then(|v| v.parse::<u64>().ok()).filter(|&n| n > 0).unwrap_or(secs);
+    let secs = std::env::var("EPSICUT_HOSTILE_TIMEOUT_SECS").ok().and_then(|v| v.parse::<u64>().ok()).filter(|&n| n > 0).unwrap_or(secs);
     run_with_deadline(secs, f);
 }
 
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "last input: seed 7 byte 3")]
     fn a_hang_fails_and_names_the_input() {
-        // a body that outlives the 1 s budget; the inner fn, so FILMCRAFT_HOSTILE_TIMEOUT_SECS cannot lengthen it
+        // a body that outlives the 1 s budget; the inner fn, so EPSICUT_HOSTILE_TIMEOUT_SECS cannot lengthen it
         set_progress("seed 7 byte 3");
         run_with_deadline(1, || std::thread::sleep(Duration::from_secs(30)));
     }

@@ -153,10 +153,10 @@ mod native_window_input_tests {
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
 
-    use crate::{FilmcraftApp, PanelKind};
+    use crate::{EpsicutApp, PanelKind};
     use craft_ui::docking::WindowFiles;
     use egui_kittest::Harness;
-    use filmcraft_engine::Session;
+    use epsicut_engine::Session;
 
     #[derive(Debug)]
     struct OsFile(PathBuf);
@@ -171,7 +171,7 @@ mod native_window_input_tests {
         }
     }
 
-    fn step(h: &mut Harness<'static, FilmcraftApp>) {
+    fn step(h: &mut Harness<'static, EpsicutApp>) {
         let ctx = h.ctx.clone();
         let mut raw = std::mem::take(h.input_mut());
         eframe::App::raw_input_hook(h.state_mut(), &ctx, &mut raw);
@@ -180,7 +180,7 @@ mod native_window_input_tests {
         h.step();
     }
 
-    fn clips(h: &Harness<'static, FilmcraftApp>) -> usize {
+    fn clips(h: &Harness<'static, EpsicutApp>) -> usize {
         h.state().session.active_sequence().map_or(0, |q| q.video_tracks.iter().map(|t| t.items.len()).sum())
     }
 
@@ -194,14 +194,14 @@ mod native_window_input_tests {
         let mut s = Session::default();
         s.execute("file.openDemoProject", json!({})).unwrap();
         s.execute("file.newSequence", json!({"name": "Drop test", "width": 1280, "height": 720, "fps": 24})).unwrap();
-        let mut h = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).build_eframe(move |_cc| FilmcraftApp::new(s));
+        let mut h = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).build_eframe(move |_cc| EpsicutApp::new(s));
         for _ in 0..4 {
             step(&mut h);
         }
         let row = h.state().auto.find("timeline.track.V1.target").unwrap().rect;
         let panel = h.state().auto.find("panel.Timeline").unwrap().rect;
         let at = egui::pos2(panel[0] + h.state().ui.timeline.header_w + 60.0, row[1] + row[3] / 2.0);
-        let drop_files = |h: &mut Harness<'static, FilmcraftApp>, panel: PanelKind, viewport: egui::ViewportId| {
+        let drop_files = |h: &mut Harness<'static, EpsicutApp>, panel: PanelKind, viewport: egui::ViewportId| {
             let files = WindowFiles { window: 1, viewport, panel, pos: Some(at), hovered: Vec::new(), dropped: vec![Arc::new(OsFile(still.clone()))] };
             h.state_mut().window_files = vec![files];
             step(h);

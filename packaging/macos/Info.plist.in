@@ -24,13 +24,13 @@
     <string>zh-Hans</string>
   </array>
   <key>CFBundleDisplayName</key>
-  <string>FilmCraft</string>
+  <string>EpsiCut</string>
   <key>CFBundleName</key>
-  <string>FilmCraft</string>
+  <string>EpsiCut</string>
   <key>CFBundleExecutable</key>
-  <string>FilmCraft</string>
+  <string>EpsiCut</string>
   <key>CFBundleIdentifier</key>
-  <string>ai.storyteller.filmcraft</string>
+  <string>ai.storyteller.epsicut</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>
@@ -41,12 +41,12 @@
   <string>@SHORT_VERSION@</string>
   <key>CFBundleVersion</key>
   <string>@SHORT_VERSION@</string>
-  <key>FilmCraftVersion</key>
+  <key>EpsiCutVersion</key>
   <string>@VERSION@</string>
-  <key>FilmCraftBuildCommit</key>
+  <key>EpsiCutBuildCommit</key>
   <string>@BUILD_SHA@</string>
   <key>CFBundleIconFile</key>
-  <string>FilmCraft</string>
+  <string>EpsiCut</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.video</string>
   <!-- Must match MACOSX_DEPLOYMENT_TARGET in package.sh. Big Sur is the first release on
@@ -62,49 +62,49 @@
   <!-- Voice-over recording (timeline track header ▸ Voice-over Record) reads the microphone.
        Without this string macOS never asks and the app gets no input. -->
   <key>NSMicrophoneUsageDescription</key>
-  <string>FilmCraft uses the microphone to record voice-over onto the timeline.</string>
+  <string>EpsiCut uses the microphone to record voice-over onto the timeline.</string>
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright © the FilmCraft authors. MIT OR Apache-2.0.</string>
+  <string>Copyright © ArtCraft Team and the FilmCraft contributors; EpsiCut changes © Stephen Abudu. MIT OR Apache-2.0.</string>
 
   <!-- Finder opens a project by this claim. The exported type alone is not enough:
-       without it Launch Services reports that FilmCraft cannot open a FilmCraft Project (#1229). -->
+       without it Launch Services reports that EpsiCut cannot open a EpsiCut Project (#1229). -->
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
       <key>CFBundleTypeName</key>
-      <string>FilmCraft Project</string>
+      <string>EpsiCut Project</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
       <key>LSHandlerRank</key>
       <string>Owner</string>
       <key>LSItemContentTypes</key>
       <array>
-        <string>ai.storyteller.filmcraft.project</string>
+        <string>ai.storyteller.epsicut.project</string>
       </array>
     </dict>
   </array>
 
-  <!-- Filmcraft's own format. -->
+  <!-- Epsicut's own format. -->
   <key>UTExportedTypeDeclarations</key>
   <array>
     <dict>
       <key>UTTypeIdentifier</key>
-      <string>ai.storyteller.filmcraft.project</string>
+      <string>ai.storyteller.epsicut.project</string>
       <key>UTTypeDescription</key>
-      <string>FilmCraft Project</string>
+      <string>EpsiCut Project</string>
       <key>UTTypeConformsTo</key>
       <array>
         <string>public.data</string>
         <string>public.json</string>
       </array>
       <key>UTTypeIconFile</key>
-      <string>FilmCraft</string>
+      <string>EpsiCut</string>
       <key>UTTypeTagSpecification</key>
       <dict>
         <key>public.filename-extension</key>
         <array><string>fcproj</string></array>
         <key>public.mime-type</key>
-        <array><string>application/x-filmcraft</string></array>
+        <array><string>application/x-epsicut</string></array>
       </dict>
     </dict>
   </array>

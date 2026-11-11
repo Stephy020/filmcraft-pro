@@ -1,6 +1,6 @@
-use super::{FilmcraftApp, FrameKey, GpuState, frames, gpu_compositor_unsupported, plan_side};
+use super::{EpsicutApp, FrameKey, GpuState, frames, gpu_compositor_unsupported, plan_side};
 
-impl FilmcraftApp {
+impl EpsicutApp {
     /// Enable the GPU compositor on the eframe wgpu device.
     pub fn set_wgpu(&mut self, rs: eframe::egui_wgpu::RenderState) {
         if let Some(why) = gpu_compositor_unsupported(&rs.adapter) {
@@ -19,7 +19,7 @@ impl FilmcraftApp {
             log::error!("GPU error, switching to the CPU compositor: {e}");
             flag.store(true, std::sync::atomic::Ordering::Relaxed);
         }));
-        let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| filmcraft_gpu::GpuCompositor::new(&rs.device, &rs.queue)));
+        let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| epsicut_gpu::GpuCompositor::new(&rs.device, &rs.queue)));
         match made {
             Ok(compositor) if !broken.load(std::sync::atomic::Ordering::Relaxed) => {
                 let max_texture = rs.device.limits().max_texture_dimension_2d;

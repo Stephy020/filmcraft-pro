@@ -3,8 +3,8 @@
 
 use std::collections::HashSet;
 
-use filmcraft_project::{Project, SequenceSettings, TrackKind, TransitionAlign, TransitionId, find_effect};
-use filmcraft_time::{FrameRate, Tick, TimeRange};
+use epsicut_project::{Project, SequenceSettings, TrackKind, TransitionAlign, TransitionId, find_effect};
+use epsicut_time::{FrameRate, Tick, TimeRange};
 
 use super::ids::{self, cls, ddef, def, path, pid};
 use super::store::{self, Obj, Value};
@@ -12,11 +12,11 @@ use super::*;
 
 fn project() -> (Project, ItemId) {
     let mut p = Project::new("t");
-    let info = filmcraft_media::MediaInfo {
+    let info = epsicut_media::MediaInfo {
         name: "a.mov".into(),
-        kind: filmcraft_media::MediaKind::Movie,
+        kind: epsicut_media::MediaKind::Movie,
         duration: FrameRate::FPS_24.tick_of(2400),
-        video: Some(filmcraft_media::VideoStreamInfo {
+        video: Some(epsicut_media::VideoStreamInfo {
             width: 1280,
             height: 720,
             frame_rate: FrameRate::FPS_24,
@@ -29,16 +29,16 @@ fn project() -> (Project, ItemId) {
             hdr: None,
             color_assumed: None,
         }),
-        audio_streams: vec![filmcraft_media::AudioStreamInfo { sample_rate: 48_000, channels: 2, codec: String::new(), bits_per_sample: Some(24) }],
+        audio_streams: vec![epsicut_media::AudioStreamInfo { sample_rate: 48_000, channels: 2, codec: String::new(), bits_per_sample: Some(24) }],
         container: String::new(),
         start_timecode: Some(86_400),
         file_size: None,
     };
     let a = p.add_item(
         "a.mov",
-        filmcraft_project::Label::Iris,
-        filmcraft_project::ItemKind::Media(Box::new(filmcraft_project::MediaClip {
-            media: filmcraft_project::MediaRef::File { path: "/m/a.mov".into() },
+        epsicut_project::Label::Iris,
+        epsicut_project::ItemKind::Media(Box::new(epsicut_project::MediaClip {
+            media: epsicut_project::MediaRef::File { path: "/m/a.mov".into() },
             info,
             interpret: Default::default(),
             mark_in: None,
@@ -64,7 +64,7 @@ fn project() -> (Project, ItemId) {
     for (kind, i, eff) in [(TrackKind::Video, 0, "cross_dissolve"), (TrackKind::Audio, 2, "constant_power")] {
         let id = TransitionId(p.alloc_id());
         let q = p.sequence_mut(s).unwrap();
-        q.tracks_mut(kind)[0].transitions.push(filmcraft_project::Transition {
+        q.tracks_mut(kind)[0].transitions.push(epsicut_project::Transition {
             id,
             effect: find_effect(eff).unwrap().instance(),
             start: r.tick_of(42),
@@ -103,7 +103,7 @@ fn the_meta_dictionary_has_its_class_and_type_definition_sets() {
     let (p, s) = project();
     for small in [false, true] {
         let (bytes, _) = export(&p, s, &AafOptions { small_sectors: small, ..Default::default() }).unwrap();
-        let cf = filmcraft_cfb::CompoundFile::open(&bytes).unwrap();
+        let cf = epsicut_cfb::CompoundFile::open(&bytes).unwrap();
         assert_eq!(cf.entries[cf.find("MetaDictionary-1").unwrap()].clsid, ids::META_DICTIONARY);
         for name in ["ClassDefinitions-3", "TypeDefinitions-4"] {
             // u32 count, u32 first free key, u32 last free key, u16 key pid, u8 key size
@@ -145,7 +145,7 @@ fn the_top_level_composition_has_the_registered_usage_code() {
     assert_eq!(comp.data(pid::USAGE_CODE), Some(&usage[..]));
 }
 
-/// Files from FilmCraft 0.16 and earlier tag the top-level composition with the unregistered label
+/// Files from EpsiCut 0.16 and earlier tag the top-level composition with the unregistered label
 /// 060e2b34.04010105.0d011201.02030000. They still import: the composition no other one uses is
 /// the edit.
 #[test]
@@ -157,7 +157,7 @@ fn files_with_the_old_usage_code_still_import() {
     for mob in objs_mut(content, pid::MOBS).iter_mut().filter(|m| m.class == cls::COMPOSITION_MOB) {
         mob.set(pid::USAGE_CODE, Value::Data(def::USAGE_TOP_LEVEL_OLD.to_vec()));
     }
-    let old_file = store::write(&root, filmcraft_cfb::Version::V4).unwrap();
+    let old_file = store::write(&root, epsicut_cfb::Version::V4).unwrap();
     let (got, _, report) = import(&old_file, &ImportOptions::default()).unwrap();
     assert!(!report.has_warnings(), "{report}");
     let (want, _, _) = import(&bytes, &ImportOptions::default()).unwrap();
@@ -169,7 +169,7 @@ fn files_with_the_old_usage_code_still_import() {
 }
 
 /// A file that holds one edit tagged with each label (a tool merged a composition from an older
-/// FilmCraft file into a newer one) imports both edits.
+/// EpsiCut file into a newer one) imports both edits.
 #[test]
 fn edits_tagged_with_either_usage_code_both_import() {
     let (p, s) = project();
@@ -184,7 +184,7 @@ fn edits_tagged_with_either_usage_code_both_import() {
     old.set(pid::MOB_NAME, Value::Data(store::utf16z("Old")));
     old.set(pid::USAGE_CODE, Value::Data(def::USAGE_TOP_LEVEL_OLD.to_vec()));
     mobs.push(old);
-    let mixed = store::write(&root, filmcraft_cfb::Version::V4).unwrap();
+    let mixed = store::write(&root, epsicut_cfb::Version::V4).unwrap();
     let (imported, _, report) = import(&mixed, &ImportOptions::default()).unwrap();
     assert!(!report.has_warnings(), "{report}");
     let mut names: Vec<String> = imported.sequences.iter().map(|&q| imported.project.item(q).unwrap().name.clone()).collect();
@@ -215,7 +215,7 @@ fn assert_written_file(bytes: &[u8], small: bool) {
 }
 
 fn assert_compound_file(bytes: &[u8], small: bool) {
-    let cf = filmcraft_cfb::CompoundFile::open(bytes).unwrap();
+    let cf = epsicut_cfb::CompoundFile::open(bytes).unwrap();
     assert_eq!(cf.version, if small { 3 } else { 4 });
     assert_eq!(cf.root().clsid, ids::ROOT);
     let references = cf.read_path("referenced properties").unwrap();
@@ -402,12 +402,12 @@ fn store_round_trips_every_stored_form() {
         .with(0x0006, Value::Weak(path::DATA_DEFS.to_vec(), 0x1B01, vec![5; 16]))
         .with(0x0007, Value::WeakVec(path::DATA_DEFS.to_vec(), 0x1B01, vec![vec![4; 16], vec![5; 16]]))
         .with(0x0008, Value::Stream((0..10_000u32).map(|i| i as u8).collect()));
-    for v in [filmcraft_cfb::Version::V3, filmcraft_cfb::Version::V4] {
+    for v in [epsicut_cfb::Version::V3, epsicut_cfb::Version::V4] {
         let bytes = store::write(&root, v).unwrap();
         assert_eq!(store::read(&bytes).unwrap(), root);
     }
     // a data value longer than a property can hold is an error, not a panic
-    assert!(store::write(&Obj::new(ids::ROOT).data_prop(1, vec![0; 70_000]), filmcraft_cfb::Version::V4).is_err());
+    assert!(store::write(&Obj::new(ids::ROOT).data_prop(1, vec![0; 70_000]), epsicut_cfb::Version::V4).is_err());
 }
 
 /// The property `p` of `o` as a list of objects, to change.
@@ -474,7 +474,7 @@ fn premiere_style_layers_and_nested_compositions_are_read() {
         }
     }
     assert_eq!(compositions, 2);
-    let theirs = store::write(&root, filmcraft_cfb::Version::V4).unwrap();
+    let theirs = store::write(&root, epsicut_cfb::Version::V4).unwrap();
     assert_ne!(theirs, ours);
 
     let opts = ImportOptions::default();

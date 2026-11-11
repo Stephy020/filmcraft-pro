@@ -1,4 +1,4 @@
-use super::{Align2, Arc, Color32, FilmcraftApp, ItemId, Rect, Tick, Tokens, TrackItem, pos2, vec2};
+use super::{Align2, Arc, Color32, EpsicutApp, ItemId, Rect, Tick, Tokens, TrackItem, pos2, vec2};
 
 /// The height of a clip's waveform for a clip body `body_height` tall: the lower part of a tall clip,
 /// under the name strip; the whole clip on a compact track (under 50 points), where a share of it
@@ -7,7 +7,7 @@ pub(super) fn waveform_zone_height(body_height: f32) -> f32 {
     if body_height < 50.0 { (body_height - 2.0).max(8.0) } else { (body_height * 0.42).max(8.0) }
 }
 
-pub(super) fn draw_waveform(app: &mut FilmcraftApp, p: &egui::Painter, body: Rect, it: &TrackItem, col: Color32) {
+pub(super) fn draw_waveform(app: &mut EpsicutApp, p: &egui::Painter, body: Rect, it: &TrackItem, col: Color32) {
     let Some(peaks) = request_peaks(app, it.item, it.audio_stream) else { return };
     let pkey = (it.item, it.audio_stream);
     let spp = 256.0;
@@ -71,15 +71,15 @@ pub(super) fn draw_waveform(app: &mut FilmcraftApp, p: &egui::Painter, body: Rec
 pub(super) fn waveform_display_gain(source_peak: f32, clip_gain_db: f64) -> f32 {
     const MAX_BOOST: f32 = 3.981_072; // +12 dB
     let boost = (1.0 / source_peak.max(1e-9)).min(MAX_BOOST);
-    filmcraft_render::audio::db_to_gain(clip_gain_db) * boost
+    epsicut_render::audio::db_to_gain(clip_gain_db) * boost
 }
 
 /// A key that changes when the sound of sequence `item` does: its audio segments (clips,
-/// transitions, mixer state; see `filmcraft_render::preview::audio_segments`) and its length.
-fn sequence_audio_key(project: &filmcraft_project::Project, item: ItemId) -> u64 {
+/// transitions, mixer state; see `epsicut_render::preview::audio_segments`) and its length.
+fn sequence_audio_key(project: &epsicut_project::Project, item: ItemId) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    for seg in filmcraft_render::preview::audio_segments(project, item) {
+    for seg in epsicut_render::preview::audio_segments(project, item) {
         (seg.first_sample, seg.samples, seg.hash).hash(&mut h);
     }
     project.sequence(item).map(|q| (q.duration().0, q.settings.sample_rate)).hash(&mut h);
@@ -89,7 +89,7 @@ fn sequence_audio_key(project: &filmcraft_project::Project, item: ItemId) -> u64
 /// Waveform peaks of a nested sequence's mix, in the same form as a media item's (min, max per
 /// 256 samples at 48 kHz). They are mixed in the background, and again whenever the sequence's
 /// sound changes; until the new ones are ready the old ones stay on show.
-fn request_sequence_peaks(app: &mut FilmcraftApp, item: ItemId) -> Option<Arc<Vec<(f32, f32)>>> {
+fn request_sequence_peaks(app: &mut EpsicutApp, item: ItemId) -> Option<Arc<Vec<(f32, f32)>>> {
     let revision = app.session.revision;
     let key = match app.tl.seq_keys_seen.get(&item) {
         Some(&(rev, key)) if rev == revision => key,
@@ -128,7 +128,7 @@ fn request_sequence_peaks(app: &mut FilmcraftApp, item: ItemId) -> Option<Arc<Ve
             let mut s = 0usize;
             while s < total {
                 let n = chunk.min(total - s);
-                let buf = filmcraft_render::audio::mix_sequence(&project, seq, s as i64, n, &provider);
+                let buf = epsicut_render::audio::mix_sequence(&project, seq, s as i64, n, &provider);
                 let ch = buf.channels.first()?;
                 for c in ch.chunks(bucket) {
                     let (lo, hi) = c.iter().fold((0f32, 0f32), |(l, h), v| (l.min(*v), h.max(*v)));
@@ -152,7 +152,7 @@ fn request_sequence_peaks(app: &mut FilmcraftApp, item: ItemId) -> Option<Arc<Ve
 }
 
 /// Min/max peaks (one per 256 samples at 48 kHz) of audio stream `stream` of `src`, `dur` long.
-pub(super) fn source_peaks(src: &dyn filmcraft_media::MediaSource, stream: usize, dur: Tick) -> Vec<(f32, f32)> {
+pub(super) fn source_peaks(src: &dyn epsicut_media::MediaSource, stream: usize, dur: Tick) -> Vec<(f32, f32)> {
     let sr = 48_000u32;
     let total = dur.to_units_floor(sr as i64).max(0) as usize;
     let mut out = Vec::with_capacity(total / 256 + 1);
@@ -176,7 +176,7 @@ pub(super) fn source_peaks(src: &dyn filmcraft_media::MediaSource, stream: usize
 }
 
 /// Waveform peaks of audio stream `stream` of `item` (a clip's `audio_stream`).
-pub(crate) fn request_peaks(app: &mut FilmcraftApp, item: ItemId, stream: usize) -> Option<Arc<Vec<(f32, f32)>>> {
+pub(crate) fn request_peaks(app: &mut EpsicutApp, item: ItemId, stream: usize) -> Option<Arc<Vec<(f32, f32)>>> {
     if app.session.project.sequence(item).is_some() {
         return request_sequence_peaks(app, item);
     }

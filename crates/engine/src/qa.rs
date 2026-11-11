@@ -6,9 +6,9 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use filmcraft_audio_dsp::LoudnessMeter;
-use filmcraft_project::{ItemId, Sequence};
-use filmcraft_time::{Tick, TimeRange};
+use epsicut_audio_dsp::LoudnessMeter;
+use epsicut_project::{ItemId, Sequence};
+use epsicut_time::{Tick, TimeRange};
 
 use crate::commands::{CommandSpec, bad, bool_p, has_seq, secs_ms};
 use crate::{EngineError, Result, Session};
@@ -193,7 +193,7 @@ fn audio(s: &Session, q: &Sequence, target: Option<f64>, out: &mut Vec<Issue>) -
     let mut pos = 0i64;
     while pos < total {
         let n = (total - pos).min(sr);
-        let buf = filmcraft_render::audio::mix_sequence(&s.project, q, pos, usize::try_from(n).unwrap_or(0), &provider);
+        let buf = epsicut_render::audio::mix_sequence(&s.project, q, pos, usize::try_from(n).unwrap_or(0), &provider);
         let (Some(l), Some(r)) = (buf.channels.first(), buf.channels.get(1)) else { break };
         meter.process(&[l.as_slice(), r.as_slice()]);
         for (k, (wl, wr)) in l.chunks(win).zip(r.chunks(win)).enumerate() {
@@ -225,7 +225,7 @@ fn audio(s: &Session, q: &Sequence, target: Option<f64>, out: &mut Vec<Issue>) -
 }
 
 /// Mean 8-bit sRGB luma of a rendered frame.
-fn mean_luma(img: &filmcraft_render::Image) -> f64 {
+fn mean_luma(img: &epsicut_render::Image) -> f64 {
     let px = img.over_black_rgba8();
     let pixels = px.as_chunks::<4>().0;
     let sum: f64 = pixels.iter().map(|[r, g, b, _]| 0.2126 * f64::from(*r) + 0.7152 * f64::from(*g) + 0.0722 * f64::from(*b)).sum();

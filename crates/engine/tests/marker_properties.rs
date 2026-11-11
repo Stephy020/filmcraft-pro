@@ -1,5 +1,5 @@
-use filmcraft_engine::Session;
-use filmcraft_project::{HexColor, Label};
+use epsicut_engine::Session;
+use epsicut_project::{HexColor, Label};
 use serde_json::json;
 
 #[test]
@@ -23,7 +23,7 @@ fn review_null_author_is_omitted_for_creation_and_preserves_existing_author() {
 
 #[test]
 fn web_link_url_is_separate_from_notes_atomic_persistent_and_optional_in_old_projects() {
-    use filmcraft_project::MarkerKind;
+    use epsicut_project::MarkerKind;
     let mut s = Session::default();
     s.execute("file.newSequence", json!({})).unwrap();
     let id = s.execute("markers.add", json!({"frame":0,"name":"Review","comment":"Use take two"})).unwrap()["marker"].as_u64().unwrap();
@@ -35,7 +35,7 @@ fn web_link_url_is_separate_from_notes_atomic_persistent_and_optional_in_old_pro
     let marker = s.active_sequence().unwrap().markers[0].clone();
     assert_eq!((&*marker.url, &*marker.comment, marker.kind), (url, "Awaiting approval", MarkerKind::WebLink));
     assert_eq!(s.history.undo.len(), history + 1);
-    let loaded = filmcraft_format::decode(&filmcraft_format::encode(&s.project, false)).unwrap();
+    let loaded = epsicut_format::decode(&epsicut_format::encode(&s.project, false)).unwrap();
     assert_eq!(loaded.project.sequence(sequence).unwrap().markers[0], marker);
     assert_eq!(s.execute("sequence.inspect", json!({})).unwrap()["markers"][0]["url"], url);
     s.execute("edit.undo", json!({})).unwrap();
@@ -45,7 +45,7 @@ fn web_link_url_is_separate_from_notes_atomic_persistent_and_optional_in_old_pro
     assert_eq!(s.active_sequence().unwrap().markers[0].url, url);
     s.execute("markers.edit", json!({"marker":id,"kind":"webLink"})).unwrap();
     assert_eq!(s.active_sequence().unwrap().markers[0].url, url);
-    let mut legacy: serde_json::Value = serde_json::from_slice(&filmcraft_format::encode(&s.project, false)).unwrap();
+    let mut legacy: serde_json::Value = serde_json::from_slice(&epsicut_format::encode(&s.project, false)).unwrap();
     legacy["schema_version"] = json!(16);
     fn remove_urls(value: &mut serde_json::Value) {
         match value {
@@ -64,7 +64,7 @@ fn web_link_url_is_separate_from_notes_atomic_persistent_and_optional_in_old_pro
         }
     }
     remove_urls(&mut legacy);
-    let loaded = filmcraft_format::decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+    let loaded = epsicut_format::decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
     assert!(loaded.migrated());
     assert!(loaded.project.sequence(sequence).unwrap().markers[0].url.is_empty());
     for invalid in [
@@ -106,7 +106,7 @@ fn review_close_project_renews_runtime_identity() {
 
 #[test]
 fn marker_kinds_edit_atomically_and_reject_invalid_values() {
-    use filmcraft_project::MarkerKind;
+    use epsicut_project::MarkerKind;
     let mut s = Session::default();
     s.execute("file.newSequence", json!({})).unwrap();
     let marker = s.execute("markers.add", json!({"frame":0,"name":"Original"})).unwrap()["marker"].as_u64().unwrap();
@@ -146,7 +146,7 @@ fn custom_marker_properties_survive_undo_and_project_reopen() {
     assert_eq!(original.rgb(), [255, 128, 192]);
     assert_eq!(original.color_value(), "#FF80C0");
     assert_eq!(original.author, "BENJI");
-    let loaded = filmcraft_format::decode(&filmcraft_format::encode(&s.project, false)).unwrap();
+    let loaded = epsicut_format::decode(&epsicut_format::encode(&s.project, false)).unwrap();
     assert_eq!(loaded.project.sequence(seq).unwrap().markers[0], original);
     s.execute("markers.edit", json!({"marker":id,"color":"White"})).unwrap_err();
     s.execute("markers.edit", json!({"marker":id,"comment":"Keep"})).unwrap();
@@ -214,7 +214,7 @@ fn custom_palette_is_project_local_bounded_and_undoable() {
     let history = s.history.undo.len();
     s.execute("colors.addCustom", json!({"color":"#FF80C0"})).unwrap();
     assert_eq!(s.history.undo.len(), history, "duplicates do not create edits");
-    let loaded = filmcraft_format::decode(&filmcraft_format::encode(&s.project, false)).unwrap();
+    let loaded = epsicut_format::decode(&epsicut_format::encode(&s.project, false)).unwrap();
     assert_eq!(loaded.project.custom_colors, s.project.custom_colors);
     assert!(Session::default().project.custom_colors.is_empty());
     s.execute("edit.undo", json!({})).unwrap();
@@ -246,7 +246,7 @@ fn custom_clip_colors_share_palette_and_survive_save_preset_switch_and_undo() {
     s.execute("edit.selectLabelGroup", json!({})).unwrap();
     assert_eq!(s.state.selection, vec![clip.id]);
     assert_eq!(s.history.undo.len(), history + 1);
-    let loaded = filmcraft_format::decode(&filmcraft_format::encode(&s.project, false)).unwrap();
+    let loaded = epsicut_format::decode(&epsicut_format::encode(&s.project, false)).unwrap();
     assert_eq!(loaded.project.sequence(seq).unwrap().find_item(clip.id).unwrap().1.custom_label_color, color);
     s.execute("edit.undo", json!({})).unwrap();
     assert_eq!(s.project.to_json(), before);
@@ -260,16 +260,16 @@ fn custom_clip_colors_share_palette_and_survive_save_preset_switch_and_undo() {
     let created = project
         .make_track_item(
             clip.item,
-            filmcraft_project::TrackKind::Video,
+            epsicut_project::TrackKind::Video,
             clip.start,
-            filmcraft_time::TimeRange::new(clip.source_in, clip.duration),
+            epsicut_time::TimeRange::new(clip.source_in, clip.duration),
             s.sequence_rate(),
         )
         .unwrap();
     assert_eq!(created.custom_label_color, color);
     s.execute("project.select", json!({"items":[clip.item.0]})).unwrap();
     let copy = s.execute("edit.duplicate", json!({})).unwrap()["items"][0].as_u64().unwrap();
-    assert_eq!(s.project.item(filmcraft_project::ItemId(copy)).unwrap().custom_label_color, color);
+    assert_eq!(s.project.item(epsicut_project::ItemId(copy)).unwrap().custom_label_color, color);
     let before = s.project.to_json();
     for params in [json!({"label":"#XYZXYZ"}), json!({"label":"#FFFFFF","clips":[-1]}), json!({"label":"#FFFFFF","clips":[u64::MAX],"saveColor":true})] {
         assert!(s.execute("edit.label", params).is_err());
@@ -353,7 +353,7 @@ fn marker_time_edits_are_sorted_exact_and_reject_hostile_ranges_atomically() {
         assert_eq!(s.history.undo.len(), history);
     }
     s.execute("markers.edit", json!({"marker":first,"durationFrames":0})).unwrap();
-    assert_eq!(s.active_sequence().unwrap().markers[1].duration, filmcraft_time::Tick::ZERO);
+    assert_eq!(s.active_sequence().unwrap().markers[1].duration, epsicut_time::Tick::ZERO);
     s.execute("markers.edit", json!({"marker":first,"time":123})).unwrap();
     s.execute("markers.edit", json!({"marker":first,"author":"Preserve subframes"})).unwrap();
     assert_eq!(s.active_sequence().unwrap().markers[0].start.0, 123);
@@ -402,10 +402,10 @@ fn bulk_marker_changes_are_owner_scoped_atomic_and_one_undo() {
 fn source_marker_edits_keep_their_owner_and_enforce_bounds() {
     let mut s = Session::default();
     s.execute("file.openDemoProject", json!({})).unwrap();
-    let source = filmcraft_project::ItemId(5);
+    let source = epsicut_project::ItemId(5);
     s.execute("source.open", json!({"item":source.0})).unwrap();
     let marker = s.execute("markers.add", json!({"target":"source","time":0})).unwrap()["marker"].as_u64().unwrap();
-    let view = filmcraft_engine::clip_ops::source_view(&s, source).unwrap();
+    let view = epsicut_engine::clip_ops::source_view(&s, source).unwrap();
     let other = s.project.items.values().find(|i| i.as_media().is_some() && i.id != source).unwrap().id;
     s.execute("source.open", json!({"item":other.0})).unwrap();
     s.execute(
@@ -413,9 +413,9 @@ fn source_marker_edits_keep_their_owner_and_enforce_bounds() {
         json!({"target":"source","item":source.0,"marker":marker,"frame":1,"durationFrames":2,"kind":"webLink","url":"https://example.com/source"}),
     )
     .unwrap();
-    assert_eq!(filmcraft_engine::clip_ops::source_view(&s, source).unwrap().markers[0].start, view.rate.tick_of(1));
-    assert_eq!(filmcraft_engine::clip_ops::source_view(&s, source).unwrap().markers[0].kind, filmcraft_project::MarkerKind::WebLink);
-    assert_eq!(filmcraft_engine::clip_ops::source_view(&s, source).unwrap().markers[0].url, "https://example.com/source");
+    assert_eq!(epsicut_engine::clip_ops::source_view(&s, source).unwrap().markers[0].start, view.rate.tick_of(1));
+    assert_eq!(epsicut_engine::clip_ops::source_view(&s, source).unwrap().markers[0].kind, epsicut_project::MarkerKind::WebLink);
+    assert_eq!(epsicut_engine::clip_ops::source_view(&s, source).unwrap().markers[0].url, "https://example.com/source");
     let before = s.project.to_json();
     let history = s.history.undo.len();
     for change in [json!({"time":view.end.0}), json!({"time":view.end.0-1,"durationFrames":2}), json!({"durationFrames":i64::MAX}), json!({"time":-1})] {
@@ -429,7 +429,7 @@ fn source_marker_edits_keep_their_owner_and_enforce_bounds() {
     }
     assert!(s.execute("markers.delete", json!({"target":"source","marker":marker})).is_err());
     s.execute("markers.delete", json!({"target":"source","item":source.0,"marker":marker})).unwrap();
-    assert!(filmcraft_engine::clip_ops::source_view(&s, source).unwrap().markers.is_empty());
+    assert!(epsicut_engine::clip_ops::source_view(&s, source).unwrap().markers.is_empty());
     s.execute("edit.undo", json!({})).unwrap();
     assert_eq!(s.project.to_json(), before);
 }
@@ -445,7 +445,7 @@ fn named_palette_management_preserves_assignments_and_roundtrips() {
     assert_eq!(s.active_sequence().unwrap().markers[0].color_value(), "#123456");
     let new = HexColor::parse("654321").unwrap();
     assert_eq!(s.project.custom_color_names[&new], "Approved");
-    let loaded = filmcraft_format::decode(&filmcraft_format::encode(&s.project, false)).unwrap();
+    let loaded = epsicut_format::decode(&epsicut_format::encode(&s.project, false)).unwrap();
     assert_eq!(loaded.project.custom_color_names, s.project.custom_color_names);
     s.execute("edit.undo", json!({})).unwrap();
     assert_eq!(s.project.to_json(), before);
@@ -473,12 +473,12 @@ fn subclip_marker_edits_share_parent_storage_but_obey_view_bounds() {
     let mut s = Session::default();
     s.execute("file.openDemoProject", json!({})).unwrap();
     s.execute("source.open", json!({"item":5})).unwrap();
-    let rate = filmcraft_engine::clip_ops::source_view(&s, filmcraft_project::ItemId(5)).unwrap().rate;
+    let rate = epsicut_engine::clip_ops::source_view(&s, epsicut_project::ItemId(5)).unwrap().rate;
     let inside = s.execute("markers.add", json!({"target":"source","time":rate.tick_of(15).0})).unwrap()["marker"].as_u64().unwrap();
     let outside = s.execute("markers.add", json!({"target":"source","time":rate.tick_of(5).0})).unwrap()["marker"].as_u64().unwrap();
     let sub = s.execute("clip.makeSubclip", json!({"item":5,"startFrame":10,"endFrame":30})).unwrap()["item"].as_u64().unwrap();
     s.execute("markers.edit", json!({"target":"source","item":sub,"marker":inside,"frame":20,"durationFrames":10,"author":"Shared"})).unwrap();
-    let parent = filmcraft_engine::clip_ops::source_view(&s, filmcraft_project::ItemId(5)).unwrap();
+    let parent = epsicut_engine::clip_ops::source_view(&s, epsicut_project::ItemId(5)).unwrap();
     assert_eq!(parent.markers.iter().find(|m| m.id.0 == inside).unwrap().author, "Shared");
     let before = s.project.to_json();
     for p in [
@@ -494,7 +494,7 @@ fn subclip_marker_edits_share_parent_storage_but_obey_view_bounds() {
         assert_eq!(s.project.to_json(), before);
     }
     s.execute("markers.delete", json!({"target":"source","item":sub,"marker":inside})).unwrap();
-    assert_eq!(filmcraft_engine::clip_ops::source_view(&s, filmcraft_project::ItemId(5)).unwrap().markers.len(), 1);
+    assert_eq!(epsicut_engine::clip_ops::source_view(&s, epsicut_project::ItemId(5)).unwrap().markers.len(), 1);
     s.execute("edit.undo", json!({})).unwrap();
     assert_eq!(s.project.to_json(), before);
 }

@@ -3,10 +3,10 @@
 
 use crate::support;
 
-use filmcraft_interchange::{ExportOptions, Format, Imported, detect, export, import};
-use filmcraft_media::Generator;
-use filmcraft_project::{ItemKind, Keyframe, Label, Marker, MarkerId, MarkerKind, MediaRef, Param, ParamValue, Project, Sequence, TrackKind, TransitionAlign};
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_interchange::{ExportOptions, Format, Imported, detect, export, import};
+use epsicut_media::Generator;
+use epsicut_project::{ItemKind, Keyframe, Label, Marker, MarkerId, MarkerKind, MediaRef, Param, ParamValue, Project, Sequence, TrackKind, TransitionAlign};
+use epsicut_time::{FrameRate, Tick};
 use proptest::prelude::*;
 use support::*;
 
@@ -211,12 +211,12 @@ fn assert_master_clip(p: &Project, r: FrameRate) {
     assert_eq!(tm.info.start_timecode, Some(86_400));
     assert_eq!(tm.info.duration, r.tick_of(2400));
     assert_eq!(tower.label, Label::Mango);
-    let bin = p.root.children.iter().find_map(|c| if let filmcraft_project::BinEntry::Bin(b) = c { Some(b) } else { None }).unwrap();
+    let bin = p.root.children.iter().find_map(|c| if let epsicut_project::BinEntry::Bin(b) = c { Some(b) } else { None }).unwrap();
     assert_eq!(bin.name, "Footage");
     assert_eq!(p.root.parent_of(tower.id), Some(bin.id));
 }
 
-fn assert_main_video_and_effects(p: &Project, s: &Sequence, r: FrameRate, rep: &filmcraft_interchange::Report) {
+fn assert_main_video_and_effects(p: &Project, s: &Sequence, r: FrameRate, rep: &epsicut_interchange::Report) {
     // V1: -1 start/end resolved from in/out, centred dissolve.
     let v1 = &s.video_tracks[0];
     assert_eq!(v1.items.len(), 2);
@@ -243,7 +243,7 @@ fn assert_main_video_and_effects(p: &Project, s: &Sequence, r: FrameRate, rep: &
     assert_eq!((c2.markers[0].name.as_str(), c2.markers[0].start), ("wave peak", r.tick_of(130)));
 }
 
-fn assert_nested_and_audio(p: &Project, s: &Sequence, r: FrameRate, nest: filmcraft_project::ItemId) {
+fn assert_nested_and_audio(p: &Project, s: &Sequence, r: FrameRate, nest: epsicut_project::ItemId) {
     // V2: nested sequence clip, colour matte generator, locked track.
     let v2 = &s.video_tracks[1];
     assert!(v2.locked);
@@ -269,7 +269,7 @@ fn assert_nested_and_audio(p: &Project, s: &Sequence, r: FrameRate, nest: filmcr
     assert_eq!(s.markers[0].start, r.tick_of(30));
 }
 
-fn rich_project() -> (Project, filmcraft_project::ItemId) {
+fn rich_project() -> (Project, epsicut_project::ItemId) {
     let r = FrameRate::FPS_29_97;
     let mut p = Project::new("P");
     let a = media(&mut p, "/m/a b.mov", true, true, r);
@@ -298,7 +298,7 @@ fn rich_project() -> (Project, filmcraft_project::ItemId) {
         sc.keyframes.push(Keyframe::new(r.tick_of(330), ParamValue::Float(80.0)));
         it.effect_mut("motion").unwrap().params.insert("scale".into(), sc);
         it.effect_mut("opacity").unwrap().params.insert("opacity".into(), Param::new(ParamValue::Float(75.0)));
-        it.effects.push(filmcraft_project::find_effect("gaussian_blur").unwrap().instance());
+        it.effects.push(epsicut_project::find_effect("gaussian_blur").unwrap().instance());
         it.markers.push(Marker {
             url: String::new(),
             author: String::new(),
@@ -425,7 +425,7 @@ proptest! {
         let ms = [media(&mut p, "/x/one.mov", true, true, rate), media(&mut p, "/x/two.mov", true, true, rate), media(&mut p, "/y/three four.mxf", true, true, rate)];
         let s = sequence(&mut p, "S", rate, false);
         let mut ends = [0i64; 3];
-        let mut prev: [Option<filmcraft_project::ClipId>; 3] = [None; 3];
+        let mut prev: [Option<epsicut_project::ClipId>; 3] = [None; 3];
         let mut aends = [0i64; 3];
         for g in &clips {
             let t = ends[g.track] + g.gap;

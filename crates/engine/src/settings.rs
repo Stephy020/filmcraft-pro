@@ -14,8 +14,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use filmcraft_project::Label;
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_project::Label;
+use epsicut_time::{FrameRate, Tick};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -112,9 +112,9 @@ pub fn map_output(left: &[f32], right: &[f32], out: &mut [f32], ch: usize, map: 
 
 /// Settings ▸ Media ▸ Default Media Scaling for a clip placed in a `frame`-sized sequence. `src`
 /// is the clip's size at its display aspect in sequence pixels
-/// ([`filmcraft_project::conformed_size`]): `scaleToFrameSize` turns on Scale to Frame Size
+/// ([`epsicut_project::conformed_size`]): `scaleToFrameSize` turns on Scale to Frame Size
 /// (rasterised at frame size), `setToFrameSize` sets Motion ▸ Scale so the picture fits the frame.
-pub fn apply_media_scaling(ti: &mut filmcraft_project::TrackItem, scaling: &str, frame: (u32, u32), src: (f64, f64)) {
+pub fn apply_media_scaling(ti: &mut epsicut_project::TrackItem, scaling: &str, frame: (u32, u32), src: (f64, f64)) {
     if !(src.0 >= 1e-9 && src.1 >= 1e-9 && src.0.is_finite() && src.1.is_finite()) {
         return;
     }
@@ -123,7 +123,7 @@ pub fn apply_media_scaling(ti: &mut filmcraft_project::TrackItem, scaling: &str,
         "setToFrameSize" => {
             let fit = (frame.0 as f64 / src.0).min(frame.1 as f64 / src.1);
             if let Some(m) = ti.effects.iter_mut().find(|e| e.effect == "motion") {
-                m.params.insert("scale".into(), filmcraft_project::Param::new(filmcraft_project::ParamValue::Float((fit * 1000.0).round() / 10.0)));
+                m.params.insert("scale".into(), epsicut_project::Param::new(epsicut_project::ParamValue::Float((fit * 1000.0).round() / 10.0)));
             }
         }
         _ => {}

@@ -5,8 +5,8 @@ use serde_json::json;
 
 use crate::presets::{KeyframeMode, retime};
 use crate::{Services, Session};
-use filmcraft_project::{ClipId, ParamValue, TrackItem};
-use filmcraft_time::{TICKS_PER_SECOND, Tick};
+use epsicut_project::{ClipId, ParamValue, TrackItem};
+use epsicut_time::{TICKS_PER_SECOND, Tick};
 
 fn demo() -> (Session, Vec<ClipId>) {
     let mut s = Session::default();
@@ -134,7 +134,7 @@ fn presets_with_masks_and_intrinsics_round_trip_through_files() {
     let bw = ia.effects.iter().position(|e| e.effect == "black_white").unwrap();
     let op = ia.effects.iter().position(|e| e.effect == "opacity").unwrap();
     s.execute("presets.save", json!({"name": "masked bw", "effects": [bw, op], "description": "test"})).unwrap();
-    let dir = std::env::temp_dir().join(format!("filmcraft-presets-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("epsicut-presets-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("p.json").to_string_lossy().to_string();
     let r = s.execute("presets.export", json!({"path": path, "names": ["masked bw", "Fade In"]})).unwrap();
@@ -176,7 +176,7 @@ fn builtins_apply_and_user_presets_persist() {
     assert_eq!(op.keyframes.last().unwrap().time, it.source_in + media_len(&it));
     assert!(s.execute("presets.delete", json!({"name": "Fade In"})).is_err(), "built-ins stay");
     // persistence through the data directory
-    let dir = std::env::temp_dir().join(format!("filmcraft-presets-lib-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("epsicut-presets-lib-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     s.presets.set_dir(&dir);
     s.state.selection = vec![clips[1]];

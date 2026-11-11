@@ -2,16 +2,16 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_time::Tick;
-use filmcraft_ui_egui::{AudioOut, FilmcraftApp, dock::PanelKind, menus};
+use epsicut_engine::Session;
+use epsicut_time::Tick;
+use epsicut_ui_egui::{AudioOut, EpsicutApp, dock::PanelKind, menus};
 use serde_json::json;
 
-fn app(item: u64) -> FilmcraftApp {
+fn app(item: u64) -> EpsicutApp {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
     session.execute("source.open", json!({"item":item})).unwrap();
-    FilmcraftApp::new(session)
+    EpsicutApp::new(session)
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn space_targets_the_focused_monitor_and_output_is_exclusive() {
 
 #[test]
 fn empty_source_returns_a_useful_error() {
-    let mut app = FilmcraftApp::new(Session::default());
+    let mut app = EpsicutApp::new(Session::default());
     assert!(app.play_source().unwrap_err().contains("Source monitor"));
     assert!(!app.source_playback.clock.playing);
 }
@@ -153,7 +153,7 @@ fn stalled_source_audio_falls_back_to_wall_clock() {
 fn source_range_playback_stops_at_out_and_loop_restarts_without_program_playback() {
     let mut h = Harness::builder().with_step_dt(0.25).with_size(egui::vec2(1280.0, 800.0)).build_eframe(move |_cc| app(5));
     h.step();
-    let rate = filmcraft_engine::clip_ops::source_view(&h.state().session, filmcraft_engine::project::ItemId(5)).unwrap().rate;
+    let rate = epsicut_engine::clip_ops::source_view(&h.state().session, epsicut_engine::project::ItemId(5)).unwrap().rate;
     let (start, out) = (rate.tick_of(24), rate.tick_of(47));
     h.state_mut().session.execute("project.setMarks", json!({"item":5,"in":start.0,"out":out.0})).unwrap();
     h.state_mut().ui.focused = PanelKind::Source;
@@ -188,7 +188,7 @@ fn a_single_frame_source_range_starts_at_the_marked_last_frame() {
     const START: f64 = 10_000.0;
     h.input_mut().time = Some(START);
     h.step();
-    let v = filmcraft_engine::clip_ops::source_view(&h.state().session, filmcraft_engine::project::ItemId(5)).unwrap();
+    let v = epsicut_engine::clip_ops::source_view(&h.state().session, epsicut_engine::project::ItemId(5)).unwrap();
     let last = v.rate.snap(v.end - v.rate.frame_duration());
     h.state_mut().session.execute("project.setMarks", json!({"item":5,"in":last.0,"out":last.0})).unwrap();
     h.state_mut().play_source_range(false, false).unwrap();
@@ -241,14 +241,14 @@ fn j_and_l_shuttle_the_source_both_ways_and_double_the_speed() {
 }
 
 /// A Source monitor session of the demo project's active sequence, with `Out` as the audio device.
-fn sequence_in_source(prepare: impl FnOnce(&mut Session)) -> (FilmcraftApp, Arc<Mutex<Option<Fill>>>) {
+fn sequence_in_source(prepare: impl FnOnce(&mut Session)) -> (EpsicutApp, Arc<Mutex<Option<Fill>>>) {
     let mut session = Session::default();
     session.execute("file.openDemoProject", json!({})).unwrap();
     prepare(&mut session);
     let seq = session.state.active_sequence.expect("a sequence").0;
     session.execute("source.open", json!({"item": seq})).unwrap();
     let fill = Arc::new(Mutex::new(None));
-    let mut app = FilmcraftApp::new(session);
+    let mut app = EpsicutApp::new(session);
     app.audio = Some(Box::new(Out { frames: Arc::new(AtomicU64::new(0)), fill: fill.clone(), stalled: false }));
     (app, fill)
 }

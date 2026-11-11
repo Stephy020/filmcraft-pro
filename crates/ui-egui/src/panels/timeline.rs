@@ -13,12 +13,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use egui::{Align2, Color32, CursorIcon, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
-use filmcraft_engine::sequence_tools::{DuplicateFrames, duplicate_frames};
-use filmcraft_project::{ClipId, ItemId, MarkerId, Sequence, TrackId, TrackItem, TrackKind};
-use filmcraft_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeDisplay, TimeRange, format_time};
+use epsicut_engine::sequence_tools::{DuplicateFrames, duplicate_frames};
+use epsicut_project::{ClipId, ItemId, MarkerId, Sequence, TrackId, TrackItem, TrackKind};
+use epsicut_time::{FrameRate, TICKS_PER_SECOND, Tick, TimeDisplay, TimeRange, format_time};
 use serde_json::{Value, json};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::icons::{self, Icon};
 use crate::state::{ThumbnailMode, TimelineView, Tool};
 use crate::theme::Tokens;
@@ -68,7 +68,7 @@ const MASTER_H: f32 = 34.0;
 const GAP_FILL: Color32 = Color32::from_gray(224);
 /// Duplicate frame marker colors, one per master clip with duplicate frames in the order they
 /// appear in the sequence.
-const DUPLICATE_FRAME_COLORS: [Color32; filmcraft_engine::sequence_tools::DUPLICATE_FRAME_COLORS] = [
+const DUPLICATE_FRAME_COLORS: [Color32; epsicut_engine::sequence_tools::DUPLICATE_FRAME_COLORS] = [
     Color32::from_rgb(0xe8, 0x4a, 0x4a),
     Color32::from_rgb(0x3d, 0x9b, 0xe9),
     Color32::from_rgb(0x4c, 0xc2, 0x5a),
@@ -182,8 +182,8 @@ pub enum Drag {
     },
     Trim {
         clip: ClipId,
-        edge: filmcraft_edit::Edge,
-        mode: filmcraft_edit::TrimMode,
+        edge: epsicut_edit::Edge,
+        mode: epsicut_edit::TrimMode,
         delta: Tick,
         /// The time under the pointer when the button went down: the edge moves by how far the
         /// pointer has moved since (#259).
@@ -210,7 +210,7 @@ pub enum Drag {
     Volume(super::timeline_volume::LineDrag),
     Stretch {
         clip: ClipId,
-        edge: filmcraft_edit::Edge,
+        edge: epsicut_edit::Edge,
         delta: Tick,
         /// As in [`Drag::Trim`].
         from: Tick,
@@ -227,8 +227,8 @@ pub enum Drag {
     /// A transition dragged by an end (`edge`: its duration) or its middle (slides it over the
     /// cut); `start` / `duration` are where it is shown now, committed on release (#224).
     Transition {
-        id: filmcraft_project::TransitionId,
-        edge: Option<filmcraft_edit::Edge>,
+        id: epsicut_project::TransitionId,
+        edge: Option<epsicut_edit::Edge>,
         /// As in [`Drag::Trim`].
         from: Tick,
         start: Tick,
@@ -237,7 +237,7 @@ pub enum Drag {
     /// The work area bar dragged by an end (`edge`: that end moves) or its middle (the bar moves);
     /// `start` / `end` are where it is shown now, committed on release.
     WorkArea {
-        edge: Option<filmcraft_edit::Edge>,
+        edge: Option<epsicut_edit::Edge>,
         /// As in [`Drag::Trim`].
         from: Tick,
         start: Tick,
@@ -274,13 +274,13 @@ pub enum Drag {
 const TRACK_HEADER_TINT: f32 = 0.18;
 const TRACK_LANE_TINT: f32 = 0.10;
 
-fn label_color(app: &FilmcraftApp, l: filmcraft_project::Label) -> Color32 {
+fn label_color(app: &EpsicutApp, l: epsicut_project::Label) -> Color32 {
     crate::panels::settings::label_color(app, l)
 }
 
 /// Draw the Timeline and run its interaction. A missing or damaged active sequence shows the empty state; `stable_dt` is capped, and a project snapshot is kept
 /// while commands mutate the session.
-pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let Some(seq_id) = app.session.state.active_sequence else {
@@ -482,7 +482,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
 /// The timeline view's animated state: eases zoom and scroll toward their targets (or jumps
 /// with animations off, #2325), follows the playhead while playing, brings it into view after a
 /// jump while stopped, and keeps the view inside the sequence's extent.
-fn animate_view(app: &mut FilmcraftApp, ctx: &egui::Context, content: Rect, seq_id: ItemId, seq: &Sequence) {
+fn animate_view(app: &mut EpsicutApp, ctx: &egui::Context, content: Rect, seq_id: ItemId, seq: &Sequence) {
     let dt = ctx.input(|i| i.stable_dt).min(0.05) as f64;
     let empty = seq.duration().seconds() <= 0.0;
     let dur_s = seq.duration().seconds().max(1.0);
@@ -583,7 +583,7 @@ fn animate_view(app: &mut FilmcraftApp, ctx: &egui::Context, content: Rect, seq_
 /// through edits, transitions and the locked-track hatch.
 #[allow(clippy::too_many_arguments)]
 fn draw_clips(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ctx: &egui::Context,
     painter: &egui::Painter,
     seq: &Sequence,
@@ -593,7 +593,7 @@ fn draw_clips(
     content: Rect,
     vclip: Rect,
     aclip: Rect,
-    rate: filmcraft_time::FrameRate,
+    rate: epsicut_time::FrameRate,
     t: Tokens,
 ) {
     // ---- clips
@@ -698,7 +698,7 @@ fn draw_clips(
 /// transitions (including the ones a drag carries) and the locked-track hatch.
 #[allow(clippy::too_many_arguments)]
 fn paint_track_edits(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     painter: &egui::Painter,
     seq: &Sequence,
     rows: &[Row],
@@ -713,7 +713,7 @@ fn paint_track_edits(
     // where the drop leaves it — also when that is another track, so a fade dragged from V1 to V2
     // previews on V2 instead of vanishing until the release. Each row keeps its own carried ones
     // at home (a copy's originals) and adds the ones landing on it.
-    let mut carried_transitions: HashMap<TrackId, Vec<(&filmcraft_project::Transition, Tick, Tick)>> = HashMap::new();
+    let mut carried_transitions: HashMap<TrackId, Vec<(&epsicut_project::Transition, Tick, Tick)>> = HashMap::new();
     for t in seq.all_tracks() {
         for trn in &t.transitions {
             if let Some((s, e, dest)) = move_transition_preview(app, seq, trn) {
@@ -731,7 +731,7 @@ fn paint_track_edits(
         let p = painter.with_clip_rect(Rect::from_min_max(pos2(content.min.x, row.min.y), pos2(content.max.x, row.max.y)));
         // Show Through Edits: a small bow-tie on cuts between continuous pieces of one clip
         if app.session.state.show_through_edits {
-            for te in filmcraft_edit::through::track_through_edits(tr) {
+            for te in epsicut_edit::through::track_through_edits(tr) {
                 let x = layout.x_of(te.time);
                 if x < content.min.x - 6.0 || x > content.max.x + 6.0 {
                     continue;
@@ -747,7 +747,7 @@ fn paint_track_edits(
         // move to one track by one offset): a carried one draws where it lands — its own row or
         // another — right away, a copy adds a ghost beside the copies while the originals stay
         // at home.
-        let mut draws: Vec<(&filmcraft_project::Transition, Tick, Tick, bool)> = Vec::new();
+        let mut draws: Vec<(&epsicut_project::Transition, Tick, Tick, bool)> = Vec::new();
         for trn in &tr.transitions {
             let carried = move_transition_preview(app, seq, trn);
             // the transition's home span (a transition dragged by an end still takes over)
@@ -796,8 +796,8 @@ fn paint_track_edits(
 /// control held in the Audio Track Mixer), as hot text to drag or type, as on an audio track.
 /// Changes go through `mixer.setValue`, so automation is written where the Mix fader has it; the
 /// changes of one press are one undo step, a typed value its own.
-fn mix_volume(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, r: Rect) {
-    use filmcraft_project::mixer::{FADER_MAX_DB, FADER_MIN_DB, LANE_VOLUME, MASTER_STRIP};
+fn mix_volume(app: &mut EpsicutApp, ui: &mut egui::Ui, seq: &Sequence, r: Rect) {
+    use epsicut_project::mixer::{FADER_MAX_DB, FADER_MIN_DB, LANE_VOLUME, MASTER_STRIP};
     let now = app.session.playhead();
     let db = app.session.previews.live.get(MASTER_STRIP, LANE_VOLUME).map(|o| o.value).unwrap_or_else(|| seq.master_strip().lane_value(LANE_VOLUME, now));
     let mut vui = ui.new_child(egui::UiBuilder::new().max_rect(r).layout(egui::Layout::right_to_left(egui::Align::Center)).id_salt("timeline-mix"));
@@ -823,10 +823,10 @@ fn mix_volume(app: &mut FilmcraftApp, ui: &mut egui::Ui, seq: &Sequence, r: Rect
 }
 
 /// Shown when no sequence is open: offers the demo project and accepts project or OS-file drops to create a sequence.
-fn empty_state(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+fn empty_state(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     ui.painter().text(rect.center() - vec2(0.0, 12.0), Align2::CENTER_CENTER, tl!("Drop media here to create sequence."), Tokens::ui(13.0), t.text_dim);
-    if app.session.project.items.values().any(|i| matches!(i.kind, filmcraft_project::ItemKind::Sequence(_))) {
+    if app.session.project.items.values().any(|i| matches!(i.kind, epsicut_project::ItemKind::Sequence(_))) {
         let hint = tl!("Double-click a sequence in the Project panel to open it here.");
         ui.painter().text(rect.center() + vec2(0.0, 50.0), Align2::CENTER_CENTER, hint, Tokens::ui(12.0), t.text_dim);
     }
@@ -880,48 +880,48 @@ fn empty_state(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
 mod trim_preview_tests {
     use super::*;
 
-    fn demo() -> (FilmcraftApp, Sequence) {
-        let mut s = filmcraft_engine::Session::default();
+    fn demo() -> (EpsicutApp, Sequence) {
+        let mut s = epsicut_engine::Session::default();
         s.execute("file.openDemoProject", serde_json::json!({})).unwrap();
         let seq = s.active_sequence().unwrap().clone();
-        (FilmcraftApp::new(s), seq)
+        (EpsicutApp::new(s), seq)
     }
 
     fn assert_same_media(before: &TrackItem, after: &TrackItem) {
         let mut t = after.start.max(before.start);
         while t < after.end().min(before.end()) {
             assert!((before.source_time_at(t) - after.source_time_at(t)).0.abs() <= 1, "{}: media moved at {t:?}", before.name);
-            t += Tick(filmcraft_time::TICKS_PER_SECOND / 10);
+            t += Tick(epsicut_time::TICKS_PER_SECOND / 10);
         }
     }
 
     /// A source whose audio streams are different constants (0.1 for stream 0, 0.5 for stream 1).
-    struct TwoStreams(filmcraft_media::MediaInfo);
+    struct TwoStreams(epsicut_media::MediaInfo);
 
-    impl filmcraft_media::MediaSource for TwoStreams {
-        fn info(&self) -> &filmcraft_media::MediaInfo {
+    impl epsicut_media::MediaSource for TwoStreams {
+        fn info(&self) -> &epsicut_media::MediaInfo {
             &self.0
         }
-        fn video_frame(&self, _req: filmcraft_media::FrameRequest) -> filmcraft_media::Result<Arc<filmcraft_frame::VideoFrame>> {
-            Err(filmcraft_media::MediaError::NoStream("video"))
+        fn video_frame(&self, _req: epsicut_media::FrameRequest) -> epsicut_media::Result<Arc<epsicut_frame::VideoFrame>> {
+            Err(epsicut_media::MediaError::NoStream("video"))
         }
-        fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<filmcraft_frame::AudioBuffer> {
-            Ok(filmcraft_frame::AudioBuffer { sample_rate, channels: vec![vec![0.1; frames]] })
+        fn audio(&self, _start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<epsicut_frame::AudioBuffer> {
+            Ok(epsicut_frame::AudioBuffer { sample_rate, channels: vec![vec![0.1; frames]] })
         }
-        fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> filmcraft_media::Result<filmcraft_frame::AudioBuffer> {
+        fn audio_stream(&self, stream: usize, start: i64, frames: usize, sample_rate: u32) -> epsicut_media::Result<epsicut_frame::AudioBuffer> {
             match stream {
                 0 => self.audio(start, frames, sample_rate),
-                1 => Ok(filmcraft_frame::AudioBuffer { sample_rate, channels: vec![vec![0.5; frames]] }),
-                _ => Err(filmcraft_media::MediaError::NoStream("audio")),
+                1 => Ok(epsicut_frame::AudioBuffer { sample_rate, channels: vec![vec![0.5; frames]] }),
+                _ => Err(epsicut_media::MediaError::NoStream("audio")),
             }
         }
     }
 
     #[test]
     fn each_audio_stream_gets_its_own_waveform_peaks() {
-        let info = filmcraft_media::MediaInfo {
+        let info = epsicut_media::MediaInfo {
             name: "two.mkv".into(),
-            kind: filmcraft_media::MediaKind::Movie,
+            kind: epsicut_media::MediaKind::Movie,
             duration: Tick(TICKS_PER_SECOND),
             video: None,
             audio_streams: Vec::new(),
@@ -942,22 +942,22 @@ mod trim_preview_tests {
     fn trimming_the_music_keeps_its_waveform_in_place() {
         let (mut app, seq) = demo();
         let music = seq.audio_tracks.iter().flat_map(|t| &t.items).find(|i| i.name.contains("Ambient")).unwrap().clone();
-        for (edge, delta) in [(filmcraft_edit::Edge::In, 5), (filmcraft_edit::Edge::Out, -5), (filmcraft_edit::Edge::In, -1)] {
-            let delta = Tick(delta * filmcraft_time::TICKS_PER_SECOND);
-            app.tl.drag = Some(Drag::Trim { clip: music.id, edge, mode: filmcraft_edit::TrimMode::Regular, delta, from: Tick::ZERO, linked: true });
+        for (edge, delta) in [(epsicut_edit::Edge::In, 5), (epsicut_edit::Edge::Out, -5), (epsicut_edit::Edge::In, -1)] {
+            let delta = Tick(delta * epsicut_time::TICKS_PER_SECOND);
+            app.tl.drag = Some(Drag::Trim { clip: music.id, edge, mode: epsicut_edit::TrimMode::Regular, delta, from: Tick::ZERO, linked: true });
             let (mut out, mut edited) = (HashMap::new(), HashMap::new());
             preview_drag(&app, &seq, &mut out, &mut edited);
             let shown = edited.get(&music.id).expect("the trimmed clip is drawn from its edited item");
             // where the preview places it is unchanged
             let want = match edge {
-                filmcraft_edit::Edge::In => (music.start + delta, music.duration - delta, None),
-                filmcraft_edit::Edge::Out => (music.start, music.duration + delta, None),
+                epsicut_edit::Edge::In => (music.start + delta, music.duration - delta, None),
+                epsicut_edit::Edge::Out => (music.start, music.duration + delta, None),
             };
             assert_eq!(out.get(&music.id).copied(), Some(want));
             assert_eq!((shown.start, shown.duration), (want.0, want.1));
             // the music under every remaining timeline time is the same: the waveform stays put
             assert_same_media(&music, shown);
-            if edge == filmcraft_edit::Edge::In {
+            if edge == epsicut_edit::Edge::In {
                 assert_eq!(shown.source_in, music.source_in + delta, "5 s into the music, not the music squeezed");
             }
         }
@@ -967,7 +967,7 @@ mod trim_preview_tests {
     fn rolling_an_edit_keeps_both_sides_in_place_but_a_stretch_still_squeezes() {
         let (mut app, seq) = demo();
         let (left, right) = seq.audio_tracks[0].items.windows(2).find(|w| w[0].end() == w[1].start).map(|w| (w[0].clone(), w[1].clone())).unwrap();
-        let delta = Tick(filmcraft_time::TICKS_PER_SECOND / 2);
+        let delta = Tick(epsicut_time::TICKS_PER_SECOND / 2);
         app.tl.drag = Some(Drag::Roll { left: left.id, right: right.id, delta, from: Tick::ZERO });
         let (mut out, mut edited) = (HashMap::new(), HashMap::new());
         preview_drag(&app, &seq, &mut out, &mut edited);
@@ -975,7 +975,7 @@ mod trim_preview_tests {
         assert_same_media(&right, &edited[&right.id]);
         assert_eq!(edited[&right.id].start, right.start + delta);
         // Rate Stretch keeps the same media in a new length: drawn from the original item
-        app.tl.drag = Some(Drag::Stretch { clip: left.id, edge: filmcraft_edit::Edge::Out, delta, from: Tick::ZERO, linked: true });
+        app.tl.drag = Some(Drag::Stretch { clip: left.id, edge: epsicut_edit::Edge::Out, delta, from: Tick::ZERO, linked: true });
         let (mut out, mut edited) = (HashMap::new(), HashMap::new());
         preview_drag(&app, &seq, &mut out, &mut edited);
         assert!(edited.is_empty() && out.contains_key(&left.id));
@@ -1014,7 +1014,7 @@ mod waveform_drag_anchor_tests {
     }
 
     /// The (body, item) pair the render loop would use for `id` with the app's current drag.
-    fn shown(app: &FilmcraftApp, seq: &Sequence, id: ClipId) -> (Rect, TrackItem) {
+    fn shown(app: &EpsicutApp, seq: &Sequence, id: ClipId) -> (Rect, TrackItem) {
         let (mut out, mut edited) = (HashMap::new(), HashMap::new());
         preview_drag(app, seq, &mut out, &mut edited);
         let original = seq.find_item(id).unwrap().1.clone();
@@ -1033,12 +1033,12 @@ mod waveform_drag_anchor_tests {
         assert!(drift < 0.01, "{what}: waveform compressed during drag: {a} -> {b} media ticks per pixel");
     }
 
-    fn demo_music() -> (FilmcraftApp, Sequence, TrackItem) {
-        let mut s = filmcraft_engine::Session::default();
+    fn demo_music() -> (EpsicutApp, Sequence, TrackItem) {
+        let mut s = epsicut_engine::Session::default();
         s.execute("file.openDemoProject", serde_json::json!({})).unwrap();
         let seq = s.active_sequence().unwrap().clone();
         let music = seq.audio_tracks.iter().flat_map(|t| &t.items).find(|i| i.name.contains("Ambient")).unwrap().clone();
-        (FilmcraftApp::new(s), seq, music)
+        (EpsicutApp::new(s), seq, music)
     }
 
     #[test]
@@ -1048,7 +1048,7 @@ mod waveform_drag_anchor_tests {
         // waveform into the new, shorter width.
         let (mut app, seq, music) = demo_music();
         let before = shown(&app, &seq, music.id);
-        app.tl.drag = Some(Drag::Remix { clip: music.id, delta: Tick(-8 * filmcraft_time::TICKS_PER_SECOND), from: Tick::ZERO });
+        app.tl.drag = Some(Drag::Remix { clip: music.id, delta: Tick(-8 * epsicut_time::TICKS_PER_SECOND), from: Tick::ZERO });
         let after = shown(&app, &seq, music.id);
         assert!(after.0.width() < before.0.width(), "the preview shortens the clip");
         assert_waveform_anchored("remix", &before, &after);
@@ -1169,7 +1169,7 @@ mod thumbnail_tiles_tests {
 #[cfg(test)]
 mod new_track_tests {
     use super::*;
-    use filmcraft_project::{Project, SequenceSettings};
+    use epsicut_project::{Project, SequenceSettings};
 
     /// #483: a drop above the top video track adds a video track, one below the last audio track an
     /// audio track; over a track, between the areas or on the Mix row it adds none.
@@ -1179,7 +1179,7 @@ mod new_track_tests {
         let id = p.new_sequence("s", SequenceSettings::default(), 1, 1, None);
         let seq = p.sequence(id).cloned().expect("sequence");
         // video area 0..200 (V1 at 150..200), divider, audio area 205..466 (A1 at 205..255), Mix 466..500
-        let row = |kind, track: &filmcraft_project::Track, y0: f32| Row {
+        let row = |kind, track: &epsicut_project::Track, y0: f32| Row {
             track: track.id,
             kind,
             index: 0,

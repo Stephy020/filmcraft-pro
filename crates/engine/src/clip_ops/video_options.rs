@@ -189,7 +189,7 @@ pub(super) fn fit_fill(s: &mut Session, p: &Value, fill: bool) -> Result<Value> 
         .iter()
         .filter_map(|c| {
             let (_, i) = q.find_item(*c)?;
-            Some((*c, filmcraft_render::source_size(&s.project, i.item)?, s.project.conformed_source_size(i.item, frame_par)?))
+            Some((*c, epsicut_render::source_size(&s.project, i.item)?, s.project.conformed_source_size(i.item, frame_par)?))
         })
         .collect();
     if sizes.is_empty() {
@@ -207,8 +207,8 @@ pub(super) fn fit_fill(s: &mut Session, p: &Value, fill: bool) -> Result<Value> 
             for (k, v) in [
                 ("scale", ParamValue::Float(pct)),
                 ("uniform_scale", ParamValue::Bool(true)),
-                ("position", ParamValue::Vec2(filmcraft_geom::Vec2::new(fw / 2.0, fh / 2.0))),
-                ("anchor", ParamValue::Vec2(filmcraft_geom::Vec2::new(*w as f64 / 2.0, *h as f64 / 2.0))),
+                ("position", ParamValue::Vec2(epsicut_geom::Vec2::new(fw / 2.0, fh / 2.0))),
+                ("anchor", ParamValue::Vec2(epsicut_geom::Vec2::new(*w as f64 / 2.0, *h as f64 / 2.0))),
             ] {
                 match m.param_mut(k) {
                     Some(prm) => {
@@ -216,7 +216,7 @@ pub(super) fn fit_fill(s: &mut Session, p: &Value, fill: bool) -> Result<Value> 
                         prm.value = v;
                     }
                     None => {
-                        m.params.insert(k.to_string(), filmcraft_project::Param::new(v));
+                        m.params.insert(k.to_string(), epsicut_project::Param::new(v));
                     }
                 }
             }

@@ -30,10 +30,10 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use filmcraft_edit as edit;
-use filmcraft_media::MediaKind;
-use filmcraft_project::{AudioChannels, ClipId, ItemId, Label, Marker, MarkerId, MarkerKind, Project, Sequence, SplitMarks, TrackId, TrackItem, TrackKind};
-use filmcraft_time::{FrameRate, Tick, TimeRange};
+use epsicut_edit as edit;
+use epsicut_media::MediaKind;
+use epsicut_project::{AudioChannels, ClipId, ItemId, Label, Marker, MarkerId, MarkerKind, Project, Sequence, SplitMarks, TrackId, TrackItem, TrackKind};
+use epsicut_time::{FrameRate, Tick, TimeRange};
 use serde_json::{Value, json};
 
 use crate::commands::{
@@ -543,7 +543,7 @@ fn comparable_master(project: &Project, it: &TrackItem) -> Option<(ItemId, Frame
 /// they are set. The new sequence is added to the project and selected; the original is unchanged.
 /// Give a sequence made from part of `from` (Nest…, Make Subsequence) the track names and audio
 /// channel layouts of `from`'s tracks, track for track.
-pub(crate) fn lay_out_tracks_like(new: &mut filmcraft_project::Sequence, from: &filmcraft_project::Sequence) {
+pub(crate) fn lay_out_tracks_like(new: &mut epsicut_project::Sequence, from: &epsicut_project::Sequence) {
     for (tr, src) in new.video_tracks.iter_mut().zip(&from.video_tracks) {
         tr.name = src.name.clone();
     }
@@ -623,7 +623,7 @@ fn make_subsequence(s: &mut Session, p: &Value) -> Result<Value> {
                     let inside = range.is_none_or(|r| trn.start >= r.start && trn.end() <= r.end());
                     if inside && from != Some(None) && to != Some(None) {
                         let mut t = trn.clone();
-                        t.id = filmcraft_project::TransitionId(pr.alloc_id());
+                        t.id = epsicut_project::TransitionId(pr.alloc_id());
                         t.from = from.flatten();
                         t.to = to.flatten();
                         t.start -= offset;
@@ -720,7 +720,7 @@ pub(crate) fn place_sequence_clips(s: &mut Session, placement: crate::commands::
                     let to = trn.to.map(|c| ids.get(&c).copied());
                     if trn.start >= range.start && trn.end() <= range.end() && from != Some(None) && to != Some(None) {
                         let mut t = trn.clone();
-                        t.id = filmcraft_project::TransitionId(p.alloc_id());
+                        t.id = epsicut_project::TransitionId(p.alloc_id());
                         (t.from, t.to) = (from.flatten(), to.flatten());
                         t.start = at + (t.start - range.start);
                         transitions.push((kind, lane, t));
@@ -737,7 +737,7 @@ pub(crate) fn place_sequence_clips(s: &mut Session, placement: crate::commands::
                 let id = TrackId(p.alloc_id());
                 let tracks = p.sequence_mut(seq_id).ok_or(EngineError::NoSequence)?.tracks_mut(kind);
                 let (word, n) = (if kind == TrackKind::Video { "Video" } else { "Audio" }, tracks.len() + 1);
-                tracks.push(filmcraft_project::Track::new(id, kind, format!("{word} {n}")));
+                tracks.push(epsicut_project::Track::new(id, kind, format!("{word} {n}")));
             }
             let id = p.sequence(seq_id).and_then(|q| q.tracks(kind).get(index)).map(|t| t.id).ok_or(EngineError::NoSequence)?;
             dest.insert((is_audio, lane), id);
@@ -807,7 +807,7 @@ fn placement(p: &Value, key: &str, letter: char, len: usize) -> Result<usize> {
 
 /// Give the tracks that still carry a default name (`<prefix> <number>`) the number of their
 /// place, as Premiere numbers its tracks; a track the user named keeps its name.
-fn renumber(tracks: &mut [filmcraft_project::Track], prefix: &str) {
+fn renumber(tracks: &mut [epsicut_project::Track], prefix: &str) {
     for (i, t) in tracks.iter_mut().enumerate() {
         let default = t.name.strip_prefix(prefix).and_then(|r| r.strip_prefix(' ')).is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
         if default {
@@ -853,7 +853,7 @@ pub(crate) fn add_tracks(s: &mut Session, p: &Value) -> Result<Value> {
     }
     let added = s.edit_sequence("Add Tracks", |q, ctx, _| {
         let mut new = |kind: TrackKind, prefix: &str, channels: Option<AudioChannels>| {
-            let mut t = filmcraft_project::Track::new(TrackId(ctx.alloc()), kind, format!("{prefix} 0"));
+            let mut t = epsicut_project::Track::new(TrackId(ctx.alloc()), kind, format!("{prefix} 0"));
             if let Some(c) = channels {
                 t.channels = c;
             }
@@ -1036,8 +1036,8 @@ impl Side {
 
 fn source_marks(s: &Session, item: ItemId) -> (Option<Tick>, Option<Tick>) {
     match s.project.item(item).map(|i| &i.kind) {
-        Some(filmcraft_project::ItemKind::Media(m)) => (m.mark_in, m.mark_out),
-        Some(filmcraft_project::ItemKind::Sequence(q)) => (q.mark_in, q.mark_out),
+        Some(epsicut_project::ItemKind::Media(m)) => (m.mark_in, m.mark_out),
+        Some(epsicut_project::ItemKind::Sequence(q)) => (q.mark_in, q.mark_out),
         _ => (None, None),
     }
 }
@@ -1171,7 +1171,7 @@ fn add_range_marker_in_out(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn filter_colors(s: &mut Session, p: &Value) -> Result<Value> {
     let id = "markers.filterColors";
-    let parse = |v: &Value| -> Result<(Label, Option<filmcraft_project::HexColor>)> {
+    let parse = |v: &Value| -> Result<(Label, Option<epsicut_project::HexColor>)> {
         crate::commands::marker_color_p(&json!({"color":v}), id)?.ok_or_else(|| bad(id, "need a color"))
     };
     if let Some(value) = p.get("hidden") {

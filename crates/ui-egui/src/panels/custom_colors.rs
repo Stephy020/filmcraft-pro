@@ -1,10 +1,10 @@
 //! Project-local custom palette and clip label application using the shared sRGB editor.
 use crate::{
-    FilmcraftApp,
+    EpsicutApp,
     widgets::color_picker::{self, ColorDraft},
 };
 use egui::{Color32, Sense, Stroke, vec2};
-use filmcraft_project::HexColor;
+use epsicut_project::HexColor;
 use serde_json::{Value, json};
 use std::sync::Arc;
 
@@ -18,7 +18,7 @@ pub struct Draft {
 
 /// Saved project swatches first, then custom colors already used in this sequence.
 /// Keep saved order and bound the menu, including when loading hostile project data.
-pub fn available(app: &FilmcraftApp) -> Vec<HexColor> {
+pub fn available(app: &EpsicutApp) -> Vec<HexColor> {
     let mut colors = Vec::new();
     for color in app
         .session
@@ -33,7 +33,7 @@ pub fn available(app: &FilmcraftApp) -> Vec<HexColor> {
             app.session
                 .state
                 .source_item
-                .and_then(|id| filmcraft_engine::clip_ops::source_view(&app.session, id))
+                .and_then(|id| epsicut_engine::clip_ops::source_view(&app.session, id))
                 .into_iter()
                 .flat_map(|v| v.markers)
                 .filter_map(|m| m.custom_color),
@@ -49,7 +49,7 @@ pub fn available(app: &FilmcraftApp) -> Vec<HexColor> {
     colors
 }
 
-pub fn menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, params: Value, prefix: &str) {
+pub fn menu(app: &mut EpsicutApp, ui: &mut egui::Ui, params: Value, prefix: &str) {
     ui.separator();
     egui::ScrollArea::vertical().id_salt(format!("{prefix}.customScroll")).max_height(140.0).show(ui, |ui| {
         for color in available(app) {
@@ -89,7 +89,7 @@ pub fn menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, params: Value, prefix: &s
     }
 }
 
-pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut EpsicutApp, ctx: &egui::Context) {
     let Some(mut draft) = app.ui.custom_label_color.take() else { return };
     if !Arc::ptr_eq(&draft.project, &app.session.project_instance) {
         return;
@@ -127,6 +127,6 @@ pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
     app.ui.custom_label_color = Some(draft);
 }
 
-pub fn name(app: &FilmcraftApp, color: HexColor) -> String {
+pub fn name(app: &EpsicutApp, color: HexColor) -> String {
     app.session.project.custom_color_names.get(&color).filter(|s| !s.is_empty()).cloned().unwrap_or_else(|| color.hex())
 }

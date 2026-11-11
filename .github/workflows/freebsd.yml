@@ -1,4 +1,4 @@
-# Builds FilmCraft on FreeBSD, inside a FreeBSD VM on a Linux runner (GitHub has no FreeBSD
+# Builds EpsiCut on FreeBSD, inside a FreeBSD VM on a Linux runner (GitHub has no FreeBSD
 # runners), then runs packaging/freebsd/package.sh, the script the release job runs, and checks
 # the tarball. A broken FreeBSD build or package fails here before it can fail a release. Nothing
 # is uploaded and no secrets are used. (The test suite isn't run here yet: the ffmpeg-oracle and

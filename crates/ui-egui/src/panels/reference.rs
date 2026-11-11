@@ -8,17 +8,17 @@
 //! mode), `reference.scopes.view.<kind>`. State: `ui.panels.reference`.
 
 use egui::{Align2, Color32, Rect, Sense, Stroke, pos2, vec2};
-use filmcraft_scopes::ScopeKind;
-use filmcraft_time::{Tick, TimeDisplay, format_time};
+use epsicut_scopes::ScopeKind;
+use epsicut_time::{Tick, TimeDisplay, format_time};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::frames::{FrameKey, Target};
 use crate::icons::{self, Icon};
 use crate::panels::panel_state::RefDisplay;
 use crate::theme::Tokens;
 
 /// The frame the Reference Monitor shows (None without a sequence).
-pub fn frame(app: &FilmcraftApp) -> Option<i64> {
+pub fn frame(app: &EpsicutApp) -> Option<i64> {
     let q = app.session.active_sequence()?;
     let rate = q.settings.frame_rate;
     let r = &app.ui.panels.reference;
@@ -27,7 +27,7 @@ pub fn frame(app: &FilmcraftApp) -> Option<i64> {
     Some(rate.frame_at(t).clamp(0, last))
 }
 
-pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let Some(seq_id) = app.session.state.active_sequence else {

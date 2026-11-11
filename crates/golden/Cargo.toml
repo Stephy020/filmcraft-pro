@@ -1,5 +1,5 @@
 [package]
-name = "filmcraft-golden"
+name = "epsicut-golden"
 description = "Golden-image tests for the CPU renderer/compositor and GPU-vs-CPU parity (test-only crate)"
 version.workspace = true
 edition.workspace = true
@@ -15,14 +15,14 @@ workspace = true
 [dependencies]
 
 [dev-dependencies]
-filmcraft-testkit = { workspace = true }
-filmcraft-color = { workspace = true }
-filmcraft-frame = { workspace = true }
-filmcraft-time = { workspace = true }
-filmcraft-geom = { workspace = true }
-filmcraft-media = { workspace = true }
-filmcraft-project = { workspace = true }
-filmcraft-render = { workspace = true }
-filmcraft-gpu = { workspace = true }
+epsicut-testkit = { workspace = true }
+epsicut-color = { workspace = true }
+epsicut-frame = { workspace = true }
+epsicut-time = { workspace = true }
+epsicut-geom = { workspace = true }
+epsicut-media = { workspace = true }
+epsicut-project = { workspace = true }
+epsicut-render = { workspace = true }
+epsicut-gpu = { workspace = true }
 pollster = "1"
 wgpu = { version = "30", features = ["wgsl", "metal", "vulkan", "dx12", "gles"] }

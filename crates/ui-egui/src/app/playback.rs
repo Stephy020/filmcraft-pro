@@ -1,10 +1,10 @@
 #[cfg(not(target_arch = "wasm32"))]
 use super::play_ahead;
-use super::{AUDIO_RETRY_S, AUDIO_STALL_S, FilmcraftApp, Tick, frames, json, panels, shuttle};
+use super::{AUDIO_RETRY_S, AUDIO_STALL_S, EpsicutApp, Tick, frames, json, panels, shuttle};
 #[cfg(test)]
-use filmcraft_engine::Session;
+use epsicut_engine::Session;
 
-impl FilmcraftApp {
+impl EpsicutApp {
     // ---------------------------------------------------------------- playback
 
     pub fn toggle_play(&mut self, speed: f64) {
@@ -96,7 +96,7 @@ impl FilmcraftApp {
         Ok(seconds)
     }
 
-    /// Whether [`FilmcraftApp::stop`] has a transport to stop: Program or Source playback, a
+    /// Whether [`EpsicutApp::stop`] has a transport to stop: Program or Source playback, a
     /// preroll, or a recording that runs one. A press that only moves the playhead uses this so it
     /// does not close an audio stream that is already open (#2633): dropping the output stream
     /// makes the next scrub grain open the device again, and on WASAPI that open is slow.
@@ -324,7 +324,7 @@ mod clock_tests {
     /// the last UI time and then jumping when the next UI pass arrives.
     #[test]
     fn now_applies_the_ui_clock_offset_and_keeps_the_test_override_first() {
-        let mut app = FilmcraftApp::new(Session::default());
+        let mut app = EpsicutApp::new(Session::default());
         app.ui_clock = 123.0;
         app.ui_clock_offset = Some(1_000.0);
         assert!(app.now() >= 1_000.0, "the captured offset moves the host clock to egui time");
@@ -350,7 +350,7 @@ mod voiceover_playback_tests {
         session.execute("audio.voiceover.settings", json!({"prerollSeconds": 0.0})).unwrap();
         session.prefs.timeline.return_to_beginning = true;
         let ctx = egui::Context::default();
-        let mut app = FilmcraftApp::new(session);
+        let mut app = EpsicutApp::new(session);
         app.audio = None;
         let dur = app.session.active_sequence().map(|q| q.duration()).unwrap();
         let from = app.session.sequence_rate().snap(dur + Tick::from_seconds_f64(60.0));
@@ -376,10 +376,10 @@ mod voiceover_playback_tests {
 mod smooth_playhead_tests {
     use super::*;
 
-    fn playing_at(now: f64) -> FilmcraftApp {
+    fn playing_at(now: f64) -> EpsicutApp {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).unwrap();
-        let mut app = FilmcraftApp::new(session);
+        let mut app = EpsicutApp::new(session);
         app.playback.playing = true;
         app.playback.speed = 1.0;
         app.playback.anchor_tick = Tick::ZERO;
@@ -427,7 +427,7 @@ mod smooth_playhead_tests {
     fn on_the_audio_clock_the_drawn_playhead_never_steps_back() {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).unwrap();
-        let mut app = FilmcraftApp::new(session);
+        let mut app = EpsicutApp::new(session);
         let played = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
         app.audio = Some(Box::new(BufferedDevice(played.clone())));
         app.playback.playing = true;

@@ -5,15 +5,15 @@ use egui::{Color32, ColorImage, Rect, ViewportId, ViewportInfo, pos2, vec2};
 
 use super::*;
 use crate::automation::Registry;
-use filmcraft_engine::Session;
+use epsicut_engine::Session;
 
 /// App with a default session, for capture-state unit tests.
-fn app() -> FilmcraftApp {
-    FilmcraftApp::new(Session::default())
+fn app() -> EpsicutApp {
+    EpsicutApp::new(Session::default())
 }
 
 /// A fixed 800×600, 1 px/pt capture identity for the app's current document with no focus.
-fn geometry(app: &FilmcraftApp) -> CaptureGeometry {
+fn geometry(app: &EpsicutApp) -> CaptureGeometry {
     CaptureGeometry {
         surface: SurfaceGeometry { viewport: Some(egui::vec2(800.0, 600.0)), pixels_per_point: 1.0, max_texture_side: 8192, minimized: false, occluded: false },
         document: active_document(app),
@@ -28,13 +28,13 @@ fn raw() -> egui::RawInput {
 
 /// Admit one uncropped in-memory capture at the default test surface; return its reply
 /// receiver and token.
-fn admit_one(app: &mut FilmcraftApp, ctx: &egui::Context) -> (Receiver<Value>, u64) {
+fn admit_one(app: &mut EpsicutApp, ctx: &egui::Context) -> (Receiver<Value>, u64) {
     admit_with_surface(app, ctx, geometry(app).surface)
 }
 
 /// Bind `surface` as the current capture geometry, admit one uncropped in-memory capture and
 /// return its reply receiver and token.
-fn admit_with_surface(app: &mut FilmcraftApp, ctx: &egui::Context, surface: SurfaceGeometry) -> (Receiver<Value>, u64) {
+fn admit_with_surface(app: &mut EpsicutApp, ctx: &egui::Context, surface: SurfaceGeometry) -> (Receiver<Value>, u64) {
     app.capture_geometry = Some(CaptureGeometry { surface, document: active_document(app), focus: None });
     let (tx, rx) = channel();
     admit(app, ctx, None, None, tx);

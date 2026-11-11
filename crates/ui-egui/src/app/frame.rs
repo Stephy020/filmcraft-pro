@@ -1,12 +1,12 @@
-use super::{FilmcraftApp, Tick, Tokens, crash, header, i18n, panels, state, updates_ui, widgets};
+use super::{EpsicutApp, Tick, Tokens, crash, header, i18n, panels, state, updates_ui, widgets};
 
-impl FilmcraftApp {
+impl EpsicutApp {
     // ---------------------------------------------------------------- frame
 
     /// Settings ▸ Media ▸ Automatically refresh growing files: every *Refresh growing files every*
     /// seconds, and as soon as the window comes back to the front (after a render in another app),
     /// stamp the project's media files on a worker thread and read the changed ones again
-    /// ([`filmcraft_engine::media_watch`]).
+    /// ([`epsicut_engine::media_watch`]).
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) fn tick_media_refresh(&mut self, ctx: &egui::Context, now: f64) {
         if let Some(r) = self.session.poll_media_scan() {
@@ -25,7 +25,7 @@ impl FilmcraftApp {
         let focused = self.native_window_focused.unwrap_or(false);
         let was_focused: bool = ctx.data(|d| d.get_temp(focus_key)).unwrap_or(focused);
         ctx.data_mut(|d| d.insert_temp(focus_key, focused));
-        if !on || !filmcraft_engine::media_watch::has_media_files(&self.session.project) {
+        if !on || !epsicut_engine::media_watch::has_media_files(&self.session.project) {
             return;
         }
         let last: f64 = ctx.data(|d| d.get_temp(last_key)).unwrap_or(f64::NEG_INFINITY);
@@ -96,8 +96,7 @@ impl FilmcraftApp {
             match notice {
                 crate::ControlNotice::Token => {
                     self.ui.status =
-                        tl!("The control server is disabled: FILMCRAFT_CONTROL_TOKEN must contain 64 random hex characters (see docs/control-protocol.md)")
-                            .into()
+                        tl!("The control server is disabled: EPSICUT_CONTROL_TOKEN must contain 64 random hex characters (see docs/control-protocol.md)").into()
                 }
             }
         }
@@ -118,7 +117,7 @@ impl FilmcraftApp {
 
     /// The running job (export / render previews), if any; plays the rendered range when a preview
     /// render completes. Runs every frame, with or without the status bar.
-    pub(super) fn poll_jobs(&mut self, ctx: &egui::Context) -> Option<filmcraft_engine::Job> {
+    pub(super) fn poll_jobs(&mut self, ctx: &egui::Context) -> Option<epsicut_engine::Job> {
         use std::sync::atomic::Ordering;
         let running = self.session.jobs.iter().rev().find(|j| !j.progress.finished.load(Ordering::Relaxed)).cloned();
         // Play after rendering previews.
@@ -143,7 +142,7 @@ impl FilmcraftApp {
     }
 
     /// The running job for drawing only; polling/play-after-render stays in logic.
-    fn running_job(&self) -> Option<filmcraft_engine::Job> {
+    fn running_job(&self) -> Option<epsicut_engine::Job> {
         use std::sync::atomic::Ordering;
         self.session.jobs.iter().rev().find(|j| !j.progress.finished.load(Ordering::Relaxed)).cloned()
     }
@@ -219,14 +218,14 @@ impl FilmcraftApp {
     }
 }
 
-impl FilmcraftApp {
-    /// The "FilmCraft hit an error" window after a caught UI panic. Automation ids:
+impl EpsicutApp {
+    /// The "EpsiCut hit an error" window after a caught UI panic. Automation ids:
     /// `error.dismiss`, `error.save`.
     pub(super) fn error_window(&mut self, ctx: &egui::Context) {
         let Some(msg) = self.ui_error.clone() else { return };
         let mut close = false;
-        egui::Window::new(tl!("FilmCraft hit an error"))
-            .id(egui::Id::unique("FilmCraft hit an error"))
+        egui::Window::new(tl!("EpsiCut hit an error"))
+            .id(egui::Id::unique("EpsiCut hit an error"))
             .collapsible(false)
             .resizable(false)
             .pivot(egui::Align2::CENTER_CENTER)
@@ -268,15 +267,15 @@ mod job_status_tests {
     /// "Exporting… 46%" jumped sideways whenever the time left gained or lost a digit or its hour.
     #[test]
     fn the_job_text_changes_once_a_second_and_where_it_starts_stays_put() {
-        let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
-        let job = filmcraft_engine::Job { id: 7, label: "Exporting".into(), progress: Default::default(), result: Default::default() };
+        let mut app = EpsicutApp::new(epsicut_engine::Session::default());
+        let job = epsicut_engine::Job { id: 7, label: "Exporting".into(), progress: Default::default(), result: Default::default() };
         let progress = job.progress.clone();
         progress.total.store(1_000_000, Ordering::Relaxed);
         progress.done.store(460_000, Ordering::Relaxed);
         app.session.jobs.push(job);
         let (ctx, t) = (egui::Context::default(), Tokens::for_kind(crate::theme::ThemeKind::Dark));
         let sb = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(900.0, 24.0));
-        let draw = |app: &mut FilmcraftApp, now: f64| {
+        let draw = |app: &mut EpsicutApp, now: f64| {
             app.set_now_for_test(now);
             let mut start = None;
             ctx.run_ui(egui::RawInput::default(), |ui| start = app.job_status(ui, sb, &t)).textures_delta.clear();

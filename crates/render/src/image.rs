@@ -1,6 +1,6 @@
 //! The compositor's working image: premultiplied linear-light RGBA f32, row-major.
 
-use filmcraft_geom::Affine;
+use epsicut_geom::Affine;
 use rayon::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -125,7 +125,7 @@ impl Image {
         }
         let mut out = Image::new(w, h);
         // Destination bounds of the source rect, to skip empty rows/cols.
-        let b = m.bounds(&filmcraft_geom::Rect::new(0.0, 0.0, self.w as f64, self.h as f64));
+        let b = m.bounds(&epsicut_geom::Rect::new(0.0, 0.0, self.w as f64, self.h as f64));
         let y0 = (b.y.floor().max(0.0) as usize).min(h);
         let y1 = (b.bottom().ceil().max(0.0) as usize).min(h);
         let x0 = (b.x.floor().max(0.0) as usize).min(w);
@@ -219,7 +219,7 @@ impl Image {
             return Vec::new();
         }
         let mut out = vec![0u8; self.w * self.h * 4];
-        out.par_chunks_mut(self.w * 4).zip(self.px.par_chunks(self.w * 4)).for_each(|(o, s)| filmcraft_frame::linear_premul_to_srgb8(s, o));
+        out.par_chunks_mut(self.w * 4).zip(self.px.par_chunks(self.w * 4)).for_each(|(o, s)| epsicut_frame::linear_premul_to_srgb8(s, o));
         out
     }
 
@@ -252,14 +252,14 @@ const BATCH: usize = 64;
 /// One row of [`Image::over_black_rgba8`] (`alpha` false: the fourth byte is 255) or
 /// [`Image::over_black_with_alpha_rgba8`]. A batch's table indices are computed first, in a loop
 /// that vectorises, and looked up after; per value this is
-/// [`filmcraft_color::linear_to_srgb_u8`], and [`alpha_u8`] for the alpha.
+/// [`epsicut_color::linear_to_srgb_u8`], and [`alpha_u8`] for the alpha.
 pub(crate) fn over_black_row(s: &[f32], o: &mut [u8], alpha: bool) {
-    let lut = filmcraft_color::linear_to_srgb_u8_table();
+    let lut = epsicut_color::linear_to_srgb_u8_table();
     let mut ix = [0u16; BATCH * 4];
     for (s, o) in s.chunks(BATCH * 4).zip(o.chunks_mut(BATCH * 4)) {
         let ix = &mut ix[..s.len()];
         for (i, v) in ix.iter_mut().zip(s) {
-            *i = filmcraft_color::linear_to_srgb_index(*v);
+            *i = epsicut_color::linear_to_srgb_index(*v);
         }
         for ((o, i), s) in o.as_chunks_mut::<4>().0.iter_mut().zip(ix.as_chunks::<4>().0).zip(s.as_chunks::<4>().0) {
             o[0] = lut[i[0] as usize & 4095];

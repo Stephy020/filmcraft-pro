@@ -1,9 +1,9 @@
 //! A separate project palette manager, shared by marker and clip menus.
 use crate::{
-    FilmcraftApp,
+    EpsicutApp,
     widgets::color_picker::{self, ColorDraft},
 };
-use filmcraft_project::HexColor;
+use epsicut_project::HexColor;
 use serde_json::json;
 use std::sync::Arc;
 #[derive(Clone, Debug)]
@@ -15,7 +15,7 @@ pub struct Draft {
     name: String,
     error: String,
 }
-pub fn open(app: &mut FilmcraftApp) {
+pub fn open(app: &mut EpsicutApp) {
     app.ui.palette_manager = Some(Draft {
         project: app.session.project_instance.clone(),
         editing: false,
@@ -25,7 +25,7 @@ pub fn open(app: &mut FilmcraftApp) {
         error: String::new(),
     });
 }
-pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut EpsicutApp, ctx: &egui::Context) {
     let Some(mut draft) = app.ui.palette_manager.take() else { return };
     if !Arc::ptr_eq(&draft.project, &app.session.project_instance) {
         return;

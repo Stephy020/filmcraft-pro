@@ -1,5 +1,5 @@
 use super::*;
-use filmcraft_project::graphic_design::{CharStyle, char_style_at, range_styles};
+use epsicut_project::graphic_design::{CharStyle, char_style_at, range_styles};
 
 // ---------------------------------------------------------------------------------------------
 // Properties / Essential Graphics
@@ -299,12 +299,12 @@ impl Ctx<'_> {
     }
 }
 
-fn section(ui: &mut egui::Ui, app: &mut FilmcraftApp, name: &str, t: &Tokens) -> bool {
+fn section(ui: &mut egui::Ui, app: &mut EpsicutApp, name: &str, t: &Tokens) -> bool {
     section_header(ui, app, name, t).0
 }
 
 /// A collapsible section's header row: whether the section is open, and the row.
-fn section_header(ui: &mut egui::Ui, app: &mut FilmcraftApp, name: &str, t: &Tokens) -> (bool, Rect) {
+fn section_header(ui: &mut egui::Ui, app: &mut EpsicutApp, name: &str, t: &Tokens) -> (bool, Rect) {
     ui.add_space(4.0);
     let key = format!("gfx:{name}");
     let open = !app.ui.collapsed_fx.contains(&key);
@@ -435,7 +435,7 @@ fn letter_button(ui: &mut egui::Ui, text: &str, tip: &str, on: bool, t: &Tokens,
 /// and the front-first list of the clip's layers.
 #[allow(clippy::too_many_arguments)]
 fn layers_section(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &mut egui::Ui,
     clip: ClipId,
     it: &TrackItem,
@@ -513,7 +513,7 @@ fn layers_section(
 #[allow(clippy::too_many_arguments)]
 fn text_section_header(
     ui: &mut egui::Ui,
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     clip: ClipId,
     l: usize,
     e: &EffectInstance,
@@ -542,7 +542,7 @@ fn text_section_header(
     open
 }
 
-pub fn properties(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn properties(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let Some((clip, it)) = selected_graphic(app) else {
         crate::dock::placeholder(ui, rect, &t, tl!("Select a graphic clip, or use the Type tool (T) on the Program monitor"));
@@ -659,7 +659,7 @@ pub fn properties(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 ParamValue::Text(f) => f,
                 _ => String::new(),
             };
-            let fams = filmcraft_text::picker_families();
+            let fams = epsicut_text::picker_families();
             let (_, mut vui) = cx.row(ui, tl!("Font"));
             let r = craft_ui::ComboBox::from_id_salt(("gfx-font", clip.0, l)).selected_text(&family).width(170.0).height(400.0).show_ui(&mut vui, |ui| {
                 for (f, _) in &fams {
@@ -831,7 +831,7 @@ pub fn properties(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
 }
 
 /// Text Properties (the wrench in the Text section): Text Layer Type and Text Styling.
-pub fn dialogs(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub fn dialogs(app: &mut EpsicutApp, ctx: &egui::Context) {
     let Some(mut d) = app.ui.text_props_dialog.clone() else { return };
     let mut elems: Vec<(String, Rect, &str)> = Vec::new();
     let mut close = crate::widgets::escape_closes(ctx);
@@ -892,7 +892,7 @@ pub fn dialogs(app: &mut FilmcraftApp, ctx: &egui::Context) {
 
 #[cfg(test)]
 mod tests {
-    use filmcraft_project::graphic_design::{CharStyle, LayerExtra, apply_char_style};
+    use epsicut_project::graphic_design::{CharStyle, LayerExtra, apply_char_style};
 
     use super::*;
 
@@ -1022,7 +1022,7 @@ mod tests {
         assert_eq!(color_hex([255, 0, 16, 255], true), "#ff0010");
         assert_eq!(color_hex([255, 0, 16, 128], false), "#ff0010");
         // what the control writes parses back to the same half-transparent stop
-        let c = filmcraft_color::parse_hex(&color_hex([255, 0, 0, 128], true)).unwrap_or_default();
+        let c = epsicut_color::parse_hex(&color_hex([255, 0, 0, 128], true)).unwrap_or_default();
         assert!((c[3] - 128.0 / 255.0).abs() < 1e-6 && c[0] == 1.0);
     }
 }

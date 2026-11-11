@@ -8,14 +8,14 @@ use std::time::{Duration, Instant};
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
-use filmcraft_ui_egui::frames::{FrameKey, Target};
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
+use epsicut_ui_egui::frames::{FrameKey, Target};
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
 }
 
@@ -24,7 +24,7 @@ impl Driver {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
+        let app = EpsicutApp::new(session).with_control(rx);
         let harness = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000).build_eframe(move |_cc| app);
         let mut d = Driver { harness, tx };
         d.frames(4);
@@ -167,7 +167,7 @@ fn program_monitor_follows_a_backward_scrub() {
 /// workers end, so the first project's media pool is released.
 #[test]
 fn opening_a_project_releases_the_previous_media_pool() {
-    let dir = std::env::temp_dir().join(format!("filmcraft-perf-ui-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("epsicut-perf-ui-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("reopen.fcproj").to_string_lossy().to_string();
@@ -201,7 +201,7 @@ fn a_newer_revision_keeps_the_frame_being_rendered() {
     // the clip with Lumetri Color at full resolution: tens of milliseconds on the CPU
     let seq = app.session.state.active_sequence.unwrap();
     let rate = app.session.active_sequence().unwrap().settings.frame_rate;
-    let frame = rate.frame_at(filmcraft_time::Tick::from_seconds_f64(15.0));
+    let frame = rate.frame_at(epsicut_time::Tick::from_seconds_f64(15.0));
     let key = |revision| FrameKey { target: Target::Sequence(seq), frame, size: 1000, revision, draft: false };
     let project = app.session.project.clone();
     idle();
@@ -223,7 +223,7 @@ fn queued_frames_do_not_poll_the_ui() {
         let s = &d.harness.state().session;
         (s.media.clone(), s.services.clone(), s.previews.clone())
     };
-    d.harness.state_mut().frames = std::sync::Arc::new(filmcraft_ui_egui::frames::FrameServer::new(pool, services, previews, 0));
+    d.harness.state_mut().frames = std::sync::Arc::new(epsicut_ui_egui::frames::FrameServer::new(pool, services, previews, 0));
     d.exec("playhead.set", json!({"frame": 7}));
     d.frames(3);
     assert!(d.harness.state().frames.queue_len() > 0, "frames are queued");
@@ -242,7 +242,7 @@ fn queued_frames_do_not_poll_the_ui() {
 fn a_rebuilt_frame_server_wakes_the_ui_from_its_first_frame() {
     let mut d = Driver::demo();
     let before = d.harness.state().frames.clone();
-    d.harness.state_mut().session.media = std::sync::Arc::new(filmcraft_engine::media_pool::MediaPool::default());
+    d.harness.state_mut().session.media = std::sync::Arc::new(epsicut_engine::media_pool::MediaPool::default());
     d.harness.step();
     let after = d.harness.state().frames.clone();
     assert!(!std::sync::Arc::ptr_eq(&before, &after), "the frame server was rebuilt");
@@ -342,7 +342,7 @@ fn playback_at_a_newer_revision_keeps_the_frame_being_rendered() {
     // the clip with Lumetri Color at full resolution: tens of milliseconds on the CPU
     let seq = app.session.state.active_sequence.unwrap();
     let rate = app.session.active_sequence().unwrap().settings.frame_rate;
-    let frame = rate.frame_at(filmcraft_time::Tick::from_seconds_f64(15.0));
+    let frame = rate.frame_at(epsicut_time::Tick::from_seconds_f64(15.0));
     let key = |frame, revision| FrameKey { target: Target::Sequence(seq), frame, size: 1000, revision, draft: false };
     let project = app.session.project.clone();
     idle();

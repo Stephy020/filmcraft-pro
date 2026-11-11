@@ -3,7 +3,7 @@
 //! A project file is UTF-8 JSON with an explicit schema version:
 //!
 //! ```json
-//! { "format": "filmcraft.project", "schema_version": 2, "generator": "FilmCraft 0.1.0", "project": { … } }
+//! { "format": "filmcraft.project", "schema_version": 2, "generator": "EpsiCut 0.1.0", "project": { … } }
 //! ```
 //!
 //! - **Versioning.** [`SCHEMA_VERSION`] is the version this build writes. Older files are upgraded on
@@ -47,7 +47,7 @@
 pub mod atomic;
 pub mod autosave;
 
-use filmcraft_project::{Project, ProjectView};
+use epsicut_project::{Project, ProjectView};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -74,11 +74,9 @@ pub const OLDEST_SCHEMA: u32 = 1;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FormatError {
-    #[error("not a FilmCraft project: {0}")]
+    #[error("not a EpsiCut project: {0}")]
     NotAProject(String),
-    #[error(
-        "this project was saved by a newer version of FilmCraft (project schema v{found}); this build reads up to v{supported}. Update FilmCraft to open it."
-    )]
+    #[error("this project was saved by a newer version of EpsiCut (project schema v{found}); this build reads up to v{supported}. Update EpsiCut to open it.")]
     TooNew { found: u32, supported: u32 },
     #[error("project schema v{found} is too old for this build (oldest supported: v{oldest})")]
     TooOld { found: u32, oldest: u32 },
@@ -110,7 +108,7 @@ impl Loaded {
 
 /// Writer identification stored in the envelope.
 pub fn generator() -> String {
-    format!("FilmCraft {}", env!("CARGO_PKG_VERSION"))
+    format!("EpsiCut {}", env!("CARGO_PKG_VERSION"))
 }
 
 #[derive(Serialize)]
@@ -226,7 +224,7 @@ fn validate_loaded(mut loaded: Loaded) -> Result<Loaded, FormatError> {
     // Embedded LUT text is rendered on the hot path. Drop oversize entries at load time so a
     // hostile project cannot retain an unrenderable multi-megabyte source or repeatedly offer it
     // to renderers. Clips that refer to one simply have no LUT, like a deleted library entry.
-    let max_lut = filmcraft_project::MAX_LUT_TEXT_BYTES;
+    let max_lut = epsicut_project::MAX_LUT_TEXT_BYTES;
     loaded.project.luts.retain(|lut| {
         let keep = lut.text.len() <= max_lut;
         if !keep {
@@ -237,20 +235,20 @@ fn validate_loaded(mut loaded: Loaded) -> Result<Loaded, FormatError> {
     // Out-of-range audio stream data is repaired, not refused: failing the load would lose the
     // whole project over one bad index. A media item keeps its first `MAX_AUDIO_STREAMS` streams; a
     // clip pointing past that plays stream 0.
-    let max = filmcraft_media::MAX_AUDIO_STREAMS;
+    let max = epsicut_media::MAX_AUDIO_STREAMS;
     for item in loaded.project.items.values_mut() {
         let name = item.name.clone();
         match &mut item.kind {
-            filmcraft_project::ItemKind::Media(m) => {
+            epsicut_project::ItemKind::Media(m) => {
                 if let Some(video) = &m.info.video {
-                    filmcraft_project::validate_frame_size(video.width, video.height).map_err(|e| FormatError::Corrupt(format!("media `{name}`: {e}")))?;
+                    epsicut_project::validate_frame_size(video.width, video.height).map_err(|e| FormatError::Corrupt(format!("media `{name}`: {e}")))?;
                 }
                 if m.info.audio_streams.len() > max {
                     log::warn!("media `{name}`: {} audio streams, keeping the first {max}", m.info.audio_streams.len());
                     m.info.audio_streams.truncate(max);
                 }
             }
-            filmcraft_project::ItemKind::Sequence(sequence) => {
+            epsicut_project::ItemKind::Sequence(sequence) => {
                 let sequence = std::sync::Arc::make_mut(sequence);
                 for clip in sequence.audio_tracks.iter_mut().flat_map(|t| t.items.iter_mut()) {
                     if clip.audio_stream >= max {
@@ -263,7 +261,7 @@ fn validate_loaded(mut loaded: Loaded) -> Result<Loaded, FormatError> {
         }
     }
     for item in loaded.project.sequences() {
-        if let filmcraft_project::ItemKind::Sequence(sequence) = &item.kind {
+        if let epsicut_project::ItemKind::Sequence(sequence) = &item.kind {
             sequence.check_bounds().map_err(|e| FormatError::Corrupt(format!("sequence `{}`: {e}", item.name)))?;
         }
     }
@@ -321,7 +319,7 @@ fn v1_to_v2(doc: Value) -> Result<Value, String> {
     Ok(serde_json::json!({
         "format": FORMAT_ID,
         "schema_version": 2,
-        "generator": "FilmCraft (schema v1)",
+        "generator": "EpsiCut (schema v1)",
         "project": Value::Object(project),
     }))
 }
@@ -418,7 +416,7 @@ mod tests {
     #[test]
     fn damaged_sequence_settings_are_rejected_before_rendering() {
         let mut p = Project::new("Invalid sequence");
-        let id = p.new_sequence("Bad", filmcraft_project::SequenceSettings::default(), 1, 1, None);
+        let id = p.new_sequence("Bad", epsicut_project::SequenceSettings::default(), 1, 1, None);
         for (width, height, sample_rate) in [(0, 90, 48000), (160, 0, 48000), (160, 90, 0), (65536, 90, 48000), (32768, 16384, 48000)] {
             let settings = &mut p.sequence_mut(id).unwrap().settings;
             (settings.width, settings.height, settings.sample_rate) = (width, height, sample_rate);
@@ -431,16 +429,12 @@ mod tests {
     /// opens, as it did before; and 16K sequences are not "too large".
     #[test]
     fn structural_rule_breaks_still_open() {
-        use filmcraft_project::{ItemKind, SequenceSettings, TrackKind};
-        use filmcraft_time::{FrameRate, Tick, TimeRange};
+        use epsicut_project::{ItemKind, SequenceSettings, TrackKind};
+        use epsicut_time::{FrameRate, Tick, TimeRange};
         let mut p = Project::new("Legacy");
         let rate = FrameRate::FPS_24;
-        let layer = p.add_item(
-            "Layer",
-            filmcraft_project::Label::Iris,
-            ItemKind::AdjustmentLayer { width: 1920, height: 1080, rate, duration: rate.tick_of(48) },
-            None,
-        );
+        let layer =
+            p.add_item("Layer", epsicut_project::Label::Iris, ItemKind::AdjustmentLayer { width: 1920, height: 1080, rate, duration: rate.tick_of(48) }, None);
         let settings = SequenceSettings { width: 15360, height: 8640, ..Default::default() };
         let seq = p.new_sequence("Sequence 01", settings, 1, 1, None);
         let range = TimeRange::new(Tick::ZERO, rate.tick_of(48));
@@ -459,20 +453,20 @@ mod tests {
     /// geometry, different text) can no longer be confused after a reorder.
     #[test]
     fn opening_a_legacy_project_assigns_unique_graphic_layer_uids() {
-        use filmcraft_project::graphic::{layer_indices, new_text_layer};
-        use filmcraft_project::{ItemKind, SequenceSettings, TrackKind};
-        use filmcraft_time::{FrameRate, Tick, TimeRange};
+        use epsicut_project::graphic::{layer_indices, new_text_layer};
+        use epsicut_project::{ItemKind, SequenceSettings, TrackKind};
+        use epsicut_time::{FrameRate, Tick, TimeRange};
         let mut p = Project::new("Legacy graphics");
         let rate = FrameRate::FPS_25;
         let seq = p.new_sequence("Sequence 01", SequenceSettings::default(), 1, 1, None);
-        let graphic = p.add_item("Graphic", filmcraft_project::Label::Rose, ItemKind::Graphic { width: 1920, height: 1080, rate }, None);
+        let graphic = p.add_item("Graphic", epsicut_project::Label::Rose, ItemKind::Graphic { width: 1920, height: 1080, rate }, None);
         let mut item = p.make_track_item(graphic, TrackKind::Video, Tick::ZERO, TimeRange::new(Tick::ZERO, rate.tick_of(100)), rate).unwrap();
         item.effects = vec![new_text_layer("one", Default::default(), 100.0), new_text_layer("two", Default::default(), 100.0)];
-        assert!(item.effects.iter().all(|e| filmcraft_project::gtemplate::layer_uid(e) == 0));
+        assert!(item.effects.iter().all(|e| epsicut_project::gtemplate::layer_uid(e) == 0));
         p.sequence_mut(seq).unwrap().video_tracks[0].items = vec![item];
         let loaded = decode(&encode(&p, false)).expect("an old project still opens");
         let item = &loaded.project.sequence(seq).unwrap().video_tracks[0].items[0];
-        let uids: Vec<u64> = layer_indices(&item.effects).into_iter().map(|i| filmcraft_project::gtemplate::layer_uid(&item.effects[i])).collect();
+        let uids: Vec<u64> = layer_indices(&item.effects).into_iter().map(|i| epsicut_project::gtemplate::layer_uid(&item.effects[i])).collect();
         assert_eq!(uids.len(), 2);
         assert!(uids.iter().all(|uid| *uid != 0), "opening assigned uids: {uids:?}");
         assert_ne!(uids[0], uids[1], "identical geometry and different text still get distinct identities");
@@ -496,12 +490,12 @@ mod tests {
     #[test]
     fn oversized_embedded_luts_are_dropped_on_load() {
         let mut p = Project::new("LUT limit");
-        p.luts.push(filmcraft_project::ProjectLut {
+        p.luts.push(epsicut_project::ProjectLut {
             id: "huge".into(),
             name: "huge".into(),
             source_path: None,
             format: "cube".into(),
-            text: "#".repeat(filmcraft_project::MAX_LUT_TEXT_BYTES + 1).into(),
+            text: "#".repeat(epsicut_project::MAX_LUT_TEXT_BYTES + 1).into(),
         });
         let loaded = decode(&encode(&p, false)).unwrap();
         assert!(loaded.project.luts.is_empty());
@@ -511,14 +505,14 @@ mod tests {
     /// read, opens all the same.
     #[test]
     fn the_view_is_kept_beside_the_project_and_never_stops_a_file_from_opening() {
-        use filmcraft_project::{ItemId, SequenceSettings, SequenceView};
+        use epsicut_project::{ItemId, SequenceSettings, SequenceView};
         let mut p = Project::new("Tabs");
         let seq = p.new_sequence("Sequence 01", SequenceSettings::default(), 1, 1, None);
         let view = ProjectView {
             open_sequences: vec![seq],
             active_sequence: Some(seq),
             sequences: [(seq, SequenceView { pps: 80.0, scroll: 1.5, v_scroll: 0.0, a_scroll: 4.0, video_track_h: 60.0, audio_track_h: 56.0 })].into(),
-            playheads: [(seq, filmcraft_time::Tick(3 * filmcraft_time::TICKS_PER_SECOND))].into(),
+            playheads: [(seq, epsicut_time::Tick(3 * epsicut_time::TICKS_PER_SECOND))].into(),
         };
         for pretty in [true, false] {
             let l = decode(&encode_with_view(&p, Some(&view), pretty)).unwrap();
@@ -543,12 +537,12 @@ mod tests {
     /// used to be refused as damaged; it opens, and the points are still "auto".
     #[test]
     fn auto_points_written_as_null_open_again() {
-        use filmcraft_project::{ItemKind, SequenceSettings, TrackKind};
-        use filmcraft_time::{FrameRate, Tick, TimeRange};
+        use epsicut_project::{ItemKind, SequenceSettings, TrackKind};
+        use epsicut_time::{FrameRate, Tick, TimeRange};
         let mut p = Project::new("Imported");
         let layer = p.add_item(
             "Layer",
-            filmcraft_project::Label::Iris,
+            epsicut_project::Label::Iris,
             ItemKind::AdjustmentLayer { width: 3840, height: 2160, rate: FrameRate::FPS_24, duration: FrameRate::FPS_24.tick_of(48) },
             None,
         );
@@ -586,7 +580,7 @@ mod tests {
         v["schema_version"] = Value::from(SCHEMA_VERSION + 1);
         let e = decode(&serde_json::to_vec(&v).unwrap()).unwrap_err();
         assert!(matches!(e, FormatError::TooNew { .. }));
-        assert!(e.to_string().contains("newer version of FilmCraft"), "{e}");
+        assert!(e.to_string().contains("newer version of EpsiCut"), "{e}");
     }
 
     #[test]

@@ -479,7 +479,7 @@ mod tests {
     /// own backends whatever `WGPU_BACKEND` says (#4084). Run in a child process, which has them set.
     #[test]
     fn native_descriptor_reads_wgpu_flags_but_keeps_its_backends() {
-        const CHILD: &str = "FILMCRAFT_TEST_NATIVE_DESCRIPTOR_CHILD";
+        const CHILD: &str = "EPSICUT_TEST_NATIVE_DESCRIPTOR_CHILD";
         if std::env::var_os(CHILD).is_none() {
             let out = std::process::Command::new(std::env::current_exe().unwrap())
                 .args(["--exact", "adapter::tests::native_descriptor_reads_wgpu_flags_but_keeps_its_backends", "--nocapture"])

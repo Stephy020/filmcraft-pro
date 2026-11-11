@@ -4,7 +4,7 @@
 
 use serde_json::{Value, json};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::dock::PanelKind;
 use crate::state::{Mode, Tool};
 
@@ -147,15 +147,12 @@ pub const UI_COMMANDS: &[UiCommand] = &[
     uic!("mode.import", "Import", [], None),
     uic!("mode.edit", "Edit", [], None),
     uic!("mode.export", "Export", ["File", "Export"], Some("Cmd+M")),
-    uic!("help.discord", "Join the ArtCraft Discord…", ["Help"], None),
-    uic!("help.website", "ArtCraft Website", ["Help"], None),
-    uic!("help.appPage", "FilmCraft on getartcraft.com", ["Help"], None),
-    uic!("help.github", "FilmCraft on GitHub", ["Help"], None),
+    uic!("help.github", "EpsiCut on GitHub", ["Help"], None),
     uic!("help.reportIssue", "Report an Issue…", ["Help"], None),
     uic!("help.revealLogFiles", "Reveal Log Files…", ["Help"], None),
     uic!("help.systemCompatibilityReport", "System Compatibility Report…", ["Help"], None),
     uic!("app.checkForUpdates", "Check for Updates…", ["Help"], None),
-    uic!("app.about", "About FilmCraft", ["Help"], None),
+    uic!("app.about", "About EpsiCut", ["Help"], None),
     uic!("app.keyboardShortcuts", "Keyboard Shortcuts…", ["Edit"], Some("Cmd+Alt+K")),
     uic!("app.settings.general", "General…", ["Edit", "Preferences"], Some("Cmd+,")),
     uic!("app.settings.appearance", "Appearance…", ["Edit", "Preferences"], None),
@@ -180,7 +177,7 @@ pub fn panel_command_id(p: PanelKind) -> String {
 }
 
 /// Explicit monitor parameters override keyboard focus.
-pub fn targets_source(app: &FilmcraftApp, params: &Value) -> bool {
+pub fn targets_source(app: &EpsicutApp, params: &Value) -> bool {
     match params.get("monitor").and_then(Value::as_str) {
         Some("source") => true,
         Some(_) => false,
@@ -189,14 +186,14 @@ pub fn targets_source(app: &FilmcraftApp, params: &Value) -> bool {
 }
 
 /// Route menu editing to the focused text field; automation can explicitly invoke the engine.
-pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
+pub fn invoke(app: &mut EpsicutApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
     if text_field_window(ctx).is_some() && edits_text(id) {
         return activate_native(app, ctx, id);
     }
     invoke_command(app, ctx, id, params)
 }
 
-pub(crate) fn menu_items_with_focus(app: &FilmcraftApp, ctx: &egui::Context) -> Vec<MenuItem> {
+pub(crate) fn menu_items_with_focus(app: &EpsicutApp, ctx: &egui::Context) -> Vec<MenuItem> {
     let mut items = menu_items(app);
     if text_field_window(ctx).is_some() {
         for item in items.iter_mut().filter(|item| edits_text(&item.id)) {
@@ -207,7 +204,7 @@ pub(crate) fn menu_items_with_focus(app: &FilmcraftApp, ctx: &egui::Context) -> 
 }
 
 /// Execute a UI or engine command by id.
-pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params: Value) -> Result<Value, String> {
+pub fn invoke_command(app: &mut EpsicutApp, ctx: &egui::Context, id: &str, mut params: Value) -> Result<Value, String> {
     // Select All / Deselect All act on the Project panel's items when it has focus (#168), only
     // what the shown bin lists (#456). Here and not in the key handling: on macOS the native menu
     // takes Cmd+A once Select All is enabled (a sequence is open) and sends the id here (#1752).
@@ -225,7 +222,7 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
     if matches!(id, "source.insert" | "source.overwrite") && crate::panels::clip_mismatch::ask(app, id, &params) {
         return Ok(json!({"dialog": "clipMismatch"}));
     }
-    if filmcraft_engine::source_monitor::source_command(id) && targets_source(app, &params) && params.get("target").is_none() {
+    if epsicut_engine::source_monitor::source_command(id) && targets_source(app, &params) && params.get("target").is_none() {
         let object = params.as_object_mut().ok_or("command parameters must be an object")?;
         object.insert("target".into(), json!("source"));
     }
@@ -414,7 +411,7 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
         "playhead.stepBack" | "playhead.stepForward" | "playhead.stepBack5" | "playhead.stepForward5" if targets_source(app, &params) => {
             app.stop_source();
             let item = app.session.state.source_item.ok_or("Open a Source clip first")?;
-            let view = filmcraft_engine::clip_ops::source_view(&app.session, item).ok_or("Source clip is unavailable")?;
+            let view = epsicut_engine::clip_ops::source_view(&app.session, item).ok_or("Source clip is unavailable")?;
             let count = if id.ends_with('5') { i64::from(app.session.prefs.playback.step_many_frames) } else { 1 };
             let direction = if id.contains("Back") { -1 } else { 1 };
             let time = if view.rate.frame_duration().0 == 0 {
@@ -516,24 +513,24 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
         }
         // File ▸ Export ▸ AAF… / OMF… open their settings dialogs; with a path they export directly.
         "file.exportAaf" | "file.exportOmf" if params.get("path").is_none() => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             return crate::panels::interchange_export::open(app, ctx, id);
         }
         // File ▸ Export ▸ Captions… (and the Text panel's Export captions…) opens the caption export
         // settings (#3365); with a path it exports directly.
         "captions.export" if params.get("path").is_none() => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             return crate::panels::caption_export::open(app, ctx, &params);
         }
         // File ▸ Export ▸ Media… opens the Export mode, like ⌘M (#382); with a path it exports directly.
         "file.exportMedia" if params.get("path").is_none() => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             app.ui.mode = Mode::Export;
             return Ok(json!({"mode": "export"}));
         }
         // Audio Gain from the menu or G opens the dialog; with params it applies directly.
         "clip.audioGain" if params.as_object().is_none_or(|m| m.is_empty()) => {
-            filmcraft_engine::find_command("clip.audioGain").map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command("clip.audioGain").map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             if app.ui.audio_gain.mode.is_empty() {
                 app.ui.audio_gain.mode = "adjust".into();
             }
@@ -542,21 +539,21 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
         }
         // Colour dialogs from the menus; with params the engine command applies directly.
         "clip.interpretFootage" if params.get("colorSpace").is_none() && params.get("pixelAspect").is_none() => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             crate::panels::color_dialogs::open_interpret(app, &params);
             return Ok(json!({"dialog": "interpretFootage"}));
         }
         // Remix Properties… from the menu opens the dialog; with params it applies directly.
         "clip.remix.properties" if params.as_object().is_none_or(|m| m.is_empty()) => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             return crate::panels::remix::open(app, ctx);
         }
         // Add Tracks… from the menu opens the dialog (new tracks after the last ones, as Premiere
         // offers); with params it adds the tracks directly.
         "sequence.addTracks" if params.as_object().is_none_or(|m| m.is_empty()) => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             let seq = app.session.active_sequence();
-            let count = |f: fn(&filmcraft_engine::project::Sequence) -> usize| seq.map_or(0, f);
+            let count = |f: fn(&epsicut_engine::project::Sequence) -> usize| seq.map_or(0, f);
             app.ui.add_tracks = crate::state::AddTracksDraft {
                 video_after: count(|q| q.video_tracks.len()),
                 audio_after: count(|q| q.audio_tracks.len()),
@@ -567,7 +564,7 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
             return Ok(json!({"dialog": "addTracks"}));
         }
         "sequence.deleteTracks" if params.as_object().is_none_or(|m| m.is_empty()) => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             app.ui.delete_tracks = Default::default();
             app.dialog = Some(crate::Dialog::DeleteTracks);
             return Ok(json!({"dialog": "deleteTracks"}));
@@ -575,7 +572,7 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
         // Sequence Settings… from the menu opens the dialog; with params the engine command applies
         // them directly.
         "sequence.settings" if params.as_object().is_none_or(|m| m.is_empty()) => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             crate::panels::sequence_settings::open(app);
             return Ok(json!({"dialog": "sequenceSettings"}));
         }
@@ -586,7 +583,7 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
             return Ok(json!({"dialog": "newSequence"}));
         }
         "sequence.colorSettings" if params.as_object().is_none_or(|m| m.is_empty()) => {
-            filmcraft_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
+            epsicut_engine::find_command(id).map_or(Ok(()), |c| (c.enabled)(&app.session))?;
             crate::panels::color_dialogs::open_sequence(app);
             return Ok(json!({"dialog": "sequenceColor"}));
         }
@@ -689,7 +686,7 @@ pub fn invoke_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut
 }
 
 /// Tell the status bar where a project save went (File ▸ Save, Save As, Save a Copy).
-pub(crate) fn saved_status(app: &mut FilmcraftApp, id: &str, path: &str) {
+pub(crate) fn saved_status(app: &mut EpsicutApp, id: &str, path: &str) {
     match id {
         "file.save" | "file.saveAs" | "file.saveAll" => app.ui.status = tlf!("Project saved to {path}", path),
         "file.saveCopy" => app.ui.status = tlf!("Copy of the project saved to {path}", path),
@@ -701,7 +698,7 @@ pub(crate) fn saved_status(app: &mut FilmcraftApp, id: &str, path: &str) {
 /// equivalents (⌘C, ⌘X, ⌘V, ⌘A, ⌘Z, ⇧⌘Z) before any window sees them: while a text field has
 /// the keyboard, in the main window or a floating panel's own window, the field gets the key
 /// and the project command does not run.
-pub fn activate_native(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str) -> Result<Value, String> {
+pub fn activate_native(app: &mut EpsicutApp, ctx: &egui::Context, id: &str) -> Result<Value, String> {
     // Select All of a graphic's text is already handled in `invoke`
     if text_field_window(ctx).is_none() && app.ui.gfx_edit.is_some() && matches!(id, "edit.copy" | "edit.cut" | "edit.paste") {
         return Ok(graphic_text_command(app, ctx, id));
@@ -757,7 +754,7 @@ pub fn edits_graphic_text(id: &str) -> bool {
 /// Hand a native Edit command to the graphic text being edited (main window). The editor gives the
 /// keyboard to any other focused widget (a Text Properties button) and takes it back once nothing
 /// has it, so that widget lets go first and the text receives the event in the next frame.
-fn graphic_text_command(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str) -> Value {
+fn graphic_text_command(app: &mut EpsicutApp, ctx: &egui::Context, id: &str) -> Value {
     let editor = egui::Id::unique(crate::panels::graphics::TEXT_EDIT_ID);
     if let Some(other) = ctx.memory(|m| m.focused()).filter(|f| *f != editor) {
         ctx.memory_mut(|m| m.surrender_focus(other));
@@ -802,7 +799,7 @@ fn text_command(id: &str, mac: bool) -> Option<TextCommand> {
 
 /// Snapshot OS files/image present at Copy/Cut. Many platforms keep a previous file list after
 /// `copy_text`, so Paste would otherwise import those files instead of the clips (#697).
-fn remember_stale_clipboard_media(app: &mut FilmcraftApp) {
+fn remember_stale_clipboard_media(app: &mut EpsicutApp) {
     app.stale_clipboard_media = app.hooks.clipboard_media.as_mut().and_then(|f| f()).as_ref().map(clipboard_media_key);
 }
 
@@ -824,7 +821,7 @@ fn clipboard_media_key(media: &crate::ClipboardMedia) -> String {
 /// system clipboard holds text (an empty clipboard sends no paste at all, #199). Put the copied
 /// clip names there, like other editors put their own data on the clipboard, so Ctrl+V pastes the
 /// clips right after a copy.
-fn put_clip_names_on_system_clipboard(app: &FilmcraftApp, ctx: &egui::Context) {
+fn put_clip_names_on_system_clipboard(app: &EpsicutApp, ctx: &egui::Context) {
     let names: Vec<&str> = app.session.state.clipboard.iter().map(|(_, _, c)| c.name.as_str()).collect();
     if names.is_empty() {
         return;
@@ -835,7 +832,7 @@ fn put_clip_names_on_system_clipboard(app: &FilmcraftApp, ctx: &egui::Context) {
 
 /// Paste the files or the image on the system clipboard: placed on the Timeline when it has focus,
 /// imported into the shown bin in the Project panel. None when the clipboard holds neither.
-fn paste_clipboard_media(app: &mut FilmcraftApp, insert: bool) -> Option<Result<Value, String>> {
+fn paste_clipboard_media(app: &mut EpsicutApp, insert: bool) -> Option<Result<Value, String>> {
     // The paste event already carries the image bytes. Prefer them: re-reading the OS clipboard
     // is racy (it may have changed) and the web host installs no clipboard-media hook.
     let event_media = match app.pasted_image.take() {
@@ -855,7 +852,7 @@ fn paste_clipboard_media(app: &mut FilmcraftApp, insert: bool) -> Option<Result<
     let paths = match media {
         crate::ClipboardMedia::Files(paths) => paths,
         crate::ClipboardMedia::Image { width, height, rgba } => match encode_png(width, height, rgba)
-            .and_then(|png| filmcraft_engine::paste_media::save_pasted_image(&mut app.session, &png).map_err(|e| e.to_string()))
+            .and_then(|png| epsicut_engine::paste_media::save_pasted_image(&mut app.session, &png).map_err(|e| e.to_string()))
         {
             Ok(path) => vec![path],
             Err(e) => return Some(Err(e)),
@@ -919,10 +916,10 @@ pub const MENUS: [&str; 9] = ["File", "Edit", "Clip", "Sequence", "Markers", "Gr
 
 /// Labels only the native macOS app menu shows, with no command in the menu tree behind them: the
 /// Settings submenu and the predefined Hide, Hide Others and Quit items. They are translated through
-/// the catalogs like menu labels (`apps/filmcraft/src/native_menu.rs`).
-pub const NATIVE_APP_MENU: [&str; 4] = ["Settings", "Hide FilmCraft", "Hide Others", "Quit FilmCraft"];
+/// the catalogs like menu labels (`apps/epsicut/src/native_menu.rs`).
+pub const NATIVE_APP_MENU: [&str; 4] = ["Settings", "Hide EpsiCut", "Hide Others", "Quit EpsiCut"];
 
-pub fn menu_items(app: &FilmcraftApp) -> Vec<MenuItem> {
+pub fn menu_items(app: &EpsicutApp) -> Vec<MenuItem> {
     let mut v = menu_items_for(&app.session);
     for it in &mut v {
         it.label = app.ui.language.tr(&it.label).to_string();
@@ -961,7 +958,7 @@ pub fn menu_items(app: &FilmcraftApp) -> Vec<MenuItem> {
 
 /// Checkmark state of the engine's on/off menu commands (`{"on":bool?}`, toggled when invoked from a
 /// menu without parameters). None = not one of them.
-fn engine_toggle(session: &filmcraft_engine::Session, id: &str) -> Option<bool> {
+fn engine_toggle(session: &epsicut_engine::Session, id: &str) -> Option<bool> {
     let st = &session.state;
     Some(match id {
         "sequence.snap" => st.snapping,
@@ -977,7 +974,7 @@ fn engine_toggle(session: &filmcraft_engine::Session, id: &str) -> Option<bool> 
 /// File ▸ Open Recent, after Open Project…: the recent projects (General ▸ `recentProjects`),
 /// newest first, then Clear Recent Files. Clear is always there, so the submenu exists (in the
 /// native menu too, built once at launch) before the first project is saved.
-fn open_recent(items: &mut Vec<MenuItem>, session: &filmcraft_engine::Session, tr: impl Fn(&str) -> String) {
+fn open_recent(items: &mut Vec<MenuItem>, session: &epsicut_engine::Session, tr: impl Fn(&str) -> String) {
     let Some(at) = items.iter().position(|it| it.id == "file.open") else { return };
     let path: Vec<String> = vec!["File".into(), "Open Recent".into()];
     let recent = &session.prefs.general.recent_projects;
@@ -999,7 +996,7 @@ pub fn recent_name(path: &str) -> String {
 /// built-in workspaces, nothing checked. Deterministic, so `cargo xtask parity` can measure it
 /// (`examples/menu_tree.rs` prints it as JSON).
 pub fn default_menu_items() -> Vec<MenuItem> {
-    let session = filmcraft_engine::Session::default();
+    let session = epsicut_engine::Session::default();
     let mut v = menu_items_for(&session);
     crate::panels::workspaces::default_menu(&mut v, &session);
     open_recent(&mut v, &session, str::to_string);
@@ -1007,14 +1004,14 @@ pub fn default_menu_items() -> Vec<MenuItem> {
 }
 
 /// Menu entries with their live shortcuts and enablement.
-pub fn menu_items_for(session: &filmcraft_engine::Session) -> Vec<MenuItem> {
+pub fn menu_items_for(session: &epsicut_engine::Session) -> Vec<MenuItem> {
     let mut out = Vec::new();
-    for c in filmcraft_engine::command_specs() {
+    for c in epsicut_engine::command_specs() {
         if c.menu.is_empty() {
             continue;
         }
         // Edit ▸ Label items carry the names from Settings ▸ Labels
-        let label = match c.id.strip_prefix("edit.label.").and_then(filmcraft_project::Label::from_name) {
+        let label = match c.id.strip_prefix("edit.label.").and_then(epsicut_project::Label::from_name) {
             Some(l) => session.prefs.labels.name(l),
             None => c.label.into(),
         };
@@ -1055,7 +1052,7 @@ pub fn menu_items_for(session: &filmcraft_engine::Session) -> Vec<MenuItem> {
 
 /// Shortcut text for menus in this OS's notation (`⇧⌘K` on macOS, `Ctrl+Shift+K` elsewhere).
 pub fn shortcut_text(s: &str) -> String {
-    use filmcraft_engine::shortcuts::{Chord, Platform};
+    use epsicut_engine::shortcuts::{Chord, Platform};
     Chord::parse(s).map(|c| c.display(Platform::current())).unwrap_or_else(|_| s.to_string())
 }
 
@@ -1100,7 +1097,7 @@ pub type KeyBinding = (egui::Modifiers, egui::Key, String, Option<String>);
 
 /// The active key bindings (from the engine's shortcut set), most specific first so Shift+I
 /// doesn't also fire I.
-pub fn bindings(app: &FilmcraftApp) -> Vec<KeyBinding> {
+pub fn bindings(app: &EpsicutApp) -> Vec<KeyBinding> {
     let mut v: Vec<KeyBinding> =
         app.session.shortcuts.bindings.iter().filter_map(|b| parse_shortcut(&b.keys).map(|(m, k)| (m, k, b.command.clone(), b.panel.clone()))).collect();
     // With Shift held, a punctuation key arrives as its shifted glyph (Shift+; is `:` on US layouts).
@@ -1109,7 +1106,7 @@ pub fn bindings(app: &FilmcraftApp) -> Vec<KeyBinding> {
     v.extend(shifted);
     // `+` is the `=` key with Shift on US layouts and its own key on others and the keypad: a chord
     // on `=` takes it too, unless something is bound to `+` itself. Otherwise Ctrl+Plus fell
-    // through to egui's interface zoom while Ctrl+- and Ctrl+0 were taken by FilmCraft
+    // through to egui's interface zoom while Ctrl+- and Ctrl+0 were taken by EpsiCut
     // shortcuts, so the interface grew and could not shrink back (#2253).
     let plus: Vec<KeyBinding> = v
         .iter()
@@ -1209,8 +1206,8 @@ fn shifted_key(k: egui::Key) -> Option<egui::Key> {
 
 /// Frontend-owned commands, registered with the engine's shortcut set so they can be listed,
 /// rebound and resolved alongside engine commands (the `shortcuts.` commands).
-pub fn external_commands() -> Vec<filmcraft_engine::shortcuts::CommandInfo> {
-    use filmcraft_engine::shortcuts::CommandInfo;
+pub fn external_commands() -> Vec<epsicut_engine::shortcuts::CommandInfo> {
+    use epsicut_engine::shortcuts::CommandInfo;
     let mut v: Vec<CommandInfo> =
         UI_COMMANDS.iter().chain(crate::panels::keyboard::COMMANDS).map(|c| CommandInfo::new(c.id, c.label, c.menu, c.shortcut)).collect();
     for p in PanelKind::ALL {
@@ -1220,7 +1217,7 @@ pub fn external_commands() -> Vec<filmcraft_engine::shortcuts::CommandInfo> {
 }
 
 /// Draw the in-window menu bar.
-pub fn menu_bar(app: &mut FilmcraftApp, ui: &mut egui::Ui) {
+pub fn menu_bar(app: &mut EpsicutApp, ui: &mut egui::Ui) {
     ui.ctx().data_mut(|d| d.insert_temp(egui::Id::unique("interface-language"), app.ui.language));
     let items = menu_items_with_focus(app, ui.ctx());
     // Draw Edit ▸ Label with the user's live palette, not the baked-in label colours.
@@ -1272,7 +1269,7 @@ fn menu_level(
     depth: usize,
     clicked: &mut Option<String>,
     auto: &mut crate::automation::Registry,
-    labels: &filmcraft_engine::settings::LabelPrefs,
+    labels: &epsicut_engine::settings::LabelPrefs,
 ) {
     let mut subs: Vec<&str> = Vec::new();
     for it in items {
@@ -1295,13 +1292,13 @@ fn menu_level(
 }
 
 /// Only Edit ▸ Label choices get a swatch. Other commands keep their usual menu layout.
-fn label_menu_swatch(id: &str, labels: &filmcraft_engine::settings::LabelPrefs) -> Option<egui::Color32> {
-    let label = id.strip_prefix("edit.label.").and_then(filmcraft_project::Label::from_name)?;
+fn label_menu_swatch(id: &str, labels: &epsicut_engine::settings::LabelPrefs) -> Option<egui::Color32> {
+    let label = id.strip_prefix("edit.label.").and_then(epsicut_project::Label::from_name)?;
     Some(label_color(labels, label))
 }
 
 /// The user's colour for label `l` (Preferences ▸ Labels), else the built-in one.
-pub fn label_color(labels: &filmcraft_engine::settings::LabelPrefs, l: filmcraft_project::Label) -> egui::Color32 {
+pub fn label_color(labels: &epsicut_engine::settings::LabelPrefs, l: epsicut_project::Label) -> egui::Color32 {
     let [r, g, b] = labels.rgb(l);
     egui::Color32::from_rgb(r, g, b)
 }
@@ -1318,8 +1315,8 @@ const GUTTER: &str = "      ";
 pub fn label_choice(
     ui: &mut egui::Ui,
     auto: &mut crate::automation::Registry,
-    labels: &filmcraft_engine::settings::LabelPrefs,
-    l: filmcraft_project::Label,
+    labels: &epsicut_engine::settings::LabelPrefs,
+    l: epsicut_project::Label,
     prefix: &str,
 ) -> egui::Response {
     let name = labels.name(l);
@@ -1367,7 +1364,7 @@ fn hint_at_pointer(ui: &egui::Ui, r: &egui::Response, hint: String) {
     });
 }
 
-fn menu_entry(ui: &mut egui::Ui, it: &MenuItem, auto: &mut crate::automation::Registry, labels: &filmcraft_engine::settings::LabelPrefs) -> bool {
+fn menu_entry(ui: &mut egui::Ui, it: &MenuItem, auto: &mut crate::automation::Registry, labels: &epsicut_engine::settings::LabelPrefs) -> bool {
     // Checkmarks and label swatches each occupy the same left gutter.
     let swatch = label_menu_swatch(&it.id, labels);
     let label = if it.checked.is_some() || swatch.is_some() { format!("{GUTTER}{}", it.label) } else { it.label.clone() };
@@ -1376,7 +1373,7 @@ fn menu_entry(ui: &mut egui::Ui, it: &MenuItem, auto: &mut crate::automation::Re
         b = b.shortcut_text(shortcut_text(s));
     }
     let r = ui.add_enabled(it.enabled, b);
-    // Help items show the address they open, or say what they do inside FilmCraft
+    // Help items show the address they open, or say what they do inside EpsiCut
     if let Some(hint) = crate::links::menu_hint(&it.id) {
         hint_at_pointer(ui, &r, hint);
     }
@@ -1412,8 +1409,8 @@ mod parse_shortcut_tests {
 
     #[test]
     fn edit_label_menu_swatch_uses_current_custom_palette() {
-        use filmcraft_engine::settings::{LabelPrefs, label_id};
-        use filmcraft_project::Label;
+        use epsicut_engine::settings::{LabelPrefs, label_id};
+        use epsicut_project::Label;
 
         let mut labels = LabelPrefs::default();
         let label = Label::Iris;
@@ -1572,7 +1569,7 @@ mod tests {
     fn hovering_another_title_switches_the_open_menu() {
         use egui_kittest::{Harness, kittest::Queryable};
 
-        let app = FilmcraftApp::new(filmcraft_engine::Session::default());
+        let app = EpsicutApp::new(epsicut_engine::Session::default());
         let mut harness = Harness::builder().with_size(egui::vec2(1200.0, 700.0)).build_ui_state(|ui, app| menu_bar(app, ui), app);
         // the app's fonts, which draw the macOS shortcut symbols (⇧⌘S) egui's default fonts lack
         crate::theme::install(&harness.ctx, &harness.state().tokens);

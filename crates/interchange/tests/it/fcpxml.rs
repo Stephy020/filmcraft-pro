@@ -3,9 +3,9 @@
 
 use crate::support;
 
-use filmcraft_interchange::{ExportOptions, FcpxmlVersion, Format, detect, import};
-use filmcraft_project::{ItemKind, Keyframe, Label, Marker, MarkerId, MarkerKind, MediaRef, Param, ParamValue, Project, Sequence, TrackKind, TransitionAlign};
-use filmcraft_time::FrameRate;
+use epsicut_interchange::{ExportOptions, FcpxmlVersion, Format, detect, import};
+use epsicut_project::{ItemKind, Keyframe, Label, Marker, MarkerId, MarkerKind, MediaRef, Param, ParamValue, Project, Sequence, TrackKind, TransitionAlign};
+use epsicut_time::FrameRate;
 use proptest::prelude::*;
 use support::*;
 
@@ -145,7 +145,7 @@ fn assert_connected_primary_video(p: &Project, s: &Sequence, r: FrameRate) {
     assert_eq!(pier.effect("motion").unwrap().param("rotation").unwrap().value, ParamValue::Float(-90.0));
     // retimed clip: 2x, source in = 10 s into an asset whose timecode starts at 3600 s
     assert_eq!(boats.speed, 2.0);
-    assert_eq!(boats.source_in, filmcraft_time::Tick(10 * filmcraft_time::TICKS_PER_SECOND));
+    assert_eq!(boats.source_in, epsicut_time::Tick(10 * epsicut_time::TICKS_PER_SECOND));
     assert_eq!(media_key(p, boats.item), "/proj/boats.mov");
     let t = &v1.transitions[0];
     assert_eq!((t.start, t.duration, t.from, t.to, t.align), (r.tick_of(60), r.tick_of(24), Some(pier.id), Some(boats.id), TransitionAlign::CenterAtCut));
@@ -165,7 +165,7 @@ fn assert_connected_secondary_video(p: &Project, s: &Sequence, r: FrameRate) {
     assert_eq!(p.item(v2.items[1].item).unwrap().name, "Compound");
 }
 
-fn assert_connected_audio_markers_and_bins(p: &Project, s: &Sequence, r: FrameRate, rep: &filmcraft_interchange::Report) {
+fn assert_connected_audio_markers_and_bins(p: &Project, s: &Sequence, r: FrameRate, rep: &epsicut_interchange::Report) {
     // audio: pier's own audio on A1 (linked), the lane -1 music pushed to A2 by the overlap
     let a1 = &s.audio_tracks[0].items;
     let pier_link = s.video_tracks[0].items[0].link;
@@ -183,10 +183,10 @@ fn assert_connected_audio_markers_and_bins(p: &Project, s: &Sequence, r: FrameRa
     assert_eq!(s.markers.len(), 1);
     assert_eq!(
         (s.markers[0].name.as_str(), s.markers[0].comment.as_str(), s.markers[0].start, s.markers[0].duration),
-        ("Seagull", "nice", r.tick_of(24), filmcraft_time::Tick::ZERO)
+        ("Seagull", "nice", r.tick_of(24), epsicut_time::Tick::ZERO)
     );
     // event became a bin
-    assert!(p.root.children.iter().any(|c| matches!(c, filmcraft_project::BinEntry::Bin(b) if b.name == "Day 1")));
+    assert!(p.root.children.iter().any(|c| matches!(c, epsicut_project::BinEntry::Bin(b) if b.name == "Day 1")));
     assert!(!rep.has_warnings(), "{rep}");
     let m = p.items.values().find(|i| i.name == "Boats").unwrap().as_media().unwrap();
     assert!(matches!(&m.media, MediaRef::File { path } if path == "/proj/boats.mov"));
@@ -284,7 +284,7 @@ fn standalone_video_invalid_sources_are_reported_without_panicking() {
     }
 }
 
-fn project() -> (Project, filmcraft_project::ItemId) {
+fn project() -> (Project, epsicut_project::ItemId) {
     let r = FrameRate::FPS_29_97;
     let mut p = Project::new("Lib");
     let a = media(&mut p, "/m/a.mov", true, true, r);
@@ -323,7 +323,7 @@ fn project() -> (Project, filmcraft_project::ItemId) {
             custom_color: None,
             id: MarkerId(77),
             start: r.tick_of(10),
-            duration: filmcraft_time::Tick::ZERO,
+            duration: epsicut_time::Tick::ZERO,
             name: "in nest".into(),
             comment: String::new(),
             kind: MarkerKind::Comment,
@@ -411,7 +411,7 @@ proptest! {
         let wav = media(&mut p, "/y/vo.wav", false, true, rate);
         let s = sequence(&mut p, "S", rate, false);
         let mut ends = [0i64; 3];
-        let mut prev: [Option<filmcraft_project::ClipId>; 3] = [None; 3];
+        let mut prev: [Option<epsicut_project::ClipId>; 3] = [None; 3];
         let mut aends = [0i64; 3];
         for g in &clips {
             let t = ends[g.track] + g.gap;

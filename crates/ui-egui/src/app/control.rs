@@ -1,7 +1,7 @@
-use super::{ControlRequest, FilmcraftApp, capture, json};
+use super::{ControlRequest, EpsicutApp, capture, json};
 use crate::control;
 
-impl FilmcraftApp {
+impl EpsicutApp {
     // ---------------------------------------------------------------- control channel
 
     /// Make the UI pass run for a control request without stealing the user's keyboard focus.

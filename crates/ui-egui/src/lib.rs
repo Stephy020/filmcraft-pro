@@ -1,18 +1,21 @@
-//! The FilmCraft egui frontend.
+//! The EpsiCut egui frontend.
 //!
-//! Thin by design: all project changes go through `filmcraft_engine::Session::execute`; this crate
+//! Thin by design: all project changes go through `epsicut_engine::Session::execute`; this crate
 //! owns only presentation state ([`state::UiState`]), GPU textures, the playback clock and the
 //! control-channel handlers. Swap it for another toolkit without touching the engine.
 
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable))]
 
-/// FilmCraft as craft-update knows it, with its 128 px icon and accent colour: the update
+/// EpsiCut as craft-update knows it, with its 128 px icon and accent colour: the update
 /// prompt shows both, and an AppImage's menu entry gets the icon.
 #[cfg(not(target_arch = "wasm32"))]
 pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
-    icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ai.storyteller.filmcraft.png")),
+    icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ai.storyteller.epsicut.png")),
     accent: Some([0x8b, 0x5c, 0xf6]),
-    ..craft_update::suite::FILMCRAFT
+    developer: "EpsiCut",
+    // Updates come from this fork's GitHub releases only. The `filmcraft` id of the original
+    // project is deliberately not listed as a former id: its releases are never offered here.
+    ..craft_update::app::App::new("epsicut", "EpsiCut", "Video editing, color and sound", "Stephy020/epsicut")
 };
 
 /// A literal UI string in the language the interface is drawn in (`i18n::t`). Only literals: the
@@ -81,8 +84,8 @@ use std::sync::{Arc, Mutex};
 
 use egui::ime_context::ImeTarget;
 use egui::{TextureHandle, TextureOptions};
-use filmcraft_engine::{Services, Session};
-use filmcraft_time::Tick;
+use epsicut_engine::{Services, Session};
+use epsicut_time::Tick;
 use serde_json::{Value, json};
 
 pub use control::ControlRequest;
@@ -190,12 +193,12 @@ pub(crate) enum ImeComposition {
 /// `control_server::DisabledWhy` onto this.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlNotice {
-    /// `FILMCRAFT_CONTROL_TOKEN` is missing or malformed. (A bind failure is only logged until
+    /// `EPSICUT_CONTROL_TOKEN` is missing or malformed. (A bind failure is only logged until
     /// #3318 reworks port-collision reporting.)
     Token,
 }
 
-pub struct FilmcraftApp {
+pub struct EpsicutApp {
     pub session: Session,
     pub ui: UiState,
     pub tokens: Tokens,
@@ -234,7 +237,7 @@ pub struct FilmcraftApp {
     /// Project document generation last seen by the UI (the engine bumps it on replacement).
     ime_document_epoch: u64,
     /// Active sequence last seen by the UI; `sequence.close` need not emit `OpenSequence`.
-    ime_active_sequence: Option<filmcraft_project::ItemId>,
+    ime_active_sequence: Option<epsicut_project::ItemId>,
     /// Viewports the Program monitor's editor published in, released when the app exits.
     ime_viewports: Vec<egui::ViewportId>,
     /// Named textures (monitors, thumbnails) with the key they show.
@@ -244,8 +247,8 @@ pub struct FilmcraftApp {
     thumb_used: HashMap<String, u64>,
     control_rx: Option<Receiver<ControlRequest>>,
     /// Why the control server is not serving although `--control` was given (a malformed
-    /// `FILMCRAFT_CONTROL_TOKEN`, a port that cannot be bound): shown whenever the status bar is
-    /// idle (#3436). It is also in `filmcraft.log`; `None` when the server is running.
+    /// `EPSICUT_CONTROL_TOKEN`, a port that cannot be bound): shown whenever the status bar is
+    /// idle (#3436). It is also in `epsicut.log`; `None` when the server is running.
     pub(crate) control_notice: Option<ControlNotice>,
     /// One explicit panel reveal; consumed by the custom renderer, never repeated per frame.
     pub(crate) pending_panel_raise: Option<PanelKind>,
@@ -300,12 +303,12 @@ pub struct FilmcraftApp {
     pub(crate) native_ctrl_click_armed: Arc<Mutex<HashMap<egui::ViewportId, bool>>>,
     /// The mouse press in progress (its start time) and the undo history when it began, for Escape
     /// to take back what the press changed (#580).
-    value_press: Option<(f64, filmcraft_engine::UndoMark)>,
+    value_press: Option<(f64, epsicut_engine::UndoMark)>,
     /// Escape was pressed during the current press in pass 0; apply the rollback after the final
     /// non-discarded UI pass (pass 1+ has no key event to re-read).
     escape_cancel: bool,
     /// BS.1770 loudness of the programme as it plays, and the next sample position to feed.
-    pub(crate) loudness: Option<(filmcraft_audio_dsp::LoudnessMeter, i64)>,
+    pub(crate) loudness: Option<(epsicut_audio_dsp::LoudnessMeter, i64)>,
     /// Status message last shown and when it first appeared (messages expire after a few seconds).
     status_seen: (String, f64),
     /// Admitted `ui.screenshot` requests and their completion slots.
@@ -342,10 +345,10 @@ pub struct FilmcraftApp {
     pub last_timeline_width: f32,
     /// The sequence whose view `ui.timeline` holds, and that view as it was last exchanged with
     /// `session.state.timeline_views` (see `sync_timeline_view`).
-    timeline_view_of: Option<filmcraft_engine::project::ItemId>,
+    timeline_view_of: Option<epsicut_engine::project::ItemId>,
     /// Items imported by an OS file drop, to place on the Timeline at the drop point this frame
     /// (in the coordinates of the viewport the files were dropped on).
-    pending_timeline_drop: Option<(Vec<filmcraft_engine::project::ItemId>, egui::Pos2, egui::ViewportId)>,
+    pending_timeline_drop: Option<(Vec<epsicut_engine::project::ItemId>, egui::Pos2, egui::ViewportId)>,
     /// The edit the Clip Mismatch Warning asks about (command, parameters); it runs with
     /// `matchSequence` once answered.
     clip_mismatch: Option<(String, serde_json::Value)>,
@@ -354,7 +357,7 @@ pub struct FilmcraftApp {
     /// Files dragged over or dropped on dock panels in their own OS windows last frame; the
     /// dock area reports them after the panels have drawn, so they are imported next frame.
     window_files: Vec<craft_ui::docking::WindowFiles<PanelKind>>,
-    timeline_view_last: Option<filmcraft_engine::project::SequenceView>,
+    timeline_view_last: Option<epsicut_engine::project::SequenceView>,
     pub fps: f32,
     last_time: f64,
     bindings: Vec<menus::KeyBinding>,
@@ -382,7 +385,7 @@ pub struct FilmcraftApp {
     /// Running jobs' texts in the export queue and the Progress panel as last shown.
     steady_texts: panels::SteadyTexts,
     /// Settings last applied to the UI (theme, tooltips, frame cache, audio device).
-    applied_prefs: Option<filmcraft_engine::autosave::Preferences>,
+    applied_prefs: Option<epsicut_engine::autosave::Preferences>,
     /// Settings ▸ Appearance ▸ UI Scale last applied, with the system scale it was applied for.
     applied_ui_scale: Option<(Option<f32>, f32)>,
     workspace_restored: bool,
@@ -394,7 +397,7 @@ pub struct FilmcraftApp {
 
 pub struct GpuState {
     pub render_state: eframe::egui_wgpu::RenderState,
-    pub compositor: filmcraft_gpu::GpuCompositor,
+    pub compositor: epsicut_gpu::GpuCompositor,
     pub texture: Option<egui::TextureId>,
     pub last_key: Option<FrameKey>,
     pub size: (u32, u32),

@@ -11,13 +11,13 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, OnceLock};
 
-use filmcraft_geom::{Affine, Vec2};
-use filmcraft_project::graphic::{LayerContent, LayerSpec, LinearGradient, ShapeProps, Stroke, StrokeStyle, TextProps, eval_layer};
-use filmcraft_project::graphic_design::{GraphicMeta, PinNode, remap_time, resolve_pins, roll_offset};
-use filmcraft_project::{EffectInstance, TrackItem};
-use filmcraft_text::raster::{Xform, apply, fill_into, xform_scale};
-use filmcraft_text::{Align, Caps, Layout, Mask, ParagraphStyle, StrokeKind, StyleRun, TextStyle, layout_rich, mask, render};
-use filmcraft_time::Tick;
+use epsicut_geom::{Affine, Vec2};
+use epsicut_project::graphic::{LayerContent, LayerSpec, LinearGradient, ShapeProps, Stroke, StrokeStyle, TextProps, eval_layer};
+use epsicut_project::graphic_design::{GraphicMeta, PinNode, remap_time, resolve_pins, roll_offset};
+use epsicut_project::{EffectInstance, TrackItem};
+use epsicut_text::raster::{Xform, apply, fill_into, xform_scale};
+use epsicut_text::{Align, Caps, Layout, Mask, ParagraphStyle, StrokeKind, StyleRun, TextStyle, layout_rich, mask, render};
+use epsicut_time::Tick;
 use rayon::prelude::*;
 
 use crate::graphics::{premul_linear, premul_linear_lerp};
@@ -38,7 +38,7 @@ pub fn layer_matrix(spec: &LayerSpec) -> Affine {
 pub fn text_styles(t: &TextProps) -> (TextStyle, ParagraphStyle) {
     (
         TextStyle {
-            family: if t.font.is_empty() { filmcraft_text::fonts::DEFAULT_FAMILY.into() } else { t.font.clone() },
+            family: if t.font.is_empty() { epsicut_text::fonts::DEFAULT_FAMILY.into() } else { t.font.clone() },
             style: if t.style.is_empty() { "Regular".into() } else { t.style.clone() },
             size: t.size,
             tracking: t.tracking,
@@ -107,10 +107,10 @@ pub fn text_layout(t: &TextProps) -> Arc<Layout> {
 }
 
 /// A shape layer's outline in layer pixels (centred on the layer origin).
-pub fn shape_path(s: &ShapeProps) -> filmcraft_text::Path {
+pub fn shape_path(s: &ShapeProps) -> epsicut_text::Path {
     let (w, h) = (s.size.0 / 2.0, s.size.1 / 2.0);
     match s.shape {
-        1 => filmcraft_text::Path::ellipse(0.0, 0.0, w, h),
+        1 => epsicut_text::Path::ellipse(0.0, 0.0, w, h),
         2 => {
             let n = s.sides.max(3);
             let pts: Vec<(f32, f32)> = (0..n)
@@ -119,10 +119,10 @@ pub fn shape_path(s: &ShapeProps) -> filmcraft_text::Path {
                     (a.cos() * w, a.sin() * h)
                 })
                 .collect();
-            filmcraft_text::Path::polygon(&pts)
+            epsicut_text::Path::polygon(&pts)
         }
-        3 if s.points.len() >= 3 => filmcraft_text::Path::polygon(&s.points.iter().map(|p| (p[0], p[1])).collect::<Vec<_>>()),
-        _ => filmcraft_text::Path::round_rect(-w, -h, w, h, s.corner_radius),
+        3 if s.points.len() >= 3 => epsicut_text::Path::polygon(&s.points.iter().map(|p| (p[0], p[1])).collect::<Vec<_>>()),
+        _ => epsicut_text::Path::round_rect(-w, -h, w, h, s.corner_radius),
     }
 }
 
@@ -451,7 +451,7 @@ pub fn raster_layer(spec: &LayerSpec, m: &Xform, cw: usize, ch: usize) -> Option
     let strokes: Vec<_> = ap.strokes.iter().map(|stroke| stroke_cover.prepare(stroke)).collect();
     let outer = |k: u32| k != 1 && k != 2;
     let bg = ap.background.map(|(c, pad, r)| {
-        let p = filmcraft_text::Path::round_rect(lb[0] - pad, lb[1] - pad, lb[2] + pad, lb[3] + pad, r).transformed(m);
+        let p = epsicut_text::Path::round_rect(lb[0] - pad, lb[1] - pad, lb[2] + pad, lb[3] + pad, r).transformed(m);
         let mut bm = Mask::new(w, h);
         fill_into(&p, &mut bm, -x0 as f32, -y0 as f32);
         (bm, c)
@@ -617,7 +617,7 @@ pub fn apply_pins(specs: &mut [LayerSpec], canvas: (u32, u32)) {
 /// Evaluated layers of a graphic clip's effect list at clip time `t`, in paint order, with pins
 /// resolved.
 pub fn graphic_specs(effects: &[EffectInstance], t: Tick, canvas: (u32, u32)) -> Vec<LayerSpec> {
-    let mut v: Vec<LayerSpec> = effects.iter().filter(|e| filmcraft_project::graphic::is_layer(e)).filter_map(|e| eval_layer(e, t, canvas)).collect();
+    let mut v: Vec<LayerSpec> = effects.iter().filter(|e| epsicut_project::graphic::is_layer(e)).filter_map(|e| eval_layer(e, t, canvas)).collect();
     apply_pins(&mut v, canvas);
     v
 }
@@ -660,7 +660,7 @@ pub fn item_layer_specs(item: &TrackItem, mt: Tick, canvas: (u32, u32)) -> Vec<(
     let mut idx = Vec::new();
     let mut specs = Vec::new();
     for (i, e) in item.effects.iter().enumerate() {
-        if filmcraft_project::graphic::is_layer(e)
+        if epsicut_project::graphic::is_layer(e)
             && let Some(s) = eval_layer(e, t, canvas)
         {
             idx.push(i);
@@ -676,7 +676,7 @@ pub fn item_layer_specs(item: &TrackItem, mt: Tick, canvas: (u32, u32)) -> Vec<(
 
 /// Move every layer by the roll / crawl offset at clip time `u` of a clip `d` long.
 pub fn apply_roll(meta: &GraphicMeta, specs: &mut [LayerSpec], u: Tick, d: Tick, canvas: (u32, u32)) {
-    if meta.roll.mode == filmcraft_project::RollMode::Off {
+    if meta.roll.mode == epsicut_project::RollMode::Off {
         return;
     }
     let Some(cb) = content_bounds(specs) else { return };

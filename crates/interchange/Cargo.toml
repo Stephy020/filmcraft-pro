@@ -1,6 +1,6 @@
 [package]
-name = "filmcraft-interchange"
-description = "FilmCraft interchange: CMX 3600 EDL, Final Cut Pro 7 XML (xmeml), FCPXML and OpenTimelineIO import/export"
+name = "epsicut-interchange"
+description = "EpsiCut interchange: CMX 3600 EDL, Final Cut Pro 7 XML (xmeml), FCPXML and OpenTimelineIO import/export"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,12 +10,12 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-filmcraft-time = { workspace = true }
-filmcraft-geom = { workspace = true }
-filmcraft-color = { workspace = true }
-filmcraft-media = { workspace = true }
-filmcraft-project = { workspace = true }
-filmcraft-cfb = { workspace = true }
+epsicut-time = { workspace = true }
+epsicut-geom = { workspace = true }
+epsicut-color = { workspace = true }
+epsicut-media = { workspace = true }
+epsicut-project = { workspace = true }
+epsicut-cfb = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

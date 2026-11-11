@@ -1,17 +1,17 @@
 name: Bug report
-description: Report a reproducible problem in FilmCraft.
+description: Report a reproducible problem in EpsiCut.
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
         Please report one problem per issue and search existing issues first.
-        For security vulnerabilities, follow [SECURITY.md](https://github.com/storytold/filmcraft/blob/main/SECURITY.md) instead of posting sensitive details here.
+        For security vulnerabilities, follow [SECURITY.md](https://github.com/Stephy020/epsicut/blob/main/SECURITY.md) instead of posting sensitive details here.
   - type: input
     id: version
     attributes:
-      label: FilmCraft version or commit
-      description: Copy the version from Help > About FilmCraft, or give the commit if built from source.
+      label: EpsiCut version or commit
+      description: Copy the version from Help > About EpsiCut, or give the commit if built from source.
       placeholder: "0.8.0"
     validations:
       required: true

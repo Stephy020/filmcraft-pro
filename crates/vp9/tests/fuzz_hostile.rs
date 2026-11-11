@@ -5,7 +5,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use filmcraft_vp9::Decoder;
+use epsicut_vp9::Decoder;
 
 struct Rng(u64);
 impl Rng {
@@ -44,8 +44,8 @@ fn ivf_frames(data: &[u8]) -> Vec<Vec<u8>> {
 }
 
 fn make(ff: &std::path::Path, name: &str, args: &str, pix: &str) -> Option<Vec<Vec<u8>>> {
-    let out = filmcraft_testkit::fixtures_dir("vp9").join(format!("{name}.ivf"));
-    let p = filmcraft_testkit::fixtures::generate(&out, |tmp| {
+    let out = epsicut_testkit::fixtures_dir("vp9").join(format!("{name}.ivf"));
+    let p = epsicut_testkit::fixtures::generate(&out, |tmp| {
         let a: Vec<&str> = args.split_whitespace().collect();
         matches!(
             Command::new(ff)
@@ -75,7 +75,7 @@ fn count_panics() {
 }
 
 fn run_all(frames: &[Vec<u8>], label: &str) {
-    filmcraft_testkit::set_progress(label);
+    epsicut_testkit::set_progress(label);
     count_panics();
     let before = PANICS.load(Ordering::SeqCst);
     let res = catch_unwind(AssertUnwindSafe(|| {
@@ -92,12 +92,12 @@ fn run_all(frames: &[Vec<u8>], label: &str) {
 
 const VALUES: [u8; 5] = [0, 0xff, 0x80, 0x01, 0x7f];
 
-/// How much of the sweep runs. `FILMCRAFT_FUZZ_ITERS=N` runs all of it (about 200 truncation
+/// How much of the sweep runs. `EPSICUT_FUZZ_ITERS=N` runs all of it (about 200 truncation
 /// points spread over each of the first three frames, every header byte, overwrite value and
 /// bit flip) plus N random rounds per seed: 300 is the full depth, more hunts longer. Unset, CI
 /// runs a third of the truncation points and of the full depth's random rounds and, for each
 /// header byte of each frame, one value and one bit, shifted by the frame index. A rotation
-/// offset shifts which share runs (`FILMCRAFT_FUZZ_SEED`, else the UTC day number), so every
+/// offset shifts which share runs (`EPSICUT_FUZZ_SEED`, else the UTC day number), so every
 /// case of the full sweep runs within a few days, and a random round's mutations match the same
 /// round of a full run.
 struct Depth {
@@ -109,11 +109,11 @@ struct Depth {
 
 impl Depth {
     fn from_env() -> Self {
-        match std::env::var("FILMCRAFT_FUZZ_ITERS").ok().and_then(|s| s.parse().ok()) {
+        match std::env::var("EPSICUT_FUZZ_ITERS").ok().and_then(|s| s.parse().ok()) {
             Some(rounds) => Depth { full: true, truncations: 200, rounds, rotation: 0 },
             None => {
                 let rotation = rotation();
-                eprintln!("fuzz subset rotation {rotation} (FILMCRAFT_FUZZ_SEED={rotation} replays it; FILMCRAFT_FUZZ_ITERS=300 runs everything)");
+                eprintln!("fuzz subset rotation {rotation} (EPSICUT_FUZZ_SEED={rotation} replays it; EPSICUT_FUZZ_ITERS=300 runs everything)");
                 Depth { full: false, truncations: 200, rounds: 300, rotation }
             }
         }
@@ -135,36 +135,36 @@ impl Depth {
     }
 }
 
-/// The default subset's rotation offset: `FILMCRAFT_FUZZ_SEED`, else days since the Unix epoch (UTC).
+/// The default subset's rotation offset: `EPSICUT_FUZZ_SEED`, else days since the Unix epoch (UTC).
 fn rotation() -> usize {
-    std::env::var("FILMCRAFT_FUZZ_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
+    std::env::var("EPSICUT_FUZZ_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
         usize::try_from(secs / 86_400).unwrap_or(0)
     })
 }
 
-/// Seconds the whole sweep may take before it counts as a hang (override: FILMCRAFT_HOSTILE_TIMEOUT_SECS).
+/// Seconds the whole sweep may take before it counts as a hang (override: EPSICUT_HOSTILE_TIMEOUT_SECS).
 const DEADLINE_SECS: u64 = 600;
 
-/// CI runs a rotating share of every part of the sweep; `FILMCRAFT_FUZZ_ITERS=300` runs all of it (see [`Depth`]).
+/// CI runs a rotating share of every part of the sweep; `EPSICUT_FUZZ_ITERS=300` runs all of it (see [`Depth`]).
 #[test]
 fn hostile_streams_never_panic() {
-    filmcraft_testkit::with_deadline(DEADLINE_SECS, sweep);
+    epsicut_testkit::with_deadline(DEADLINE_SECS, sweep);
 }
 
 fn sweep() {
-    let Some(ff) = filmcraft_testkit::ffmpeg_or_skip("VP9 fuzz") else { return };
+    let Some(ff) = epsicut_testkit::ffmpeg_or_skip("VP9 fuzz") else { return };
     let depth = Depth::from_env();
     for &(name, args, pix) in SEEDS {
-        if !filmcraft_testkit::ffmpeg_has_encoder(&ff, "libvpx-vp9") {
-            filmcraft_testkit::skip("VP9 fuzz", &format!("this ffmpeg has no libvpx-vp9 encoder (seed {name})"));
+        if !epsicut_testkit::ffmpeg_has_encoder(&ff, "libvpx-vp9") {
+            epsicut_testkit::skip("VP9 fuzz", &format!("this ffmpeg has no libvpx-vp9 encoder (seed {name})"));
             continue;
         }
         let Some(seed) = make(&ff, name, args, pix) else {
             panic!("ffmpeg has libvpx-vp9 but could not encode the {name} seed");
         };
         if seed.is_empty() {
-            filmcraft_testkit::skip("VP9 fuzz", &format!("the {name} seed has no frames"));
+            epsicut_testkit::skip("VP9 fuzz", &format!("the {name} seed has no frames"));
             continue;
         }
         // truncate each of the first frames at every length

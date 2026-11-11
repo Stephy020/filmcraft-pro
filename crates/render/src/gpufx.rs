@@ -1,4 +1,4 @@
-//! Standard effects with a GPU implementation (`filmcraft_gpu` runs them in WGSL).
+//! Standard effects with a GPU implementation (`epsicut_gpu` runs them in WGSL).
 //!
 //! Each effect here is evaluated in two steps: [`FxOp::eval`] reads the effect's parameters at a
 //! time (keyframes, defaults, `px_scale`, the working image size) into plain numbers, and
@@ -9,9 +9,9 @@
 //! op to the GPU when [`FxOp::gpu_ok`] says the shader covers it (finite numbers, no minifying
 //! resample), otherwise the clip is rendered on the CPU as before.
 
-use filmcraft_color::{hsl_to_rgb, linear_to_srgb, luma709, rgb_to_hsl};
-use filmcraft_geom::Affine;
-use filmcraft_project::EffectInstance;
+use epsicut_color::{hsl_to_rgb, linear_to_srgb, luma709, rgb_to_hsl};
+use epsicut_geom::Affine;
+use epsicut_project::EffectInstance;
 use rayon::prelude::*;
 
 use crate::effects::{FxCtx, b, choice, color, dec, enc, f, gaussian_boxes, grade_space, lift_scale, on, point, text};
@@ -264,7 +264,7 @@ pub const GPU_EFFECTS: &[&str] = &[
 /// `Image::transformed` without the mip path: the destination rectangle it writes and the inverse.
 fn resample(w: usize, h: usize, m: &Affine, opacity: f32) -> Resample {
     let Some(inv) = m.inverse() else { return Resample { inv: None, rect: [0; 4], opacity } };
-    let b = m.bounds(&filmcraft_geom::Rect::new(0.0, 0.0, w as f64, h as f64));
+    let b = m.bounds(&epsicut_geom::Rect::new(0.0, 0.0, w as f64, h as f64));
     let y0 = (b.y.floor().max(0.0) as usize).min(h);
     let y1 = (b.bottom().ceil().max(0.0) as usize).min(h);
     let x0 = (b.x.floor().max(0.0) as usize).min(w);
@@ -322,7 +322,7 @@ impl FxOp {
                 // a wheel: its hue as an RGB direction without the grey component, scaled by Balance
                 let wheel = |hue: &str, bal: &str, lvl: &str| {
                     let h = f(e, hue, cx).rem_euclid(360.0) / 360.0;
-                    let c = filmcraft_color::hsl_to_rgb(h, 1.0, 0.5);
+                    let c = epsicut_color::hsl_to_rgb(h, 1.0, 0.5);
                     let m = (c[0] + c[1] + c[2]) / 3.0;
                     let k = f(e, bal, cx).clamp(0.0, 100.0) / 100.0 * 0.5;
                     [(c[0] - m) * k, (c[1] - m) * k, (c[2] - m) * k, f(e, lvl, cx) / 100.0 * 0.25]
@@ -558,7 +558,7 @@ impl FxOp {
             }
             "video_limiter" => {
                 use crate::vfx::{bv, cv};
-                use filmcraft_project::ParamValue;
+                use epsicut_project::ParamValue;
                 let clip_level = match e.param("clip_level").map(|p| p.value.clone()).or_else(|| crate::vfx::def_value(e, "clip_level")) {
                     Some(ParamValue::Choice(c)) => c as f32,
                     Some(ParamValue::Float(f)) => f as f32,
@@ -800,7 +800,7 @@ impl FxOp {
                     }
                     let l2 = 0.2126 * o[0] + 0.7152 * o[1] + 0.0722 * o[2];
                     // decoded without the upper clamp: values above 1 (HDR) keep their headroom
-                    o.map(|v| filmcraft_color::srgb_to_linear((l2 + (v - l2) * sat).max(0.0)))
+                    o.map(|v| epsicut_color::srgb_to_linear((l2 + (v - l2) * sat).max(0.0)))
                 });
             }
             FxOp::LeaveColor { amount, key_hue, tol, soft } => {
@@ -997,7 +997,7 @@ impl FxOp {
                     }
                     a = (a * op).clamp(0.0, 1.0);
                     if mask_only {
-                        let g = filmcraft_color::srgb_to_linear(a);
+                        let g = epsicut_color::srgb_to_linear(a);
                         p.copy_from_slice(&[g, g, g, 1.0]);
                     } else {
                         p.copy_from_slice(&[c[0] * a, c[1] * a, c[2] * a, a]);
@@ -1141,11 +1141,11 @@ pub fn lumetri_vignette_aspect(aspect: f32, vround: f32) -> f32 {
 /// sRGB encoding that keeps values above 1 (super-whites) instead of clamping them.
 #[inline]
 fn linear_to_enc(v: f32) -> f32 {
-    if v <= 1.0 { filmcraft_color::linear_to_srgb(v.max(0.0)) } else { 1.0 + (v - 1.0) / 2.4 }
+    if v <= 1.0 { epsicut_color::linear_to_srgb(v.max(0.0)) } else { 1.0 + (v - 1.0) / 2.4 }
 }
 #[inline]
 fn enc_to_linear(v: f32) -> f32 {
-    if v <= 1.0 { filmcraft_color::srgb_to_linear(v.max(0.0)) } else { 1.0 + (v - 1.0) * 2.4 }
+    if v <= 1.0 { epsicut_color::srgb_to_linear(v.max(0.0)) } else { 1.0 + (v - 1.0) * 2.4 }
 }
 
 #[inline]
@@ -1159,8 +1159,8 @@ fn knee(v: f32, max: f32, comp: f32) -> f32 {
 }
 
 pub(crate) fn limit(v: [f32; 3], max: f32, comp: f32, axis: u32) -> [f32; 3] {
-    let m = filmcraft_color::Matrix::Bt709;
-    let ycc = filmcraft_color::rgb_to_ycbcr(v[0], v[1], v[2], m);
+    let m = epsicut_color::Matrix::Bt709;
+    let ycc = epsicut_color::rgb_to_ycbcr(v[0], v[1], v[2], m);
     let (kr, kb) = (0.2126f32, 0.0722f32);
     let to_rgb = |y: f32, cb: f32, cr: f32| {
         let r = y + 2.0 * (1.0 - kr) * cr;
@@ -1221,8 +1221,8 @@ fn resample_cpu(src: &Image, inv: &Affine, rect: [u32; 4]) -> Image {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmcraft_project::{ParamValue, find_effect};
-    use filmcraft_time::Tick;
+    use epsicut_project::{ParamValue, find_effect};
+    use epsicut_time::Tick;
 
     #[test]
     fn extract_zero_softness_has_no_fractional_edge() {
@@ -1235,7 +1235,7 @@ mod tests {
             project: None,
             env: None,
             frame_rate: 24.0,
-            working: filmcraft_color::WorkingSpace::Rec709,
+            working: epsicut_color::WorkingSpace::Rec709,
         };
         // Both sides of each cutoff, including samples inside the former artificial fade.
         let lo = 90.0 / 255.0;
@@ -1255,7 +1255,7 @@ mod tests {
                         px: samples
                             .iter()
                             .flat_map(|v| {
-                                let c = filmcraft_color::srgb_to_linear(*v) * alpha;
+                                let c = epsicut_color::srgb_to_linear(*v) * alpha;
                                 [c, c, c, alpha]
                             })
                             .collect(),
@@ -1284,11 +1284,11 @@ mod tests {
             project: None,
             env: None,
             frame_rate: 24.0,
-            working: filmcraft_color::WorkingSpace::Rec709,
+            working: epsicut_color::WorkingSpace::Rec709,
         };
         let on_gpu = |e: &EffectInstance| FxOp::eval(e, &cx, 64, 36).is_some_and(|op| op.gpu_ok());
         let mut e = find_effect("transform").unwrap().instance();
-        e.params.get_mut("position").unwrap().value = ParamValue::Vec2(filmcraft_geom::Vec2::new(40.0, 20.0));
+        e.params.get_mut("position").unwrap().value = ParamValue::Vec2(epsicut_geom::Vec2::new(40.0, 20.0));
         assert!(on_gpu(&e), "a plain transform runs on the GPU");
         e.params.get_mut("shutter_override").unwrap().value = ParamValue::Bool(true);
         assert!(!on_gpu(&e), "the default 180° shutter blurs the motion: CPU");

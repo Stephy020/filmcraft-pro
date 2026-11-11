@@ -1,4 +1,4 @@
-# FilmCraft interface
+# EpsiCut interface
 
 The egui frontend draws panels and dialogs, and dispatches project changes through the engine.
 Interactive controls keep stable automation ids regardless of the interface language.
@@ -10,7 +10,7 @@ enablement, colour, width and Outer/Center/Inner placement. Unstyled characters 
 layer property independently; without a character selection the controls edit the layer.
 Overrides survive text edits, project saves and Undo/Redo. A width or colour drag is one undo
 step. `graphics_ui::stroke_colour_pickers_edit_only_the_type_tool_selection` drives both rows
-through the control channel; `FILMCRAFT_UI_SHOTS` enables a rendered screenshot.
+through the control channel; `EPSICUT_UI_SHOTS` enables a rendered screenshot.
 
 ## Export range warnings
 
@@ -20,7 +20,7 @@ mark is set, `export.range.warning` explains how to export the whole sequence in
 The warning is advisory: exporting one frame remains valid. Entire Source, Work Area and Custom
 ranges do not show this warning. `export_ui::single_frame_in_out_warning_updates_with_range_and_marks`
 checks the warning and duration as marks and range selections change; the same test can render
-`export-single-frame-warning.png` with `FILMCRAFT_UI_SNAPSHOT_DIR`.
+`export-single-frame-warning.png` with `EPSICUT_UI_SNAPSHOT_DIR`.
 
 ## Control input limits
 
@@ -43,7 +43,7 @@ at Cut or End at Cut by where the pointer is relative to the cut. Ordinary effec
 clip outline. `timeline.transitionDropPreview` exposes the span and alignment to automation.
 
 `transition_drop_ui` covers the three alignments on video/audio cuts and a one-sided clip edge,
-hover without project edits, the committed span and undo. Set `FILMCRAFT_UI_SNAPSHOT_DIR` to
+hover without project edits, the committed span and undo. Set `EPSICUT_UI_SNAPSHOT_DIR` to
 render screenshots with wgpu.
 
 ## Localisation
@@ -75,7 +75,7 @@ build. `cargo xtask i18n-report` prints each language's missing strings (menus, 
 registry names) and its entries whose source the interface no longer has; `cargo xtask ci` prints
 the same report in its log.
 
-Verification: `cargo test -p filmcraft-ui-egui` checks catalog syntax, duplicate keys, placeholders
+Verification: `cargo test -p epsicut-ui-egui` checks catalog syntax, duplicate keys, placeholders
 and UI behaviour in other languages (switching, search, font coverage); `cargo xtask ci` runs the
 workspace gates. Visual checks use the control channel to switch language and capture the resulting
 panels.
@@ -156,7 +156,7 @@ clipboard shortcuts and local text Undo/Redo.
 
 The **+** square below the presets opens a separate color editor. macOS uses the native
 Colors panel; other hosts and native-picker failures reuse the established egui picker.
-FilmCraft retains exact six-digit sRGB hex entry and explicit confirmation. Add color
+EpsiCut retains exact six-digit sRGB hex entry and explicit confirmation. Add color
 saves a reusable swatch to this project's palette through `colors.addCustom` (a separate
 undoable operation) and selects it in the marker draft. Canceling the marker edit afterward
 does not remove a deliberately saved palette color. The project stores at most 64 custom
@@ -178,10 +178,10 @@ make the center too white. Lumetri's grading wheels remain separate: they edit g
 offsets. Existing effect/graphics pickers retain their alpha/float/color-space semantics.
 
 The same author and hex values are available to Source marker commands. Existing markers
-have an empty author; FilmCraft never infers authorship from the operating-system account.
+have an empty author; EpsiCut never infers authorship from the operating-system account.
 Projects (schema 17) retain marker properties, Web Link URLs and the project palette. Marker CSV reports
-and FilmCraft OTIO metadata retain individual marker authors, URLs and colors. OTIO also
-retains custom clip label colors and the palette in FilmCraft metadata. Other interchange exports warn when they cannot preserve those marker properties.
+and EpsiCut OTIO metadata retain individual marker authors, URLs and colors. OTIO also
+retains custom clip label colors and the palette in EpsiCut metadata. Other interchange exports warn when they cannot preserve those marker properties.
 Importing an OTIO document merges its saved swatches after the current project's swatches, omitting duplicates and respecting the 64-swatch limit.
 This does not add AVB marker import or Avid track-bound markers.
 
@@ -212,7 +212,7 @@ Manage Colors is available from the Markers panel and clip Label menus. The sepa
 palette manager adds, names, edits, and removes swatches using the shared color picker. Editing
 or removing a saved swatch preserves already assigned hex values; used colors remain available
 for reuse. `colors.addCustom`, `colors.updateCustom`, and `colors.removeCustom` are undoable.
-Names persist in the project and FilmCraft OTIO metadata; existing sixteen presets are unchanged.
+Names persist in the project and EpsiCut OTIO metadata; existing sixteen presets are unchanged.
 
 ### Editable clip duration
 

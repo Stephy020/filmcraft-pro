@@ -26,8 +26,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use filmcraft_project::{Sequence, TrackId, TrackKind};
-use filmcraft_time::{Tick, TimeRange};
+use epsicut_project::{Sequence, TrackId, TrackKind};
+use epsicut_time::{Tick, TimeRange};
 
 use crate::commands::{CommandSpec, bad, bool_p, f64_p, has_seq, str_p, time_p, u64_p};
 use crate::{EngineError, Result, Session};
@@ -163,7 +163,7 @@ impl Default for VoiceOverPrefs {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Recording {
-    pub seq: filmcraft_project::ItemId,
+    pub seq: epsicut_project::ItemId,
     pub track: TrackId,
     /// Record point (sequence time): where the clip starts.
     pub record_start: Tick,
@@ -422,7 +422,7 @@ pub(crate) fn media_dir(s: &Session, p: &Value, fallback: &str) -> String {
     if let Some(d) = s.path.as_deref().and_then(|x| std::path::Path::new(x).parent()).filter(|d| !d.as_os_str().is_empty()) {
         return d.to_string_lossy().into_owned();
     }
-    let base = s.prefs_path.as_ref().and_then(|p| p.parent()).map(|d| d.to_path_buf()).unwrap_or_else(|| crate::temp_dir().join("FilmCraft"));
+    let base = s.prefs_path.as_ref().and_then(|p| p.parent()).map(|d| d.to_path_buf()).unwrap_or_else(|| crate::temp_dir().join("EpsiCut"));
     base.join(fallback).to_string_lossy().into_owned()
 }
 
@@ -524,10 +524,10 @@ fn stop(s: &mut Session, p: &Value) -> Result<Value> {
         if !seq.audio_tracks.iter().any(|t| t.id == track) {
             return Err(bad("audio.voiceover.stop", "the record track was deleted"));
         }
-        let durations = |_: filmcraft_project::ItemId| -> Option<Tick> { None };
+        let durations = |_: epsicut_project::ItemId| -> Option<Tick> { None };
         let mut ctx =
-            filmcraft_edit::EditCtx { next_id: &mut next, media_duration: &durations, media_start: &|_| Tick::ZERO, min_duration: rate.frame_duration() };
-        filmcraft_edit::overwrite(seq, vec![(track, it)], &mut ctx)?;
+            epsicut_edit::EditCtx { next_id: &mut next, media_duration: &durations, media_start: &|_| Tick::ZERO, min_duration: rate.frame_duration() };
+        epsicut_edit::overwrite(seq, vec![(track, it)], &mut ctx)?;
         seq.check().map_err(EngineError::Other)?;
         pr.next_id = next;
         Ok(id)

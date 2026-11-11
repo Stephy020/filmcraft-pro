@@ -4,7 +4,7 @@
 use crate::error::{Result, ensure, unsupported};
 use crate::spec_tables::{DEFAULT_SCALING_INTER, DEFAULT_SCALING_INTRA};
 use crate::tables::scan_diag;
-use filmcraft_bitstream::BitReader;
+use epsicut_bitstream::BitReader;
 
 /// HEVC picture state includes several per-pixel and per-block work buffers. This permits 8K
 /// pictures while rejecting dimensions that could exhaust memory during decode.
@@ -946,7 +946,7 @@ mod tests {
         assert!(err.to_string().contains("decoded-frame budget"));
     }
     fn pps_bits(num_ref_idx: u32, tiles: u32) -> Vec<u8> {
-        let mut w = filmcraft_bitstream::BitWriter::new();
+        let mut w = epsicut_bitstream::BitWriter::new();
         w.write_ue(0); // pps id
         w.write_ue(0); // sps id
         w.write_bit(false); // dependent slices
@@ -991,7 +991,7 @@ mod tests {
     fn hostile_sps(huge: &str, conf: u32) -> Vec<u8> {
         let m = u32::MAX;
         let pick = |name: &str, ok: u32| if huge == name { m } else { ok };
-        let mut w = filmcraft_bitstream::BitWriter::new();
+        let mut w = epsicut_bitstream::BitWriter::new();
         w.write_bits(0, 4);
         w.write_bits(0, 3);
         w.write_bits(1, 1);

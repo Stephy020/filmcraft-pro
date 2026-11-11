@@ -2,20 +2,20 @@
 //! switches, Interpret Footage ▸ Color Management and the sequence colour settings, driven by
 //! automation id through the control channel.
 //!
-//! Set `FILMCRAFT_UI_SNAPSHOT_DIR=<dir>` to also render offscreen with wgpu and write `color-*.png`.
+//! Set `EPSICUT_UI_SNAPSHOT_DIR=<dir>` to also render offscreen with wgpu and write `color-*.png`.
 
 #![allow(dead_code)]
 
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     snapshots: Option<std::path::PathBuf>,
 }
@@ -25,8 +25,8 @@ impl Driver {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
-        let snapshots = std::env::var_os("FILMCRAFT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+        let app = EpsicutApp::new(session).with_control(rx);
+        let snapshots = std::env::var_os("EPSICUT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_max_steps(10_000);
         if snapshots.is_some() {
             b = b.wgpu();
@@ -326,7 +326,7 @@ fn apply_match_from_the_color_wheels_section() {
 }
 
 impl Driver {
-    fn app(&mut self) -> &mut FilmcraftApp {
+    fn app(&mut self) -> &mut EpsicutApp {
         self.harness.state_mut()
     }
 }
@@ -368,7 +368,7 @@ fn hdr_lumetri_controls_hsl_refine_and_comparison_view() {
     // then uses its reference frame
     d.click("lumetri.section.Color Wheels & Match");
     d.click("lumetri.match.comparisonView");
-    assert_eq!(d.app().ui.program.display_mode(), Some(filmcraft_ui_egui::state::DisplayMode::Comparison));
+    assert_eq!(d.app().ui.program.display_mode(), Some(epsicut_ui_egui::state::DisplayMode::Comparison));
     assert!(!d.ids("program.compare.reference").is_empty());
     let seq = d.exec("sequence.inspect", json!({}));
     let last = seq["video"][0]["items"].as_array().unwrap().last().unwrap().clone();
@@ -381,7 +381,7 @@ fn hdr_lumetri_controls_hsl_refine_and_comparison_view() {
     let e = lumetri(&mut d, clip);
     assert!(e["params"]["wheel_highlights"]["value"].as_str().unwrap() != "Vec2(Vec2 { x: 0.0, y: 0.0 })", "matched to the comparison reference: {e}");
     d.click("lumetri.match.comparisonView");
-    assert_ne!(d.app().ui.program.display_mode(), Some(filmcraft_ui_egui::state::DisplayMode::Comparison));
+    assert_ne!(d.app().ui.program.display_mode(), Some(epsicut_ui_egui::state::DisplayMode::Comparison));
 }
 
 #[test]
@@ -402,7 +402,7 @@ fn lumetri_presets_in_the_effects_panel() {
     assert_eq!(e["params"]["saturation"]["value"], json!("Float(0.0)"), "{e}");
     d.exec("edit.undo", json!({}));
     // maximized (wide) panel: the folder's thumbnail grid next to the tree
-    d.app().ui.keys.maximized = Some(filmcraft_ui_egui::dock::PanelKind::Effects);
+    d.app().ui.keys.maximized = Some(epsicut_ui_egui::dock::PanelKind::Effects);
     d.frames(4);
     assert!(!d.ids("effects.presetGrid").is_empty(), "no grid: {:?}", d.ids("effects."));
     let cells = d.ids("effects.presetGrid.");
@@ -466,10 +466,10 @@ fn interpret_footage_from_the_item_menu_takes_the_whole_selection() {
     let mut d = Driver::demo();
     d.ok("ui.panel.show", json!({"panel": "Project"}));
     d.exec("project.view.set", json!({"view": "list"}));
-    let wav: std::sync::Arc<[u8]> = filmcraft_engine::previews::write_wav_f32(&[0.0; 9_600], 48_000).into();
+    let wav: std::sync::Arc<[u8]> = epsicut_engine::previews::write_wav_f32(&[0.0; 9_600], 48_000).into();
     let media: Vec<u64> = ["/takes/a.wav", "/takes/b.wav", "/takes/c.wav"]
         .iter()
-        .map(|n| filmcraft_engine::commands::import_bytes(&mut d.harness.state_mut().session, n, wav.clone(), None).unwrap().0)
+        .map(|n| epsicut_engine::commands::import_bytes(&mut d.harness.state_mut().session, n, wav.clone(), None).unwrap().0)
         .collect();
     let (a, b, c) = (media[0], media[1], media[2]);
     d.exec("project.select", json!({"items": [a, b]}));
@@ -513,7 +513,7 @@ fn a_dragged_lumetri_curve_point_undoes_and_redoes() {
     d.frames(2);
     let curve = |d: &mut Driver| {
         let q = d.app().session.active_sequence().unwrap().clone();
-        let (_, it) = q.find_item(filmcraft_project::ClipId(clip)).unwrap();
+        let (_, it) = q.find_item(epsicut_project::ClipId(clip)).unwrap();
         let e = it.effects.iter().find(|e| e.effect == "lumetri").unwrap();
         e.param("curve_luma").and_then(|p| p.value.as_curve().map(|c| c.to_vec())).unwrap_or_default()
     };
@@ -556,7 +556,7 @@ fn a_click_on_the_lumetri_curve_places_a_point() {
     d.frames(2);
     let points = |d: &mut Driver| {
         let q = d.app().session.active_sequence().unwrap().clone();
-        let (_, it) = q.find_item(filmcraft_project::ClipId(clip)).unwrap();
+        let (_, it) = q.find_item(epsicut_project::ClipId(clip)).unwrap();
         let e = it.effects.iter().find(|e| e.effect == "lumetri").unwrap();
         e.param("curve_luma").and_then(|p| p.value.as_curve().map(|c| c.len())).unwrap_or_default()
     };

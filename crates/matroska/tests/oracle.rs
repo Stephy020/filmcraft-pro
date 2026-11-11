@@ -4,7 +4,7 @@
 mod common;
 
 use common::*;
-use filmcraft_matroska::*;
+use epsicut_matroska::*;
 use serde_json::Value;
 use std::path::Path;
 
@@ -281,7 +281,7 @@ fn prores_pcm() {
 #[test]
 fn mjpeg_ac3() {
     let Some((_, f, _)) = run("mjpeg_ac3.mkv") else { return };
-    assert_eq!(f.info.title.as_deref(), Some("FilmCraft test"));
+    assert_eq!(f.info.title.as_deref(), Some("EpsiCut test"));
     assert!(f.info.muxing_app.starts_with("Lavf"));
     assert!(f.tags.iter().flat_map(|t| &t.simple).any(|s| s.name == "ENCODER"));
 }
@@ -463,6 +463,6 @@ fn generate_fixtures() {
     let Some((ffmpeg, _)) = tools() else { return };
     for name in ALL_FIXTURES {
         let out = [fixture_dir().join(name)];
-        filmcraft_testkit::fixtures::generate_and_report(&format!("matroska/{name}"), &out, || fixture(&ffmpeg, name));
+        epsicut_testkit::fixtures::generate_and_report(&format!("matroska/{name}"), &out, || fixture(&ffmpeg, name));
     }
 }

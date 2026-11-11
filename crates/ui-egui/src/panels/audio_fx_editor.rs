@@ -16,12 +16,12 @@
 use std::collections::HashMap;
 
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, pos2, vec2};
-use filmcraft_project::{ClipId, EffectInstance, ParamKind, ParamValue, TrackId};
-use filmcraft_time::Tick;
+use epsicut_project::{ClipId, EffectInstance, ParamKind, ParamValue, TrackId};
+use epsicut_time::Tick;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::theme::Tokens;
 
 /// What an editor window edits.
@@ -45,15 +45,15 @@ pub fn can_edit_insert(effect: &str) -> bool {
 }
 
 /// The parameters the generic editor shows: numbers, switches and choices.
-fn generic_params(effect: &str) -> impl Iterator<Item = &'static filmcraft_project::ParamDef> {
-    filmcraft_project::find_effect(effect)
+fn generic_params(effect: &str) -> impl Iterator<Item = &'static epsicut_project::ParamDef> {
+    epsicut_project::find_effect(effect)
         .into_iter()
         .flat_map(|d| d.params.iter())
         .filter(|p| matches!(p.kind, ParamKind::Float { .. } | ParamKind::Bool | ParamKind::Choice(_)))
 }
 
 /// Open (or raise) the editor for a target.
-pub fn open(app: &mut FilmcraftApp, target: FxTarget) {
+pub fn open(app: &mut EpsicutApp, target: FxTarget) {
     if !app.ui.audio_fx_editors.contains(&target) {
         app.ui.audio_fx_editors.push(target);
     }
@@ -61,7 +61,7 @@ pub fn open(app: &mut FilmcraftApp, target: FxTarget) {
 
 /// The edited effect instance (current project state), its media time at the playhead, and a
 /// display label.
-fn resolve(app: &FilmcraftApp, target: &FxTarget) -> Option<(EffectInstance, Tick, String)> {
+fn resolve(app: &EpsicutApp, target: &FxTarget) -> Option<(EffectInstance, Tick, String)> {
     let seq = app.session.active_sequence()?;
     let ph = app.session.playhead();
     match target {
@@ -163,7 +163,7 @@ impl Ed<'_> {
                     _ => ParamValue::Float(*v),
                 };
             } else if let Some(d) = e.def().and_then(|d| d.param(k)) {
-                let mut p = filmcraft_project::Param::new(d.default.clone());
+                let mut p = epsicut_project::Param::new(d.default.clone());
                 p.value = ParamValue::Float(*v);
                 e.params.insert(k.clone(), p);
             }
@@ -218,7 +218,7 @@ impl Ed<'_> {
 }
 
 /// Show every open editor window.
-pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut EpsicutApp, ctx: &egui::Context) {
     let targets = app.ui.audio_fx_editors.clone();
     let mut close = Vec::new();
     for target in targets {
@@ -334,7 +334,7 @@ fn response_plot(ui: &mut egui::Ui, ed: &mut Ed, size: egui::Vec2, range: f64) -
         d += step;
     }
     // curve from the DSP
-    if let Some(dsp) = filmcraft_render::audio_fx::configured(&ed.preview(), ed.mt, 48000) {
+    if let Some(dsp) = epsicut_render::audio_fx::configured(&ed.preview(), ed.mt, 48000) {
         let pts: Vec<Pos2> = (0..=240)
             .filter_map(|i| {
                 let x = r.min.x + r.width() * i as f32 / 240.0;
@@ -421,9 +421,9 @@ fn graphic(ui: &mut egui::Ui, ed: &mut Ed) {
         _ => 30,
     };
     let labels: &[&str] = match n {
-        10 => &filmcraft_project::effect::GEQ10_LABELS,
-        20 => &filmcraft_project::effect::GEQ20_LABELS,
-        _ => &filmcraft_project::effect::GEQ30_LABELS,
+        10 => &epsicut_project::effect::GEQ10_LABELS,
+        20 => &epsicut_project::effect::GEQ20_LABELS,
+        _ => &epsicut_project::effect::GEQ30_LABELS,
     };
     let w = (n as f32 * 26.0).max(420.0);
     response_plot(ui, ed, vec2(w, 140.0), 24.0);
@@ -487,7 +487,7 @@ fn transfer_plot(ui: &mut egui::Ui, ed: &mut Ed, size: f32, band: usize, auto: S
         p.line_segment([map(lo, d), map(0.0, d)], Stroke::new(1.0, ed.t.plot_grid));
     }
     p.line_segment([map(lo, lo), map(0.0, 0.0)], Stroke::new(1.0, ed.t.plot_axis));
-    if let Some(dsp) = filmcraft_render::audio_fx::configured(&ed.preview(), ed.mt, 48000) {
+    if let Some(dsp) = epsicut_render::audio_fx::configured(&ed.preview(), ed.mt, 48000) {
         let pts: Vec<Pos2> = (0..=120)
             .filter_map(|i| {
                 let x = lo + -lo * i as f64 / 120.0;

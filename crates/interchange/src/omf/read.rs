@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_time::{FrameRate, Tick};
 
 use super::bento::Container;
 use crate::comp::{CClip, CItem, CKind, CTrack, CTransition, Composition, Document, Gain, Source, units_to_ticks};

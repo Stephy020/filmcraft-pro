@@ -22,8 +22,8 @@
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError, Weak};
 
-use filmcraft_color::{linear_to_srgb_u8_in, linear_to_srgb_u8_table, srgb_u8_to_linear_table};
-use filmcraft_frame::{PixelData, VideoFrame};
+use epsicut_color::{linear_to_srgb_u8_in, linear_to_srgb_u8_table, srgb_u8_to_linear_table};
+use epsicut_frame::{PixelData, VideoFrame};
 use image::ImageDecoder;
 use image::metadata::Orientation;
 use rayon::prelude::*;
@@ -257,7 +257,7 @@ impl MediaSource for LazyStill {
         Ok(f)
     }
 
-    fn audio(&self, _start: i64, _frames: usize, _sample_rate: u32) -> Result<filmcraft_frame::AudioBuffer> {
+    fn audio(&self, _start: i64, _frames: usize, _sample_rate: u32) -> Result<epsicut_frame::AudioBuffer> {
         Err(MediaError::NoStream("audio"))
     }
 }
@@ -281,7 +281,7 @@ mod tests {
     }
 
     fn at(s: &LazyStill, scale: f32) -> Arc<VideoFrame> {
-        s.video_frame(FrameRequest { time: filmcraft_time::Tick::ZERO, scale }).unwrap()
+        s.video_frame(FrameRequest { time: epsicut_time::Tick::ZERO, scale }).unwrap()
     }
 
     #[test]
@@ -309,7 +309,7 @@ mod tests {
         let bytes = png(2000, 1200, true);
         let s = open("big.png", &bytes).unwrap();
         let eager = crate::still::StillSource::decode("big.png", &bytes).unwrap();
-        let (a, b) = (at(&s, 1.0), eager.video_frame(FrameRequest::full(filmcraft_time::Tick::ZERO)).unwrap());
+        let (a, b) = (at(&s, 1.0), eager.video_frame(FrameRequest::full(epsicut_time::Tick::ZERO)).unwrap());
         assert_eq!((a.width, a.height), (b.width, b.height));
         assert_eq!(a.to_rgba8(), b.to_rgba8());
         // above half scale the whole picture is still what comes back

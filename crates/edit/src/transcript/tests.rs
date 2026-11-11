@@ -3,8 +3,8 @@
 //! a 2 s pause after "show.", fillers "Um," and "uh", phrase "you know.").
 
 use super::*;
-use filmcraft_project::{Label, Project, SequenceSettings, TrackItem};
-use filmcraft_time::FrameRate;
+use epsicut_project::{Label, Project, SequenceSettings, TrackItem};
+use epsicut_time::FrameRate;
 
 const R: FrameRate = FrameRate { num: 25, den: 1 };
 const MEDIA: ItemId = ItemId(1);
@@ -329,7 +329,7 @@ fn sw(text: &str, i: usize) -> SeqWord {
 
 /// The straightforward search: restart the query at every position.
 fn naive_search(words: &[SeqWord], query: &str) -> Vec<std::ops::Range<usize>> {
-    let q: Vec<String> = query.split_whitespace().map(filmcraft_project::transcript::normalize_word).filter(|s| !s.is_empty()).collect();
+    let q: Vec<String> = query.split_whitespace().map(epsicut_project::transcript::normalize_word).filter(|s| !s.is_empty()).collect();
     let norm: Vec<String> = words.iter().map(SeqWord::normalized).collect();
     let mut out = Vec::new();
     for i in 0..norm.len().saturating_sub(q.len().saturating_sub(1)) {

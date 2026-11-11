@@ -1,21 +1,21 @@
 //! Headless UI tests of applied transitions in the Timeline (#430, #224): click one to select it
 //! and see it in Effect Controls, Delete it, drag its end or its middle, double-click it for Set
-//! Transition Duration. The real `FilmcraftApp` under `egui_kittest`, driven over the control
+//! Transition Duration. The real `EpsicutApp` under `egui_kittest`, driven over the control
 //! channel by automation id.
 //!
-//! Set `FILMCRAFT_UI_SNAPSHOT_DIR=<dir>` to also render the window offscreen with wgpu and write
+//! Set `EPSICUT_UI_SNAPSHOT_DIR=<dir>` to also render the window offscreen with wgpu and write
 //! `transition-*.png` there; without it no GPU is needed.
 
 use std::sync::mpsc::{Sender, channel};
 
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::FilmcraftApp;
-use filmcraft_ui_egui::control::ControlRequest;
+use epsicut_engine::Session;
+use epsicut_ui_egui::EpsicutApp;
+use epsicut_ui_egui::control::ControlRequest;
 use serde_json::{Value, json};
 
 struct Driver {
-    harness: Harness<'static, FilmcraftApp>,
+    harness: Harness<'static, EpsicutApp>,
     tx: Sender<ControlRequest>,
     snapshots: Option<std::path::PathBuf>,
 }
@@ -34,8 +34,8 @@ impl Driver {
         let mut session = Session::default();
         session.execute("file.openDemoProject", json!({})).expect("demo project");
         let (tx, rx) = channel();
-        let app = FilmcraftApp::new(session).with_control(rx);
-        let snapshots = std::env::var_os("FILMCRAFT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+        let app = EpsicutApp::new(session).with_control(rx);
+        let snapshots = std::env::var_os("EPSICUT_UI_SNAPSHOT_DIR").map(std::path::PathBuf::from);
         // 60 fps steps, so a double-click's two clicks fall within egui's double-click time
         let mut b = Harness::builder().with_size(egui::vec2(1600.0, 980.0)).with_step_dt(1.0 / 60.0).with_max_steps(10_000);
         if snapshots.is_some() {
@@ -89,7 +89,7 @@ impl Driver {
         Some((r[0], r[1], r[2], r[3], e["label"].as_str().unwrap_or_default().to_string()))
     }
 
-    /// With `FILMCRAFT_UI_SNAPSHOT_DIR` set, render the whole window offscreen to `<name>.png`.
+    /// With `EPSICUT_UI_SNAPSHOT_DIR` set, render the whole window offscreen to `<name>.png`.
     fn snapshot(&mut self, name: &str) {
         let Some(dir) = self.snapshots.clone() else { return };
         self.frames(2);
@@ -154,9 +154,9 @@ fn click_selects_a_transition_and_delete_removes_it() {
     assert_eq!(q["selection"], json!([]), "a transition replaces the clip selection");
     // Effect Controls shows it: duration as timecode, its alignment, Reverse
     let (num, den) = d.rate();
-    let rate = filmcraft_engine::time::FrameRate { num, den };
+    let rate = epsicut_engine::time::FrameRate { num, den };
     let frames = c.duration / frame_ticks((num, den));
-    assert_eq!(d.label("effectControls.transition.duration"), filmcraft_engine::time::format_timecode_frames(frames, rate, false));
+    assert_eq!(d.label("effectControls.transition.duration"), epsicut_engine::time::format_timecode_frames(frames, rate, false));
     assert_eq!(d.label("effectControls.transition.alignment"), "Center at Cut");
     assert_eq!(d.label("effectControls.transition.reverse"), "false");
     d.snapshot("transition-selected");
@@ -270,7 +270,7 @@ fn transition_settings_in_effect_controls() {
     d.click("effectControls.transition.param.direction.option.0");
     assert_eq!(d.transition(id).unwrap()["params"]["direction"], json!({"Choice": 0}));
     d.click("effectControls.transition.reset");
-    let def = filmcraft_engine::project::vtransition::find_transition("push", filmcraft_engine::project::EffectKind::VideoTransition).unwrap();
+    let def = epsicut_engine::project::vtransition::find_transition("push", epsicut_engine::project::EffectKind::VideoTransition).unwrap();
     let want = serde_json::to_value(&def.instance().params.get("direction").unwrap().value).unwrap();
     assert_eq!(d.transition(id).unwrap()["params"]["direction"], want, "Reset puts Push's own defaults back");
 }
@@ -308,10 +308,10 @@ fn transition_timeline_in_effect_controls() {
     assert_eq!(s1, c.start, "the start stays where it was");
     assert_eq!((d1 - c.duration) % frame, 0, "by whole frames");
     let (num, den) = d.rate();
-    let rate = filmcraft_engine::time::FrameRate { num, den };
+    let rate = epsicut_engine::time::FrameRate { num, den };
     assert_eq!(
         d.label("effectControls.transition.duration"),
-        filmcraft_engine::time::format_timecode_frames(d1 / frame, rate, false),
+        epsicut_engine::time::format_timecode_frames(d1 / frame, rate, false),
         "the Duration field follows"
     );
     // its middle: slide it left (more than egui's click tolerance)
@@ -415,9 +415,8 @@ fn the_cut_is_grabbed_over_the_clips_and_stops_at_the_rolls_limit() {
     assert!(moved > 0, "the cut moved right: {cut0} -> {cut1}");
     assert_eq!(start1, cut1, "the transition still starts at the cut");
     // far to the right: the cut stops at the roll's limit
-    let far = filmcraft_time::Tick(3600 * filmcraft_time::TICKS_PER_SECOND);
-    let limit =
-        filmcraft_engine::commands::roll_delta(&d.harness.state().session, filmcraft_project::ClipId(from), filmcraft_project::ClipId(to), far).unwrap();
+    let far = epsicut_time::Tick(3600 * epsicut_time::TICKS_PER_SECOND);
+    let limit = epsicut_engine::commands::roll_delta(&d.harness.state().session, epsicut_project::ClipId(from), epsicut_project::ClipId(to), far).unwrap();
     assert!(0 < limit.0 && limit < far, "the roll has a limit: {limit:?}");
     drag_cut(&mut d, limit.0 as f64 / moved as f64 * 20.0 + 200.0);
     assert_eq!(cut_of(&mut d), cut1 + limit.0, "stopped at the limit");

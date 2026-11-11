@@ -17,7 +17,7 @@ fn conformance_vectors() {
 }
 
 /// The wider libaom set (slow: many downloads and decodes):
-/// `cargo test -p filmcraft-av1 --test it conformance:: -- --ignored`; `AV1_VECTORS=a,b` overrides it.
+/// `cargo test -p epsicut-av1 --test it conformance:: -- --ignored`; `AV1_VECTORS=a,b` overrides it.
 #[test]
 #[ignore]
 fn conformance_vectors_extended() {

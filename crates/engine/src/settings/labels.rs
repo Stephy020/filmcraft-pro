@@ -98,8 +98,8 @@ impl LabelPrefs {
         self.colors.get(&label_id(l)).map(|c| c.name.trim()).filter(|n| !n.is_empty()).unwrap_or(l.name()).to_string()
     }
     /// The label a new media item of `kind` gets.
-    pub fn for_media(&self, kind: filmcraft_media::MediaKind, has_video: bool, has_audio: bool) -> Label {
-        use filmcraft_media::MediaKind as K;
+    pub fn for_media(&self, kind: epsicut_media::MediaKind, has_video: bool, has_audio: bool) -> Label {
+        use epsicut_media::MediaKind as K;
         match kind {
             K::AudioOnly => self.defaults.audio,
             K::Still | K::ImageSequence => self.defaults.still,
@@ -121,7 +121,7 @@ impl LabelPrefs {
     }
 }
 
-/// The label colour preset FilmCraft ships with: the labels' own names and colours.
+/// The label colour preset EpsiCut ships with: the labels' own names and colours.
 pub const DEFAULT_LABEL_PRESET: &str = "Default";
 
 /// The folder of label colour presets, beside `preferences.json`.
@@ -275,7 +275,7 @@ impl LabelPreset {
 
     pub fn write(&self, path: &Path) -> std::result::Result<(), String> {
         let bytes = serde_json::to_vec_pretty(self).map_err(|e| e.to_string())?;
-        filmcraft_format::atomic_write(path, &bytes).map_err(|e| format!("{}: {e}", path.display()))
+        epsicut_format::atomic_write(path, &bytes).map_err(|e| format!("{}: {e}", path.display()))
     }
 
     /// Save `labels`' names and colours to `path` as a preset named after the file.

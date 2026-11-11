@@ -12,7 +12,7 @@
 //! - [`tr_ctx`]: when one English word needs different translations (the Edit menu, the Edit button).
 //! - [`fmt`]: fill `{name}` placeholders after translating a template; translators may reorder them.
 //!
-//! Japanese text uses the Japanese craft-fonts when FilmCraft was built with them (`CRAFT_FONTS_DIR`;
+//! Japanese text uses the Japanese craft-fonts when EpsiCut was built with them (`CRAFT_FONTS_DIR`;
 //! `theme::install` already puts them in every font family, see [`craft_japanese_font`]), otherwise
 //! a font already installed on the system ([`system_japanese_font`]); with neither, switching to
 //! Japanese is refused with a message.
@@ -312,7 +312,7 @@ thread_local! {
     static CURRENT: Cell<Language> = const { Cell::new(Language::En) };
 }
 
-/// Set the language for drawing. `FilmcraftApp::frame` calls this at the start of every frame from
+/// Set the language for drawing. `EpsicutApp::frame` calls this at the start of every frame from
 /// the UI state, so widgets translate without every call site carrying the language around.
 pub fn set_current(lang: Language) {
     CURRENT.with(|c| c.set(lang));
@@ -430,11 +430,11 @@ const JAPANESE_FONT: &str = "system-japanese";
 pub fn system_japanese_font() -> Option<Arc<egui::FontData>> {
     static FONT: OnceLock<Option<Arc<egui::FontData>>> = OnceLock::new();
     FONT.get_or_init(|| {
-        filmcraft_text::fonts::scan_system();
-        let faces: Vec<_> = filmcraft_text::fonts::all_faces().into_iter().filter(|f| f.info.origin == "system" && !f.info.italic).collect();
-        let covers = |f: &filmcraft_text::fonts::Face| f.covers_text(JAPANESE_SAMPLE);
+        epsicut_text::fonts::scan_system();
+        let faces: Vec<_> = epsicut_text::fonts::all_faces().into_iter().filter(|f| f.info.origin == "system" && !f.info.italic).collect();
+        let covers = |f: &epsicut_text::fonts::Face| f.covers_text(JAPANESE_SAMPLE);
         // within a family, the face closest to regular weight
-        let by_weight = |f: &&Arc<filmcraft_text::fonts::Face>| f.info.weight.abs_diff(400);
+        let by_weight = |f: &&Arc<epsicut_text::fonts::Face>| f.info.weight.abs_diff(400);
         let preferred =
             PREFERRED_JAPANESE.iter().find_map(|name| faces.iter().filter(|f| f.info.family.eq_ignore_ascii_case(name) && covers(f)).min_by_key(by_weight));
         let face = preferred.or_else(|| faces.iter().filter(|f| covers(f)).min_by_key(by_weight))?;
@@ -450,10 +450,8 @@ pub fn system_japanese_font() -> Option<Arc<egui::FontData>> {
 /// Japanese interface font: some craft-fonts face covers `JAPANESE_SAMPLE`. `theme::install` adds
 /// these faces to every font family, so nothing else needs installing (and no system scan runs).
 pub fn craft_japanese_font() -> bool {
-    filmcraft_text::fonts::craft_japanese().next().is_some()
-        && filmcraft_text::fonts::all_faces()
-            .iter()
-            .any(|f| f.info.origin == filmcraft_text::fonts::CRAFT_ORIGIN && JAPANESE_SAMPLE.chars().all(|c| f.has_char(c)))
+    epsicut_text::fonts::craft_japanese().next().is_some()
+        && epsicut_text::fonts::all_faces().iter().any(|f| f.info.origin == epsicut_text::fonts::CRAFT_ORIGIN && JAPANESE_SAMPLE.chars().all(|c| f.has_char(c)))
 }
 
 /// Japanese for the interface: true when built with the craft-fonts (already installed by

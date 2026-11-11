@@ -7,10 +7,10 @@ use serde_json::{Value, json};
 
 use crate::Session;
 use crate::media_test_util::{make_movie, tmp_dir};
-use filmcraft_media::DemoScene;
-use filmcraft_project::{Transcript, Word};
-use filmcraft_speech::FixedTranscriber;
-use filmcraft_time::Tick;
+use epsicut_media::DemoScene;
+use epsicut_project::{Transcript, Word};
+use epsicut_speech::FixedTranscriber;
+use epsicut_time::Tick;
 
 /// A 2 s 320x180 movie with sound.
 fn movie(name: &str) -> PathBuf {
@@ -175,7 +175,7 @@ fn no_transcript_still_edits() {
     assert_eq!(r["reframed"], 1);
 
     s.transcriber = None;
-    if !filmcraft_speech::available() {
+    if !epsicut_speech::available() {
         let r = s.execute("workflow.run", json!({"recipe": "vertical-short", "media": [path(&a)]})).unwrap();
         assert!(r["warnings"][0].as_str().unwrap().contains("no transcript"), "{r}");
         assert_eq!(r["reframed"], 1);

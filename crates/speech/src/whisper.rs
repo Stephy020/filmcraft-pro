@@ -33,7 +33,7 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use candle_core::Tensor;
-use filmcraft_project::{Transcript, Word};
+use epsicut_project::{Transcript, Word};
 
 use crate::{Options, ProgressFn, SpeechError, Transcriber, sample_tick};
 use model::{Config, Model};
@@ -273,7 +273,7 @@ impl Transcriber for Whisper {
         if !progress(0.0, "Analysing audio") {
             return Err(SpeechError::Cancelled);
         }
-        let trace = std::env::var_os("FILMCRAFT_SPEECH_TRACE").is_some();
+        let trace = std::env::var_os("EPSICUT_SPEECH_TRACE").is_some();
         let clock = std::time::Instant::now();
         let (frames, mel) = crate::mel::log_mel(&padded, n_mels);
         if trace {

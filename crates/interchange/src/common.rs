@@ -3,13 +3,13 @@
 
 use std::collections::HashMap;
 
-use filmcraft_color::ColorInfo;
-use filmcraft_media::{AudioStreamInfo, Generator, MediaInfo, MediaKind, VideoStreamInfo};
-use filmcraft_project::{
+use epsicut_color::ColorInfo;
+use epsicut_media::{AudioStreamInfo, Generator, MediaInfo, MediaKind, VideoStreamInfo};
+use epsicut_project::{
     BinId, ClipId, EffectInstance, EffectKind, Interpretation, ItemId, ItemKind, Label, MediaClip, MediaRef, Param, Project, Sequence, SequenceSettings, Track,
     TrackId, TrackItem, TrackKind, effect, effect::find_effect_by_name, find_effect,
 };
-use filmcraft_time::{FrameRate, Tick};
+use epsicut_time::{FrameRate, Tick};
 
 use crate::{Imported, Report};
 
@@ -692,7 +692,7 @@ pub(crate) fn param_modified(ti: &TrackItem, effect: &str, param_id: &str) -> bo
     }
     let def = find_effect(effect).and_then(|d| d.param(param_id)).map(|d| d.default.clone());
     match (&p.value, def) {
-        (filmcraft_project::ParamValue::Vec2(v), Some(filmcraft_project::ParamValue::Vec2(_))) => !(v.x.is_nan() && v.y.is_nan()),
+        (epsicut_project::ParamValue::Vec2(v), Some(epsicut_project::ParamValue::Vec2(_))) => !(v.x.is_nan() && v.y.is_nan()),
         (v, Some(d)) => *v != d,
         _ => false,
     }
@@ -764,7 +764,7 @@ pub(crate) fn sanitize_reel(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmcraft_time::TimeRange;
+    use epsicut_time::TimeRange;
 
     #[test]
     fn percent_decode_requires_hex_digits() {

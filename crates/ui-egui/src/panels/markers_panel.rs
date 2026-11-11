@@ -1,8 +1,8 @@
 //! Search and selection are view state; mutations dispatch atomic owner-scoped commands.
 use super::marker_properties::Owner;
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use egui::{Color32, Rect, Sense, vec2};
-use filmcraft_project::Label;
+use epsicut_project::Label;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -21,7 +21,7 @@ pub struct State {
     pub project: Option<std::sync::Arc<()>>,
 }
 
-pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let mut state = std::mem::take(&mut app.ui.markers_panel);
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect.shrink(6.0)));
     let ui = &mut child;
@@ -146,12 +146,12 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
             let [r, g, b] = m.custom_color.map_or_else(|| app.session.prefs.labels.rgb(m.color), |c| c.0);
             ui.painter().rect_filled(Rect::from_min_size(rect.min + vec2(4.0, 6.0), vec2(4.0, 30.0)), 2.0, Color32::from_rgb(r, g, b));
             let name = if m.name.is_empty() { tl!("Marker") } else { &m.name };
-            let time = |tick| filmcraft_time::format_time(tick, rate, drop, filmcraft_time::TimeDisplay::Timecode, 48000);
+            let time = |tick| epsicut_time::format_time(tick, rate, drop, epsicut_time::TimeDisplay::Timecode, 48000);
             let mut line = time(m.start);
-            if m.duration > filmcraft_time::Tick::ZERO {
+            if m.duration > epsicut_time::Tick::ZERO {
                 line.push_str(&format!("  ({})", time(m.duration)));
             }
-            if m.kind == filmcraft_project::MarkerKind::Chapter {
+            if m.kind == epsicut_project::MarkerKind::Chapter {
                 line.push_str("  ");
                 line.push_str(tl!("Chapter"));
             }
@@ -202,7 +202,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     });
     app.ui.markers_panel = state;
 }
-fn bulk(app: &mut FilmcraftApp, owner: Owner, ids: &std::collections::BTreeSet<u64>, command: &str, color: Option<&str>) {
+fn bulk(app: &mut EpsicutApp, owner: Owner, ids: &std::collections::BTreeSet<u64>, command: &str, color: Option<&str>) {
     let mut p = owner.params();
     p["markers"] = json!(ids);
     if let Some(color) = color {

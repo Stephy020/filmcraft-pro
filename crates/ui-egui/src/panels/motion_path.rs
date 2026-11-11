@@ -12,9 +12,9 @@
 //! Display only: the keyframe squares are registered for automation but cannot be dragged. Edit
 //! Position keyframes in Effect Controls.
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use egui::{Color32, Pos2, Rect, Stroke, StrokeKind, Vec2, pos2, vec2};
-use filmcraft_project::Interpolation;
+use epsicut_project::Interpolation;
 
 /// Keyframes past this many are ignored, so a hostile project cannot make the overlay allocate.
 const MAX_KEYFRAMES: usize = 512;
@@ -51,7 +51,7 @@ fn travel_dir(a: Pos2, b: Pos2, reverse: bool) -> Option<Vec2> {
     (len.is_finite() && len >= 24.0).then(|| d / len)
 }
 
-pub fn monitor_overlay(app: &mut FilmcraftApp, ui: &mut egui::Ui, pic: Rect, frame: (u32, u32)) {
+pub fn monitor_overlay(app: &mut EpsicutApp, ui: &mut egui::Ui, pic: Rect, frame: (u32, u32)) {
     let Some(seq) = app.session.active_sequence() else { return };
     let ph = app.session.playhead();
     let t = app.tokens;

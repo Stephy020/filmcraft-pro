@@ -1,13 +1,13 @@
 //! Biplanar 4:2:0 pictures (NV12, and P010 with its 10-bit samples in the high bits of 16-bit
 //! words) as read back from a decoder surface, into the planar [`PixelData::Yuv8`] /
-//! [`PixelData::Yuv16`] frames the rest of FilmCraft uses. Safe code, tested on every target.
+//! [`PixelData::Yuv16`] frames the rest of EpsiCut uses. Safe code, tested on every target.
 //!
 //! This is the one place the Windows backend copies pixels (surface to staging texture to these
 //! planes). A zero-copy path would replace it, not the decoder around it.
 
 use std::sync::Arc;
 
-use filmcraft_frame::{Chroma, PixelData, VideoFrame, pool};
+use epsicut_frame::{Chroma, PixelData, VideoFrame, pool};
 
 /// A mapped biplanar surface: a luma plane followed by interleaved chroma, `stride` bytes per row.
 pub struct Biplanar<'a> {
@@ -25,7 +25,7 @@ pub struct Geometry {
     pub crop: (u32, u32, u32, u32),
     /// Significant bits per sample: 8 (NV12) or 10 (P010).
     pub bits: u32,
-    pub color: filmcraft_color::ColorInfo,
+    pub color: epsicut_color::ColorInfo,
     pub par: (u32, u32),
 }
 
@@ -78,7 +78,7 @@ pub fn to_frame(src: &Biplanar, g: &Geometry) -> Result<VideoFrame, String> {
         }
         PixelData::Yuv16 { planes: [Arc::new(yp), Arc::new(u), Arc::new(v)], chroma: Chroma::C420, bits: g.bits, alpha: None }
     };
-    Ok(VideoFrame { width: w as u32, height: h as u32, data, color: g.color, par: g.par, pts: filmcraft_time::Tick::ZERO })
+    Ok(VideoFrame { width: w as u32, height: h as u32, data, color: g.color, par: g.par, pts: epsicut_time::Tick::ZERO })
 }
 
 /// Rounded mean of a 2 x 2 block of 8-bit samples.
@@ -182,7 +182,7 @@ pub fn to_frame_half(src: &Biplanar, g: &Geometry) -> Result<VideoFrame, String>
         }
         PixelData::Yuv16 { planes: [Arc::new(yp), Arc::new(u), Arc::new(v)], chroma: Chroma::C420, bits: g.bits, alpha: None }
     };
-    Ok(VideoFrame { width: hw as u32, height: hh as u32, data, color: g.color, par: g.par, pts: filmcraft_time::Tick::ZERO })
+    Ok(VideoFrame { width: hw as u32, height: hh as u32, data, color: g.color, par: g.par, pts: epsicut_time::Tick::ZERO })
 }
 
 #[cfg(test)]
@@ -247,7 +247,7 @@ mod tests {
     }
 
     fn geometry(crop: (u32, u32, u32, u32), bits: u32) -> Geometry {
-        Geometry { crop, bits, color: filmcraft_color::ColorInfo::REC709, par: (1, 1) }
+        Geometry { crop, bits, color: epsicut_color::ColorInfo::REC709, par: (1, 1) }
     }
 
     #[test]

@@ -18,11 +18,11 @@
 
 use std::sync::Arc;
 
-use filmcraft_frame::VideoFrame;
-use filmcraft_geom::Affine;
-use filmcraft_media::FrameRequest;
-use filmcraft_project::{ItemId, ItemKind, Project, Sequence, TrackItem};
-use filmcraft_time::Tick;
+use epsicut_frame::VideoFrame;
+use epsicut_geom::Affine;
+use epsicut_media::FrameRequest;
+use epsicut_project::{ItemId, ItemKind, Project, Sequence, TrackItem};
+use epsicut_time::Tick;
 
 use crate::gpufx::FxOp;
 use crate::{Blend, RenderOptions, SourceProvider, motion_matrix, output_size};
@@ -46,7 +46,7 @@ pub struct PlanLayer {
     /// Colour management of a Y'CbCr frame that needs more than the default decode (HDR, BT.2020,
     /// P3 media on a Rec. 709 sequence; [`crate::colorman::gpu_input`]): run on the GPU as on the
     /// CPU. None: the default decode.
-    pub input: Option<Arc<filmcraft_color::InputTransform>>,
+    pub input: Option<Arc<epsicut_color::InputTransform>>,
 }
 
 /// The GPU effect stage of a layer: the frame is decoded into a working image of `size` (the
@@ -90,7 +90,7 @@ pub enum PlanStep {
     /// Inputs are isolated clip canvases; transition result composites Normal over lower tracks.
     Transition {
         inputs: [Vec<PlanLayer>; 2],
-        effect: filmcraft_project::EffectInstance,
+        effect: epsicut_project::EffectInstance,
         progress: f32,
         scale: f32,
     },
@@ -125,7 +125,7 @@ impl PlanStack {
         self.layers = self.layers.saturating_add(1);
     }
 
-    fn push_transition(&mut self, inputs: [Vec<PlanLayer>; 2], effect: filmcraft_project::EffectInstance, progress: f32, scale: f32) {
+    fn push_transition(&mut self, inputs: [Vec<PlanLayer>; 2], effect: epsicut_project::EffectInstance, progress: f32, scale: f32) {
         let added: usize = inputs.iter().map(Vec::len).sum();
         if self.exhausted || self.layer_count().saturating_add(added) > MAX_PLAN_LAYERS {
             self.exhausted = true;
@@ -203,7 +203,7 @@ fn simple_transition(id: &str) -> bool {
 /// The standard effects of a media clip if the GPU can draw it (any blend mode, no opacity masks,
 /// every enabled standard effect unmasked and with a GPU implementation; empty without effects or
 /// with effects off). None: the clip is rendered on the CPU.
-fn gpu_chain<'a>(project: &Project, item: &'a TrackItem, opts: RenderOptions) -> Option<Vec<&'a filmcraft_project::EffectInstance>> {
+fn gpu_chain<'a>(project: &Project, item: &'a TrackItem, opts: RenderOptions) -> Option<Vec<&'a epsicut_project::EffectInstance>> {
     let is_media = project.item(item.item).is_some_and(|p| matches!(p.kind, ItemKind::Media(_) | ItemKind::Subclip { .. }));
     if !is_media || item.has_opacity_masks() {
         return None;
@@ -212,11 +212,11 @@ fn gpu_chain<'a>(project: &Project, item: &'a TrackItem, opts: RenderOptions) ->
         return Some(Vec::new());
     }
     let mut chain = Vec::new();
-    for e in item.effects.iter().filter(|e| e.def().is_some_and(|d| !d.intrinsic) && !filmcraft_project::graphic::is_layer(e)) {
+    for e in item.effects.iter().filter(|e| e.def().is_some_and(|d| !d.intrinsic) && !epsicut_project::graphic::is_layer(e)) {
         if !e.enabled {
             continue;
         }
-        let masked = e.masks.iter().any(|m| m.mode != filmcraft_project::MaskMode::None);
+        let masked = e.masks.iter().any(|m| m.mode != epsicut_project::MaskMode::None);
         if masked || !crate::gpufx::GPU_EFFECTS.contains(&e.effect.as_str()) {
             return None;
         }
@@ -510,7 +510,7 @@ fn push_item(sc: Scene, item: &TrackItem, extra_opacity: f32, blend: Option<Blen
             // drawn instead of the full picture (a quarter at 1/2, a sixteenth at 1/4 of the
             // upload and sampling). The mean is taken over Y'CbCr codes, not linear light as
             // the shader's supersampling does, so this stays limited to the opt-in draft mode.
-            let n = if filmcraft_media::cancel::draft() { crate::decimation(frame.width as f32, size.0 as f32 * want) } else { 1 };
+            let n = if epsicut_media::cancel::draft() { crate::decimation(frame.width as f32, size.0 as f32 * want) } else { 1 };
             let frame = match frame.box_decimated(n) {
                 Some(small) => Arc::new(small),
                 None => frame,
@@ -522,7 +522,7 @@ fn push_item(sc: Scene, item: &TrackItem, extra_opacity: f32, blend: Option<Blen
         }
     }
     // CPU-rendered layer (standard effects): drawn by the GPU as a pre-rendered canvas image.
-    let tc = filmcraft_time::format_time(t, seq.settings.frame_rate, seq.settings.drop_frame, filmcraft_time::TimeDisplay::Timecode, 48_000);
+    let tc = epsicut_time::format_time(t, seq.settings.frame_rate, seq.settings.drop_frame, epsicut_time::TimeDisplay::Timecode, 48_000);
     if let Some((img, op2, _)) = crate::item_layer(project, seq, item, t, opts, sources, &tc) {
         out.push(PlanLayer::new(cpu_frame(img), Affine::IDENTITY, op2 * extra_opacity, bl));
     }
@@ -539,7 +539,7 @@ pub fn effect_image(frame: &VideoFrame, fx: &LayerFx) -> crate::Image {
 }
 
 /// [`effect_image`] of a colour-managed layer ([`PlanLayer::input`]).
-pub fn effect_image_with(frame: &VideoFrame, fx: &LayerFx, input: Option<&filmcraft_color::InputTransform>) -> crate::Image {
+pub fn effect_image_with(frame: &VideoFrame, fx: &LayerFx, input: Option<&epsicut_color::InputTransform>) -> crate::Image {
     let mut img = linear_image(frame, fx.decimation.max(1) as usize, input);
     for op in &fx.ops {
         op.apply(&mut img);
@@ -579,7 +579,7 @@ pub fn execute_cpu(plan: &FramePlan) -> crate::Image {
 
 /// A layer's frame (box-decimated by `n`) as a linear working image: the default decode, or
 /// `input`'s table and pixel stage as `colorman::decode` runs them.
-fn linear_image(frame: &VideoFrame, n: usize, input: Option<&filmcraft_color::InputTransform>) -> crate::Image {
+fn linear_image(frame: &VideoFrame, n: usize, input: Option<&epsicut_color::InputTransform>) -> crate::Image {
     let (w, h, px) = frame.to_linear_f32_decimated_with(n, input.map(|t| &t.table));
     let mut img = crate::Image { w, h, px };
     if let Some(t) = input.filter(|t| t.has_pixel_stage()) {
@@ -613,7 +613,7 @@ mod tests {
         let frame = Arc::new(VideoFrame::rgba_f32(1, 1, vec![0.25, 0.0, 0.0, 0.5]));
         let steps = vec![PlanStep::Transition {
             inputs: [vec![PlanLayer::new(frame, Affine::IDENTITY, 1.0, Blend::Normal)], vec![]],
-            effect: filmcraft_project::find_effect("push").unwrap().instance(),
+            effect: epsicut_project::find_effect("push").unwrap().instance(),
             progress: 0.0,
             scale: 1.0,
         }];

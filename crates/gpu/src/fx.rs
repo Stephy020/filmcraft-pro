@@ -14,8 +14,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use filmcraft_render::gpufx::FxOp;
-use filmcraft_render::plan::LayerFx;
+use epsicut_render::gpufx::FxOp;
+use epsicut_render::plan::LayerFx;
 
 /// Working texture format.
 pub(crate) const FX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
@@ -98,7 +98,7 @@ struct Step {
     combine: bool,
     /// A blur pass of Unsharp Mask (the original stays untouched until the combine).
     unsharp_blur: bool,
-    /// Bokeh Blur's gather: its kernel (`filmcraft_render::vfx::bokeh_kernel`), read as the aux
+    /// Bokeh Blur's gather: its kernel (`epsicut_render::vfx::bokeh_kernel`), read as the aux
     /// texture.
     kernel: Vec<(i32, i32, f32)>,
 }
@@ -124,7 +124,7 @@ fn kernel_texture(device: &wgpu::Device, queue: &wgpu::Queue, kernel: &[(i32, i3
     }
     let size = wgpu::Extent3d { width: KERNEL_ROW as u32, height: rows as u32, depth_or_array_layers: 1 };
     let t = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("filmcraft-fx-kernel"),
+        label: Some("epsicut-fx-kernel"),
         size,
         mip_level_count: 1,
         sample_count: 1,
@@ -202,13 +202,13 @@ fn steps(op: &FxOp, w: u32, h: u32) -> Vec<Step> {
                 if *boost > 0.0 {
                     out.push(step(OP_BOKEH_BOOST, [ww, wh, 0, 0], &[*boost, *threshold]));
                 }
-                let kernel = filmcraft_render::vfx::bokeh_kernel(*sides, *rot, *rr, *rings);
+                let kernel = epsicut_render::vfx::bokeh_kernel(*sides, *rot, *rr, *rings);
                 let mut gather = step(OP_BOKEH, [ww, wh, kernel.len() as u32, 0], &[]);
                 gather.kernel = kernel;
                 out.push(gather);
                 if *levels > 0 {
                     // `Image::transformed` by scale(w / ww, h / wh): its inverse, in f64 as there
-                    let m = filmcraft_geom::Affine::scale(w as f64 / ww as f64, h as f64 / wh as f64);
+                    let m = epsicut_geom::Affine::scale(w as f64 / ww as f64, h as f64 / wh as f64);
                     if let Some(inv) = m.inverse() {
                         out.push(step(OP_BOKEH_UP, [ww, wh, 0, 0], &[inv.a as f32, inv.d as f32, inv.e as f32, inv.f as f32]));
                     }
@@ -285,7 +285,7 @@ fn steps(op: &FxOp, w: u32, h: u32) -> Vec<Step> {
             let w0 = 1.0 - wh * 0.15;
             let sh_k = sh * 0.35;
             let hl_k = hl * 0.35;
-            let vround_aspect = filmcraft_render::gpufx::lumetri_vignette_aspect(*aspect, *vround);
+            let vround_aspect = epsicut_render::gpufx::lumetri_vignette_aspect(*aspect, *vround);
             let st_k = [(st[0] - 0.5) * 0.3, (st[1] - 0.5) * 0.3, (st[2] - 0.5) * 0.3];
             let ht_k = [(ht[0] - 0.5) * 0.3, (ht[1] - 0.5) * 0.3, (ht[2] - 0.5) * 0.3];
 
@@ -334,10 +334,8 @@ impl FxStage {
     }
 
     pub(crate) fn new(device: &wgpu::Device, composite: &wgpu::ShaderModule, layer_bgl: &wgpu::BindGroupLayout) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("filmcraft-fx"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("fx.wgsl").into()),
-        });
+        let shader = device
+            .create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("epsicut-fx"), source: wgpu::ShaderSource::Wgsl(include_str!("fx.wgsl").into()) });
         let tex = |binding| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
@@ -428,7 +426,7 @@ impl FxStage {
         let v = self.pool.entry(size).or_default();
         while v.len() < n {
             let t = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("filmcraft-fx"),
+                label: Some("epsicut-fx"),
                 size: wgpu::Extent3d { width: size.0, height: size.1, depth_or_array_layers: 1 },
                 mip_level_count: 1,
                 sample_count: 1,

@@ -2,10 +2,10 @@
 //! are resolved as placing a clip resolves them, the anchor once the media's real size is known,
 //! and a project saved after an import opens again. Also how the media they name are linked.
 
-use filmcraft_geom::Vec2;
-use filmcraft_media::DemoScene;
-use filmcraft_project::{ItemId, ParamValue, Project, TrackItem};
-use filmcraft_time::Tick;
+use epsicut_geom::Vec2;
+use epsicut_media::DemoScene;
+use epsicut_project::{ItemId, ParamValue, Project, TrackItem};
+use epsicut_time::Tick;
 use serde_json::json;
 
 use crate::Session;
@@ -106,7 +106,7 @@ fn a_project_saved_after_an_interchange_import_opens_again() {
     s.execute("file.saveAs", json!({"path": path})).unwrap();
     let mut t = Session::default();
     t.execute("file.open", json!({"path": path})).unwrap();
-    assert_eq!(filmcraft_format::encode(&t.project, false), filmcraft_format::encode(&s.project, false));
+    assert_eq!(epsicut_format::encode(&t.project, false), epsicut_format::encode(&s.project, false));
     assert_eq!(auto_points(&t.project), ["motion.anchor"]);
     assert_eq!(motion_point(&first_clip(&t, seq), "position"), Vec2::new(960.0, 540.0));
     // without a link step the import is one undo step
@@ -204,7 +204,7 @@ fn relinking_later_resolves_the_anchor_that_waited_for_the_real_size() {
     // one undo step takes the link and the anchor back together
     let linked = t.project.clone();
     t.execute("edit.undo", json!({})).unwrap();
-    assert_eq!(filmcraft_format::encode(&t.project, false), filmcraft_format::encode(&waiting, false));
+    assert_eq!(epsicut_format::encode(&t.project, false), epsicut_format::encode(&waiting, false));
     assert_eq!(auto_points(&t.project), ["motion.anchor"]);
     t.execute("edit.redo", json!({})).unwrap();
     assert_eq!(*t.project, *linked);
@@ -240,7 +240,7 @@ fn an_interchange_import_links_media_without_reading_the_files_whole() {
         fn read_range(&self, path: &str, offset: u64, len: usize) -> std::io::Result<Vec<u8>> {
             crate::FsServices.read_range(path, offset, len)
         }
-        fn reader(&self, path: &str) -> Option<std::io::Result<filmcraft_media::SharedReader>> {
+        fn reader(&self, path: &str) -> Option<std::io::Result<epsicut_media::SharedReader>> {
             crate::FsServices.reader(path)
         }
     }
@@ -272,7 +272,7 @@ fn fcpxml_video_still_can_be_relinked_after_save_and_reopen() {
     </spine></sequence></project></fcpxml>"#;
     std::fs::write(&doc, xml).unwrap();
     let mut s = Session::default();
-    let before = filmcraft_format::encode(&s.project, false);
+    let before = epsicut_format::encode(&s.project, false);
     let (report, seq) = import(&mut s, &doc);
     assert_eq!(report["linkedMedia"], 0);
     assert_eq!(report["offlineMedia"].as_array().unwrap().len(), 1, "{report}");
@@ -282,31 +282,31 @@ fn fcpxml_video_still_can_be_relinked_after_save_and_reopen() {
     assert_eq!(missing["missing"].as_array().unwrap().len(), 1, "the slideshow must expose a relinkable media item: {missing}");
     assert_eq!(missing["missing"][0]["status"], "missing");
     assert_eq!(missing["missing"][0]["item"], clip.item.0);
-    let imported = filmcraft_format::encode(&s.project, false);
+    let imported = epsicut_format::encode(&s.project, false);
     s.execute("edit.undo", json!({})).unwrap();
-    assert_eq!(filmcraft_format::encode(&s.project, false), before);
+    assert_eq!(epsicut_format::encode(&s.project, false), before);
     s.execute("edit.redo", json!({})).unwrap();
-    assert_eq!(filmcraft_format::encode(&s.project, false), imported);
+    assert_eq!(epsicut_format::encode(&s.project, false), imported);
 
     let saved = d.join("slides.fcproj");
     s.execute("file.saveAs", json!({"path": saved.to_string_lossy()})).unwrap();
     let mut reopened = Session::default();
     reopened.execute("file.open", json!({"path": saved.to_string_lossy()})).unwrap();
     assert_eq!(first_clip(&reopened, seq).item, clip.item);
-    let waiting = filmcraft_format::encode(&reopened.project, false);
+    let waiting = epsicut_format::encode(&reopened.project, false);
     let image = d.join("found.png");
     image::RgbaImage::from_pixel(16, 16, image::Rgba([255, 0, 0, 255])).save(&image).unwrap();
     let linked = reopened.execute("media.relink", json!({"item": clip.item.0, "path": image.to_string_lossy(), "force": true})).unwrap();
     assert_eq!(linked["relinked"].as_array().unwrap().len(), 1, "{linked}");
     let media = reopened.project.item(clip.item).unwrap().as_media().unwrap();
     assert!(!media.offline);
-    assert_eq!(media.info.kind, filmcraft_media::MediaKind::Still);
+    assert_eq!(media.info.kind, epsicut_media::MediaKind::Still);
     assert_eq!(first_clip(&reopened, seq).source_in, clip.source_in);
-    let after_link = filmcraft_format::encode(&reopened.project, false);
+    let after_link = epsicut_format::encode(&reopened.project, false);
     reopened.execute("edit.undo", json!({})).unwrap();
-    assert_eq!(filmcraft_format::encode(&reopened.project, false), waiting);
+    assert_eq!(epsicut_format::encode(&reopened.project, false), waiting);
     reopened.execute("edit.redo", json!({})).unwrap();
-    assert_eq!(filmcraft_format::encode(&reopened.project, false), after_link);
+    assert_eq!(epsicut_format::encode(&reopened.project, false), after_link);
     for frame in [0, 150, 299] {
         let (w, h, rgba) = crate::media_test_util::frame_rgba(&mut reopened, frame, 1.0);
         assert_eq!((w, h), (16, 16));

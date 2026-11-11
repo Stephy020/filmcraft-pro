@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use filmcraft_time::Tick;
+use epsicut_time::Tick;
 
 use super::bento;
 use crate::comp::{CItem, CKind, Document, Gain, Source, ticks_to_units};
@@ -351,10 +351,10 @@ pub(crate) fn write(doc: &Document, report: &mut Report) -> Result<Vec<u8>> {
         w.report.info("some times are not on whole samples / frames and were rounded");
     }
     let ident = w.obj(b"IDNT");
-    w.str(ident, "OMFI:IDNT:CompanyName", "FilmCraft");
-    w.str(ident, "OMFI:IDNT:ProductName", "FilmCraft");
+    w.str(ident, "OMFI:IDNT:CompanyName", "EpsiCut");
+    w.str(ident, "OMFI:IDNT:ProductName", "EpsiCut");
     w.str(ident, "OMFI:IDNT:ProductVersionString", env!("CARGO_PKG_VERSION"));
-    w.str(ident, "OMFI:IDNT:Platform", "FilmCraft");
+    w.str(ident, "OMFI:IDNT:Platform", "EpsiCut");
     w.b.set(ident, "OMFI:IDNT:Date", "omfi:TimeStamp", &[0, 0, 0, 0, 1]);
     let head = w.obj(b"HEAD");
     w.b.set(head, "OMFI:HEAD:ByteOrder", "omfi:Int16", &0x4D4Di16.to_be_bytes());

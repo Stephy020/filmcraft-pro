@@ -1,10 +1,10 @@
-use super::{FilmcraftApp, menus};
+use super::{EpsicutApp, menus};
 #[cfg(test)]
-use filmcraft_engine::Session;
+use epsicut_engine::Session;
 #[cfg(test)]
 use serde_json::json;
 
-impl FilmcraftApp {
+impl EpsicutApp {
     // ---------------------------------------------------------------- input
 
     /// Sends the menu tree to the native menu bar when it changed, so its items show the same
@@ -36,7 +36,7 @@ impl FilmcraftApp {
     }
 }
 
-impl FilmcraftApp {
+impl EpsicutApp {
     /// Drain native menu/control command ids, preserving the control-only Quit exception.
     pub(super) fn logic_command_inbox(&mut self, ctx: &egui::Context) {
         if let Some(rx) = self.command_inbox.take() {
@@ -69,7 +69,7 @@ mod native_menu_tests {
     #[test]
     fn native_menu_follows_undo_and_redo_availability() {
         let sent: Rc<RefCell<Vec<Vec<menus::MenuItem>>>> = Rc::default();
-        let mut app = FilmcraftApp::new(Session::default());
+        let mut app = EpsicutApp::new(Session::default());
         let sink = sent.clone();
         app.hooks.menu_changed = Some(Box::new(move |items: &[menus::MenuItem]| sink.borrow_mut().push(items.to_vec())));
         let ctx = egui::Context::default();
@@ -100,7 +100,7 @@ mod native_menu_tests {
     #[test]
     fn native_edit_items_stay_enabled_while_a_graphic_text_is_edited() {
         let sent: Rc<RefCell<Vec<Vec<menus::MenuItem>>>> = Rc::default();
-        let mut app = FilmcraftApp::new(Session::default());
+        let mut app = EpsicutApp::new(Session::default());
         let sink = sent.clone();
         app.hooks.menu_changed = Some(Box::new(move |items: &[menus::MenuItem]| sink.borrow_mut().push(items.to_vec())));
         let ctx = egui::Context::default();

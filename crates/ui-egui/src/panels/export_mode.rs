@@ -21,16 +21,16 @@
 //! `quickExport.go`, `quickExport.close`.
 
 use egui::{Align2, Color32, Rect, Sense, pos2, vec2};
-use filmcraft_engine::export::presets::{DEFAULT_PRESET, preset_key};
-use filmcraft_engine::export::{
+use epsicut_engine::export::presets::{DEFAULT_PRESET, preset_key};
+use epsicut_engine::export::{
     AudioCodec, BitrateMode, ExportSettings, ExrCompression, FieldOrder, Format, GpuRendering, H264Profile, HardwareEncoding, Multiplexer, MxfVideoCodec,
     Placement, SampleFormat, Scaling, TextOverlay, builtin_presets, format_bytes,
 };
-use filmcraft_engine::time::{FrameRate, Tick};
+use epsicut_engine::time::{FrameRate, Tick};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::frames::{FrameKey, Target};
 use crate::native_dialogs::FileDialog;
 use crate::theme::Tokens;
@@ -85,7 +85,7 @@ pub struct ExportUi {
 
 impl Default for ExportUi {
     fn default() -> Self {
-        let preset = filmcraft_engine::export::presets::find_builtin(DEFAULT_PRESET).map(|p| p.settings).unwrap_or_default();
+        let preset = epsicut_engine::export::presets::find_builtin(DEFAULT_PRESET).map(|p| p.settings).unwrap_or_default();
         ExportUi {
             preset: DEFAULT_PRESET.into(),
             settings: preset,
@@ -125,7 +125,7 @@ impl Reg {
     fn add(&mut self, id: impl Into<String>, r: Rect, label: impl Into<String>) {
         self.0.push((id.into(), r, label.into()));
     }
-    fn flush(self, app: &mut FilmcraftApp) {
+    fn flush(self, app: &mut EpsicutApp) {
         for (id, r, l) in self.0 {
             app.auto.add(&id, r, &l);
         }
@@ -137,7 +137,7 @@ fn settings_json(s: &ExportSettings) -> Value {
 }
 
 /// Apply a preset by name (from the engine's library).
-pub fn apply_preset(app: &mut FilmcraftApp, name: &str) -> bool {
+pub fn apply_preset(app: &mut EpsicutApp, name: &str) -> bool {
     match app.session.export_presets.find(name) {
         Some(p) => {
             app.ui.export.settings = p.settings;
@@ -154,13 +154,13 @@ pub fn apply_preset(app: &mut FilmcraftApp, name: &str) -> bool {
 /// Full output path of the current settings.
 pub fn output_path(ex: &ExportUi) -> String {
     let name = if ex.file_name.trim().is_empty() { "Export" } else { ex.file_name.trim() };
-    let dir = filmcraft_engine::export_tools::expand_home(ex.location.trim());
+    let dir = epsicut_engine::export_tools::expand_home(ex.location.trim());
     let file = format!("{name}.{}", ex.settings.extension());
     if dir.is_empty() { file } else { std::path::Path::new(&dir).join(file).to_string_lossy().to_string() }
 }
 
 /// Engine params for the current settings (`file.exportMedia` / `export.queue.add`).
-pub fn export_params(app: &FilmcraftApp) -> Value {
+pub fn export_params(app: &EpsicutApp) -> Value {
     let ex = &app.ui.export;
     let mut p = json!({"path": output_path(ex), "settings": settings_json(&ex.settings), "range": ex.range});
     if ex.range == "custom" {
@@ -170,14 +170,14 @@ pub fn export_params(app: &FilmcraftApp) -> Value {
     p
 }
 
-fn sync_sequence(app: &mut FilmcraftApp) {
+fn sync_sequence(app: &mut EpsicutApp) {
     let Some(seq) = app.session.state.active_sequence else { return };
     if app.ui.export.for_sequence != Some(seq.0) || app.ui.export.file_name.is_empty() {
         app.ui.export.file_name = app.session.project.item(seq).map(|i| i.name.clone()).unwrap_or_else(|| "Sequence".into());
         app.ui.export.for_sequence = Some(seq.0);
     }
     if app.ui.export.location.is_empty() {
-        app.ui.export.location = filmcraft_engine::export_tools::default_export_dir(&app.session).to_string_lossy().to_string();
+        app.ui.export.location = epsicut_engine::export_tools::default_export_dir(&app.session).to_string_lossy().to_string();
     }
     // As Premiere does: a sequence with In/Out marks exports that range unless another is chosen.
     // Only when the sequence or its marks change, so a Range picked by hand (or `ui.set`) stays.
@@ -189,7 +189,7 @@ fn sync_sequence(app: &mut FilmcraftApp) {
     }
 }
 
-pub(super) fn active_export_job(app: &FilmcraftApp) -> Option<filmcraft_engine::Job> {
+pub(super) fn active_export_job(app: &EpsicutApp) -> Option<epsicut_engine::Job> {
     app.session
         .jobs
         .iter()
@@ -197,11 +197,11 @@ pub(super) fn active_export_job(app: &FilmcraftApp) -> Option<filmcraft_engine::
         .cloned()
 }
 
-pub(super) fn is_export_busy(app: &FilmcraftApp) -> bool {
+pub(super) fn is_export_busy(app: &EpsicutApp) -> bool {
     active_export_job(app).is_some() || app.session.export_queue.is_active()
 }
 
-pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let left = Rect::from_min_size(rect.min, vec2(300.0, rect.height()));
     let right = Rect::from_min_max(pos2(rect.max.x - (rect.width() * 0.4).clamp(360.0, 640.0), rect.min.y), rect.max);

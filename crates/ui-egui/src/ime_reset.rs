@@ -238,7 +238,7 @@ impl State {
 /// Temp-data key marking whether `viewport` is inside a UI pass rather than a hidden logic
 /// callback.
 fn mode_id(viewport: ViewportId) -> Id {
-    Id::unique(("filmcraft-ime-reset-ui-pass", viewport))
+    Id::unique(("epsicut-ime-reset-ui-pass", viewport))
 }
 
 /// Whether the current callback is a UI pass (between the installed begin/end-pass hooks)
@@ -252,7 +252,7 @@ pub(crate) fn in_ui_pass(ctx: &Context) -> bool {
 
 /// Temp-data key of the IME descriptor identity `viewport` published at the end of a pass.
 fn published_id(viewport: ViewportId) -> Id {
-    Id::unique(("filmcraft-ime-reset-published", viewport))
+    Id::unique(("epsicut-ime-reset-published", viewport))
 }
 
 /// The identity of `owner`'s descriptor that `ctx`'s viewport published at the end of its
@@ -266,19 +266,19 @@ pub(crate) fn published(ctx: &Context, owner: Id) -> Option<OutputContext> {
 
 /// Install before the first run_ui. The callbacks receive Ui and capture no Context/app.
 pub(crate) fn install(ctx: &Context) {
-    let installed = Id::unique("filmcraft-ime-reset-mode-installed");
+    let installed = Id::unique("epsicut-ime-reset-mode-installed");
     if ctx.data(|data| data.get_temp::<bool>(installed)).unwrap_or(false) {
         return;
     }
     ctx.on_begin_pass(
-        "filmcraft IME reset UI entry",
+        "epsicut IME reset UI entry",
         Arc::new(|ui| {
             let viewport = ui.ctx().viewport_id();
             ui.data_mut(|data| data.insert_temp(mode_id(viewport), true));
         }),
     );
     ctx.on_end_pass(
-        "filmcraft IME reset UI exit",
+        "epsicut IME reset UI exit",
         Arc::new(|ui| {
             let viewport = ui.ctx().viewport_id();
             ui.data_mut(|data| data.insert_temp(mode_id(viewport), false));

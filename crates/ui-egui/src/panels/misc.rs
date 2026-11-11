@@ -1,9 +1,9 @@
 //! Smaller panels: History, Markers, Info (the Media Browser is `panels::media_browser`).
 
 use egui::{Align2, Color32, Rect, Sense, pos2, vec2};
-use filmcraft_time::{TimeDisplay, format_time};
+use epsicut_time::{TimeDisplay, format_time};
 
-use crate::FilmcraftApp;
+use crate::EpsicutApp;
 use crate::icons::{self, Icon};
 use crate::state::Tool;
 use crate::theme::Tokens;
@@ -16,7 +16,7 @@ const HISTORY_TOOL_COMMANDS: &[(&[&str], Tool)] = &[
     (&["timeline.rateStretch"], Tool::RateStretch),
     (&["clip.remix"], Tool::Remix),
     (&["edit.rippleDelete", "edit.rippleDeleteHead", "sequence.closeGap", "trim.rippleNext", "trim.ripplePrevious"], Tool::Ripple),
-    (&[filmcraft_engine::trim::RIPPLE_TRIM_ORIGIN], Tool::Ripple),
+    (&[epsicut_engine::trim::RIPPLE_TRIM_ORIGIN], Tool::Ripple),
     (&["graphics.newText", "graphics.newVerticalText", "graphics.setText", "graphics.setCharStyle"], Tool::Type),
     (&["graphics.newRectangle"], Tool::Rectangle),
     (&["graphics.newEllipse"], Tool::Ellipse),
@@ -65,7 +65,7 @@ const HISTORY_COMMAND_PREFIXES: &[(&str, Icon)] = &[
 ];
 
 /// The icon a History step shows for the command that made it: the tool's icon for a command a
-/// timeline tool runs, the command's own icon where FilmCraft has one, and a plain square for
+/// timeline tool runs, the command's own icon where EpsiCut has one, and a plain square for
 /// every other command and for a step made outside a command.
 pub(crate) fn history_icon(command: Option<&str>) -> Icon {
     let Some(id) = command else { return Icon::Square };
@@ -83,7 +83,7 @@ fn history_icon_rect(row: Rect) -> Rect {
     Rect::from_center_size(pos2(row.min.x + 13.0, row.center().y), vec2(14.0, 14.0))
 }
 
-pub fn history(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn history(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect.shrink(6.0)));
     let undo: Vec<(String, Icon)> = app.session.history.undo.iter().map(|h| (h.0.clone(), history_icon(h.2.as_deref()))).collect();
@@ -151,7 +151,7 @@ const CONFIRM_DELETE_REDOABLE: &str = "history-delete-redoable";
 
 /// The History panel's ≡ menu: Delete Redoable Actions and Clear History (automation ids
 /// `panel.menu.History.deleteRedoable` and `panel.menu.History.clear`). Returns true to close it.
-pub fn history_panel_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui) -> bool {
+pub fn history_panel_menu(app: &mut EpsicutApp, ui: &mut egui::Ui) -> bool {
     let ctx = ui.ctx().clone();
     let mut close = false;
     for (id, label, command) in [("deleteRedoable", tl!("Delete Redoable Actions"), "history.deleteRedoable"), ("clear", tl!("Clear History"), "history.clear")]
@@ -170,7 +170,7 @@ pub fn history_panel_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui) -> bool {
 
 /// Delete Redoable Actions from the panel menu or a key (no parameters) asks for OK first, as in
 /// Premiere. Returns None for other ids, and for calls with parameters, which run the command.
-pub fn route_history(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, params: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+pub fn route_history(app: &mut EpsicutApp, ctx: &egui::Context, id: &str, params: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
     if id != "history.deleteRedoable" || !params.as_object().is_none_or(|m| m.is_empty()) {
         return None;
     }
@@ -183,7 +183,7 @@ pub fn route_history(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, para
 
 /// The Delete Redoable Actions confirmation (automation ids `history.deleteRedoable.cancel` and
 /// `history.deleteRedoable.ok`). It closes by itself when nothing is left to redo.
-pub fn history_dialogs(app: &mut FilmcraftApp, ctx: &egui::Context) {
+pub fn history_dialogs(app: &mut EpsicutApp, ctx: &egui::Context) {
     let key = egui::Id::unique(CONFIRM_DELETE_REDOABLE);
     if !ctx.data(|d| d.get_temp::<bool>(key)).unwrap_or(false) {
         return;
@@ -217,19 +217,19 @@ pub fn history_dialogs(app: &mut FilmcraftApp, ctx: &egui::Context) {
 }
 
 /// Marker filtering uses the same sixteen presets as clip labels.
-pub const MARKER_FILTER: [filmcraft_project::Label; 16] = filmcraft_project::Label::ALL;
+pub const MARKER_FILTER: [epsicut_project::Label; 16] = epsicut_project::Label::ALL;
 
 /// A marker's Label menu. An explicit program target keeps panel focus and clip/project
 /// selections from routing colour changes to another item (#1143).
-pub(crate) fn marker_label_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui, marker: &filmcraft_project::Marker, prefix: &str) {
+pub(crate) fn marker_label_menu(app: &mut EpsicutApp, ui: &mut egui::Ui, marker: &epsicut_project::Marker, prefix: &str) {
     if let Some(owner) = super::marker_properties::Owner::current(app, false) {
         marker_owned_menu(app, ui, marker, prefix, owner);
     }
 }
 pub(crate) fn marker_owned_menu(
-    app: &mut FilmcraftApp,
+    app: &mut EpsicutApp,
     ui: &mut egui::Ui,
-    marker: &filmcraft_project::Marker,
+    marker: &epsicut_project::Marker,
     prefix: &str,
     owner: super::marker_properties::Owner,
 ) {
@@ -241,7 +241,7 @@ pub(crate) fn marker_owned_menu(
     };
     let label = crate::i18n::t("Label");
     let menu = ui.menu_button(label, |ui| {
-        for color in filmcraft_project::Label::ALL {
+        for color in epsicut_project::Label::ALL {
             let name = crate::i18n::t(color.name());
             let r = ui.selectable_label(marker.custom_color.is_none() && color == marker.color, name);
             app.auto.add_response(&format!("{prefix}.color.{}", color.name()), &r, name);
@@ -306,11 +306,11 @@ pub(crate) fn marker_owned_menu(
     }
 }
 
-pub fn markers(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn markers(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     super::markers_panel::show(app, ui, rect);
 }
 
-pub fn info(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn info(app: &mut EpsicutApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect.shrink(8.0)));
     let ui = &mut child;
@@ -374,7 +374,7 @@ mod tests {
         assert_eq!(history_icon(Some("markers.add")), Icon::Marker);
         assert_eq!(history_icon(Some("markers.markIn")), Icon::MarkIn, "an exact entry comes before its family");
         assert_eq!(history_icon(Some("trim.rippleNext")), Tool::Ripple.icon(), "an exact entry comes before its family");
-        assert_eq!(history_icon(Some(filmcraft_engine::trim::RIPPLE_TRIM_ORIGIN)), Tool::Ripple.icon(), "a ripple trim");
+        assert_eq!(history_icon(Some(epsicut_engine::trim::RIPPLE_TRIM_ORIGIN)), Tool::Ripple.icon(), "a ripple trim");
         assert_eq!(history_icon(Some("timeline.trim")), Tool::Selection.icon(), "a regular trim");
         assert_eq!(history_icon(Some("trim.next")), Tool::Selection.icon(), "a regular trim to the playhead");
         assert_eq!(history_icon(Some("timeline.roll")), Tool::Rolling.icon());
@@ -394,10 +394,10 @@ mod tests {
     /// icon unnoticed.
     #[test]
     fn history_icon_lists_name_real_commands() {
-        let specs = filmcraft_engine::commands::command_specs();
+        let specs = epsicut_engine::commands::command_specs();
         let ids = HISTORY_TOOL_COMMANDS.iter().flat_map(|(ids, _)| ids.iter()).chain(HISTORY_COMMANDS.iter().flat_map(|(ids, _)| ids.iter()));
-        for id in ids.filter(|id| **id != filmcraft_engine::trim::RIPPLE_TRIM_ORIGIN) {
-            assert!(filmcraft_engine::commands::find(id).is_some(), "{id} is not a command");
+        for id in ids.filter(|id| **id != epsicut_engine::trim::RIPPLE_TRIM_ORIGIN) {
+            assert!(epsicut_engine::commands::find(id).is_some(), "{id} is not a command");
         }
         for (prefix, _) in HISTORY_COMMAND_PREFIXES {
             assert!(specs.iter().any(|c| c.id.starts_with(prefix)), "no command starts with {prefix}");

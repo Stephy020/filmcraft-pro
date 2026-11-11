@@ -1,8 +1,8 @@
-# FilmCraft — egui 0.37 migration plan
+# EpsiCut — egui 0.37 migration plan
 
 Current reconciliation (2026-10-25): the local tree incorporates main
 `a504f3c5adc4cd60d9c1120916cddb50c9b24b86`. Managed CI
-`egui037-filmcraft-oracle8-full-ci-20261025-0871` passed formatting, strict lint,
+`egui037-epsicut-oracle8-full-ci-20261025-0871` passed formatting, strict lint,
 workspace tests and doctests, assets, layers and the 49-crate WASM check.
 It recorded 3,756 passing test executions, zero failures and 45 ignored across
 164 summaries. Required external oracles used the retained checksum-pinned
@@ -16,15 +16,15 @@ and captured main are historical.
 
 Historical landing status, 2026-10-25: the migration integrates main `bfc23840b603e69c782302c6ed04d4a9f6ec26a8` and uses egui `6d518fc799681571963842f95b55a6b68431b15a`, winit `a517b3846ee8457d84ee4975110bfda6797c44dc` and craft-ui `25da1314d443171b4adeaad2cd9454b273f35c6f`. Cargo.lock SHA-256 is `8ddb2d92ec359928491b47c084501bbecaa9ff708d678156dab99d1cbd24642e`; the independent media/document-path pins remain selected in the lockfile. Release workflows use craft-fonts `b076417b5880bd4154bd22f00695b1d28c6bea83`.
 
-Fresh static review verified preservation of the captured main and the final dependency graph. The final managed CI run `egui037-filmcraft-oracle8-full-ci-20261025-0570` passed formatting, strict lint, workspace tests and doctests, layers, assets and the 49-crate WASM check, including the web app. It recorded 3,733 passing test executions, zero failures and 45 ignored across 164 summaries. Earlier passing counts below qualify their historical snapshots only. The icon-font attribution URL now identifies the selected egui source; font bytes are unchanged. Visible GUI, browser/platform runtime, native IME, final packages and paired performance remain separate acceptance gates. Human review and human merge are required.
+Fresh static review verified preservation of the captured main and the final dependency graph. The final managed CI run `egui037-epsicut-oracle8-full-ci-20261025-0570` passed formatting, strict lint, workspace tests and doctests, layers, assets and the 49-crate WASM check, including the web app. It recorded 3,733 passing test executions, zero failures and 45 ignored across 164 summaries. Earlier passing counts below qualify their historical snapshots only. The icon-font attribution URL now identifies the selected egui source; font bytes are unchanged. Visible GUI, browser/platform runtime, native IME, final packages and paired performance remain separate acceptance gates. Human review and human merge are required.
 
-External oracle checks ran with `FILMCRAFT_REQUIRE_ORACLES=1`, checksum-pinned FFmpeg 8.1.3 (`n8.1.3-24-g92611900bb`) and fresh generated fixtures. An earlier run using FFmpeg 7.1.5 failed ten codec/oracle/workflow tests. All ten passed unchanged with the new tools in managed job0567, before the full suite passed in0570; no decoder, tolerance or fixture-source changes were made to clear them. The newer tool provides the required APV, half-float, SVT-AV1 and Kvazaar capabilities. It remains a private external oracle, not an app dependency or distributed asset.
+External oracle checks ran with `EPSICUT_REQUIRE_ORACLES=1`, checksum-pinned FFmpeg 8.1.3 (`n8.1.3-24-g92611900bb`) and fresh generated fixtures. An earlier run using FFmpeg 7.1.5 failed ten codec/oracle/workflow tests. All ten passed unchanged with the new tools in managed job0567, before the full suite passed in0570; no decoder, tolerance or fixture-source changes were made to clear them. The newer tool provides the required APV, half-float, SVT-AV1 and Kvazaar capabilities. It remains a private external oracle, not an app dependency or distributed asset.
 
 The original planning and earlier qualification record follows. Its pins, hashes, paths and passing counts are historical.
 
 
 Status: local implementation revision after the independent adversarial reviews of
-`plan-reviews/filmcraft-v1.md` and `filmcraft-v2.md`. The owned checkout now contains the
+`plan-reviews/epsicut-v1.md` and `epsicut-v2.md`. The owned checkout now contains the
 0.37 migration work; commits, pushes, publications, and final immutable pins/lock remain
 gated. This document is the implementation contract, not publication acceptance. Every
 statement about runtime behavior below is source inspection at the recorded revisions unless
@@ -37,8 +37,8 @@ is a disposition index only; it does not override any section.
 
 | Item | Value |
 |---|---|
-| Repository | `storytold/filmcraft` |
-| Assigned checkout | `/home/codex/work/CraftApps/egui037-migration-20261022/filmcraft-implementation` |
+| Repository | `Stephy020/epsicut` |
+| Assigned checkout | `/home/codex/work/CraftApps/egui037-migration-20261022/epsicut-implementation` |
 | Latest qualified tree | HEAD `4ce159e1cda036bbc972d6d27d125626ff714b98` (2026-10-25; merge of migration `df5f86ae` and main `bfc23840`), with main `a504f3c5adc4cd60d9c1120916cddb50c9b24b86` merged locally but uncommitted; `Cargo.toml` SHA-256 `d544c4368d222e79e34be0c681b3b34f435109903b4f85f1ccc4ff27e35b8efb`; `Cargo.lock` SHA-256 `8ddb2d92ec359928491b47c084501bbecaa9ff708d678156dab99d1cbd24642e` |
 | Planning-snapshot branch HEAD (historical) | `fa550ce2d07bdfee6b1d7b6835e8abc8c6913d00` (2026-10-24; migration work is uncommitted on this base) |
 | Planning baseline (historical) | `abf44fda9015f4b7a96dc338f6042499bf8e9d9f` (2026-10-22, "Reject non-hex characters in colour hex parsing (#2600)") |
@@ -51,12 +51,12 @@ is a disposition index only; it does not override any section.
 | Research candidate | `aiongg/egui` `craft/0.37` = `a4f9a17f64a6bae61350fb85804c9df0d9865916`; `aiongg/winit` `craft/0.30.13-lang` = `8b35388bd719e8cc86a95971ba0bc026c9a8f058` |
 | Production fork pins | **Unknown and deliberately not invented.** They become valid only after reviewed, published immutable `storytold/egui` and `storytold/winit` commits exist. See §3.2 and §15 gate G-PINS. |
 | Evidence directory | `/home/codex/work/ssd2/task-evidence/egui037-migration-20261022` |
-| Historical diagnostics | `/home/codex/work/ssd2/task-evidence/egui037-audit-20261022/{fork,stock}/filmcraft.errors` — older checkout (FilmCraft manifest 0.10.0), clues only, never acceptance |
+| Historical diagnostics | `/home/codex/work/ssd2/task-evidence/egui037-audit-20261022/{fork,stock}/epsicut.errors` — older checkout (EpsiCut manifest 0.10.0), clues only, never acceptance |
 
 The existing `App::logic` / `App::ui` split and root-`Ui` architecture are **not** introduced
 by 0.37 and must not be rewritten as if they were. This plan changes where frame side effects
 run and how input is handled across layout passes; it does not change the command, undo,
-project or persistence model. Do not add a FilmCraft-specific `egui` compatibility crate. Use
+project or persistence model. Do not add a EpsiCut-specific `egui` compatibility crate. Use
 the new APIs directly, and add a helper to `craft-ui` only for semantics that at least two
 consumers need with the same contract.
 
@@ -67,9 +67,9 @@ This repository has:
 - no `[patch]` section, no `vendor/` directory, no source replacement and no local crate copy;
   `.cargo/config.toml` contains only the `xtask` alias;
 - exactly four manifests that mention `egui`: the workspace, `crates/ui-egui/Cargo.toml`,
-  `apps/filmcraft/Cargo.toml` and `apps/filmcraft-web/Cargo.toml`;
-- a native entry point (`apps/filmcraft/src/main.rs`), a wasm entry point
-  (`apps/filmcraft-web/src/lib.rs`), a CLI app and a web app;
+  `apps/epsicut/Cargo.toml` and `apps/epsicut-web/Cargo.toml`;
+- a native entry point (`apps/epsicut/src/main.rs`), a wasm entry point
+  (`apps/epsicut-web/src/lib.rs`), a CLI app and a web app;
 - no `egui_plot`, `egui_extras` or `egui_dock`; all other crate manifests scanned for `egui`,
   `eframe`, `winit`, `rfd` and `egui_*` contain none;
 - `crates/ui-egui/Cargo.toml` has the only relevant target cfgs: `rustix` for Unix
@@ -80,18 +80,18 @@ This repository has:
 ### 1.1 Reverse dependency: EffectCraft
 
 EffectCraft (`9581b53c3f8945683252af0eb5fac79e0e43aed4` in the owned checkout) pins fifteen
-`filmcraft-*` crates to `2c5ba7a72619935f0481f99d59409e0d1844b234` in `effectcraft/Cargo.toml`.
-That revision is not an ancestor of FilmCraft baseline `abf44fda`; it is reachable from
+`epsicut-*` crates to `2c5ba7a72619935f0481f99d59409e0d1844b234` in `effectcraft/Cargo.toml`.
+That revision is not an ancestor of EpsiCut baseline `abf44fda`; it is reachable from
 `origin/effectcraft/webm-alpha`. None of those crates (`media`, `codecs`, `frame`, `color`,
 `time`, `project`, `interchange`, `geom`, the encoders/decoders and the muxer) contains
-`egui`, and EffectCraft does not depend on `filmcraft-ui-egui`.
+`egui`, and EffectCraft does not depend on `epsicut-ui-egui`.
 
 Decision: EffectCraft needs no change for this migration. Retain its separate branch pin.
-Re-audit only if (a) the pin moves to FilmCraft main or another revision that changes a
-shared public type, or (b) EffectCraft starts consuming `filmcraft-ui-egui` (directly or
+Re-audit only if (a) the pin moves to EpsiCut main or another revision that changes a
+shared public type, or (b) EffectCraft starts consuming `epsicut-ui-egui` (directly or
 through another crate). The re-audit must check the actual Cargo identities, not just a
 version string. This is the required explicit cross-repository check; it is not a silent
-deferral of FilmCraft's own compatibility work.
+deferral of EpsiCut's own compatibility work.
 
 ## 2. Current architecture and lifecycle
 
@@ -99,22 +99,22 @@ deferral of FilmCraft's own compatibility work.
 
 | Target | Entry point / symbol | Notes |
 |---|---|---|
-| Native desktop | `apps/filmcraft/src/main.rs:80` `main`, `:139` `eframe::run_native`, `:168` `native_options`, `:190` `app_creator` | wgpu only; features `default_fonts`, `wgpu`, `accesskit`, `wayland`, `x11`; no `system_fonts`, no `links` |
-| macOS native | `apps/filmcraft/Cargo.toml` target deps `muda`, `objc2-*`, `winit`; `main.rs:430` `agent_event_loop`; `native_menu.rs` | custom titlebar and menu; `--control` must not activate the app |
-| Linux native | `apps/filmcraft/Cargo.toml` `zbus`; `main.rs` `run_dialog_off_thread` | X11 and Wayland at runtime; XDG portal dialogs |
-| Windows native | `apps/filmcraft/Cargo.toml` `winresource`; `graphics.rs` DX12/default/software ladder | DX12 FXC shader compilation is relevant to startup measurement |
-| Browser | `apps/filmcraft-web/src/lib.rs:125` `start`, `:156` `WebRunner::start`, `:92` `impl eframe::App for WebApp` | wasm32 only; WebGPU with WebGL2 fallback; WebCodecs; OPFS |
-| Headless UI | `crates/ui-egui/tests/scripted.rs` and the other `tests/*_ui.rs` `Harness::builder().build_eframe(...)` | `egui_kittest` drives the same `FilmcraftApp` |
+| Native desktop | `apps/epsicut/src/main.rs:80` `main`, `:139` `eframe::run_native`, `:168` `native_options`, `:190` `app_creator` | wgpu only; features `default_fonts`, `wgpu`, `accesskit`, `wayland`, `x11`; no `system_fonts`, no `links` |
+| macOS native | `apps/epsicut/Cargo.toml` target deps `muda`, `objc2-*`, `winit`; `main.rs:430` `agent_event_loop`; `native_menu.rs` | custom titlebar and menu; `--control` must not activate the app |
+| Linux native | `apps/epsicut/Cargo.toml` `zbus`; `main.rs` `run_dialog_off_thread` | X11 and Wayland at runtime; XDG portal dialogs |
+| Windows native | `apps/epsicut/Cargo.toml` `winresource`; `graphics.rs` DX12/default/software ladder | DX12 FXC shader compilation is relevant to startup measurement |
+| Browser | `apps/epsicut-web/src/lib.rs:125` `start`, `:156` `WebRunner::start`, `:92` `impl eframe::App for WebApp` | wasm32 only; WebGPU with WebGL2 fallback; WebCodecs; OPFS |
+| Headless UI | `crates/ui-egui/tests/scripted.rs` and the other `tests/*_ui.rs` `Harness::builder().build_eframe(...)` | `egui_kittest` drives the same `EpsicutApp` |
 
 ### 2.2 The app object
 
-`FilmcraftApp` is in `crates/ui-egui/src/lib.rs`. The UI code is already split:
+`EpsicutApp` is in `crates/ui-egui/src/lib.rs`. The UI code is already split:
 
-- `crates/ui-egui/src/lib.rs:2133` `impl eframe::App for FilmcraftApp::logic`;
-- `crates/ui-egui/src/lib.rs:2193` `impl eframe::App for FilmcraftApp::ui`;
-- `crates/ui-egui/src/lib.rs:1807` private `FilmcraftApp::frame(&mut self, ui: &mut egui::Ui)`,
+- `crates/ui-egui/src/lib.rs:2133` `impl eframe::App for EpsicutApp::logic`;
+- `crates/ui-egui/src/lib.rs:2193` `impl eframe::App for EpsicutApp::ui`;
+- `crates/ui-egui/src/lib.rs:1807` private `EpsicutApp::frame(&mut self, ui: &mut egui::Ui)`,
   called from `App::ui` and wrapped in `catch_unwind`;
-- `cargo xtask` only builds/tests; FilmCraft does not implement a second `update` path;
+- `cargo xtask` only builds/tests; EpsiCut does not implement a second `update` path;
 - the main workspace is custom-drawn: `App::ui` receives the root `Ui`, then calls
   `header::show`, `dock_area`, `panels::*` and dialog functions. It does not use
   `egui::TopBottomPanel`, `SidePanel` or `CentralPanel`;
@@ -168,10 +168,10 @@ rows above.
 
 ### 2.4 Actual multi-pass exposure
 
-- FilmCraft does not call `Context::request_discard` (verified by grep).
-- egui 0.37 components used by FilmCraft can request it: `Grid` on first show
+- EpsiCut does not call `Context::request_discard` (verified by grep).
+- egui 0.37 components used by EpsiCut can request it: `Grid` on first show
   (`crates/egui/src/grid.rs`, "new Grid" path), `Aligned` on size change
-  (`containers/aligned.rs`), and `Resize` on a sizing pass (`containers/resize.rs`). FilmCraft
+  (`containers/aligned.rs`), and `Resize` on a sizing pass (`containers/resize.rs`). EpsiCut
   uses `Grid` in many dialogs, `ResizeHandle` through `craft_ui::layout`, and `Aligned` only if
   a dependency introduces it.
 - Both native `crates/eframe/src/native/epi_integration.rs::update` and web
@@ -208,7 +208,7 @@ rows above.
 - The local `origin/main` ref (`b1401e3`) is stale. A stale remote-tracking ref **does not
   prove** that `4919088` is unpublished. The review's "unpublished local/audit branch" claim
   is rejected; the corrected evidence is the GitHub main verification above.
-- FilmCraft's current manifest pins `craft-ui` at
+- EpsiCut's current manifest pins `craft-ui` at
   `5c874d51eeb3de70e735c8ce87a59a7dedd47675`, `craft-media` at
   `f0ad6c1e1d297908915f4be315b0fcfc9be7b5d4`, and `craft-docpath` separately at
   `82a24b006eefa036b43c09a67fb9a3fbd17ffe63`. The old `5c874d51` commit was fetched exactly
@@ -220,7 +220,7 @@ rows above.
   - The docking change is the protected-group fix: `MoveFloating` now requires every
     floating-group member to be movable, including the resize grip. Preserve the tests from
     `d66e345`, `fd9cf54` and `c67b1e1`; this intentional security behavior must not be
-    reverted to match the old FilmCraft baseline.
+    reverted to match the old EpsiCut baseline.
   - Printing is additive and lazy. Enabling the updated crate must not start discovery at
     startup. Relevant print commits include `b700ae7`, `d27646a`, `4cae45d`, `2bbef53` and
     `4f85efb`.
@@ -233,7 +233,7 @@ rows above.
   `1764bca`, applied onto current `4919088`. Preserve intervening fixes and provenance.
   Never merge `b68de8c` or `ec8840a` as a tree.
 - The shared 0.37 port and the CL-2 capture helper will produce a later published
-  `craft-libs` revision. FilmCraft's final compatibility review must compare its actual old
+  `craft-libs` revision. EpsiCut's final compatibility review must compare its actual old
   API/use sites against that final published revision, not against `b68de8c` or a branch
   point.
 
@@ -259,10 +259,10 @@ pins. Gate G-PINS (§15) blocks the entire landing stage until:
 4. the exact SHAs, feature sets, provenance and test mappings are recorded in the suite pin
    manifest and the ledger.
 
-Until then, no `[patch]` block in FilmCraft names a fabricated or guessed revision. The
+Until then, no `[patch]` block in EpsiCut names a fabricated or guessed revision. The
 eventual block must name the same immutable revision for every egui-family package that can
 resolve, plus `winit`; a patch section inside `craft-libs` does not propagate into this root.
-`egui_extras` is unused. `egui_plot` does not exist in FilmCraft; do not add it because its
+`egui_extras` is unused. `egui_plot` does not exist in EpsiCut; do not add it because its
 version numbering differs. `winit` stays exactly `0.30.13`.
 
 The final production manifest will look like the following shape, with `REPLACE_WITH_*`
@@ -299,11 +299,11 @@ strongly and the callback holds it weakly.
    exercises multiple viewports; GridCraft exercises a single window. Their tokens, paths,
    settle delays, deadlines and replies remain app-owned.
 3. **CL-2F** freezes the helper API after joint review of those adapters.
-4. **FilmCraft and the other consumers** pin the published revision containing CL-1 and
+4. **EpsiCut and the other consumers** pin the published revision containing CL-1 and
    CL-2F in one atomic dependency stage, not a branch head and not a path dependency.
 
 All fourteen capture consumers adopt this contract. The eleven apps that already declare
-`craft-ui` (CADCraft, DesignCraft, EffectCraft, FilmCraft, GridCraft, LightCraft, PdfCraft,
+`craft-ui` (CADCraft, DesignCraft, EffectCraft, EpsiCut, GridCraft, LightCraft, PdfCraft,
 PhotoCraft, SoundCraft, VectorCraft and WordCraft) import the helper from the published
 revision that contains both CL-1 and CL-2F in the same atomic dependency stage. DesignCraft
 and GridCraft are the pilot adapters against the reviewed CL-2 provisional revision before
@@ -375,12 +375,12 @@ The current feature lists are explicit. Migrate to 0.37 with these decisions:
 
 - workspace `egui`: `default-features = false` and features `["default_fonts",
   "monochrome_emoji_fonts"]`;
-- native `apps/filmcraft`: keep `default_fonts`, `wgpu`, `accesskit`, `wayland`, `x11`, and
+- native `apps/epsicut`: keep `default_fonts`, `wgpu`, `accesskit`, `wayland`, `x11`, and
   **add `clipboard`**. Without `clipboard`, eframe 0.37's `egui-winit` uses the in-app
   fallback clipboard, so cross-application text copy/paste silently stops working;
 - `crates/ui-egui`: keep `default_fonts`, `wgpu`, `accesskit`; the native app root is
   authoritative for OS clipboard;
-- web `apps/filmcraft-web`: keep `default_fonts`, `wgpu`; the eframe `clipboard` feature is
+- web `apps/epsicut-web`: keep `default_fonts`, `wgpu`; the eframe `clipboard` feature is
   native (`egui-winit`) and is not added to wasm. Verify browser clipboard behavior in the
   browser workflow instead;
 - do **not** add `system_fonts`; do **not** add `links` or `web_screen_reader` by accident.
@@ -401,8 +401,8 @@ explicitly or install controlled fonts (§11.1).
 
 ### 4.1 Rule: logic is idempotent background; UI is composition; input is pass-0 only
 
-Introduce private `FilmcraftApp::run_logic_frame(&mut self, ctx: &egui::Context)` and
-`FilmcraftApp::run_ui_frame(&mut self, ui: &mut egui::Ui)`:
+Introduce private `EpsicutApp::run_logic_frame(&mut self, ctx: &egui::Context)` and
+`EpsicutApp::run_ui_frame(&mut self, ui: &mut egui::Ui)`:
 
 - `App::logic` runs `run_logic_frame` on **every** call. Under this pinned eframe/egui
   integration, native and web call `App::logic` once per `run_ui` layout pass, and also call
@@ -425,7 +425,7 @@ Introduce private `FilmcraftApp::run_logic_frame(&mut self, ctx: &egui::Context)
   `ui_error`, stops playback and does not re-run the same panicking code every tick or
   re-log it every pass. `run_ui_frame` keeps its catch around `frame(ui)` and the graphics
   notice.
-- `on_exit` stays in `FilmcraftApp` and calls `session.shutdown()` exactly once.
+- `on_exit` stays in `EpsicutApp` and calls `session.shutdown()` exactly once.
 
 No `ui_pass`/`hidden_tick` predicate based on `viewport.visible()` is used. Visibility is
 used only for presentation policy (for example whether a hidden window should be raised),
@@ -454,7 +454,7 @@ one gesture yielding one command/undo.
 ### 4.3 Do not use `Context::root_ui` recursively
 
 `Context::root_ui` panics if called while `App::ui`/`Context::run_ui` already holds the root
-`Ui` (upstream #8535). FilmCraft does not need it. Keep passing the existing `&mut egui::Ui`
+`Ui` (upstream #8535). EpsiCut does not need it. Keep passing the existing `&mut egui::Ui`
 to `header::show`, `dock_area`, `panels::*` and dialogs. Where a helper takes
 `&egui::Context` only to add widgets, change it to take `&mut egui::Ui` (or return an
 action/shape), not a `Context` bridge.
@@ -462,7 +462,7 @@ action/shape), not a `Context` bridge.
 ### 4.4 Multi-pass actions: no clearing on a no-event pass
 
 Immediate mode plus `request_discard` means a UI handler can run in a pass whose output is
-discarded. FilmCraft's project mutations must run once, and must not be lost.
+discarded. EpsiCut's project mutations must run once, and must not be lost.
 
 Design:
 
@@ -560,7 +560,7 @@ Hidden-window semantics are the 0.37 behavior, not the old assumption:
   idempotent.
 - `playback_mix` remains the live project snapshot; audio callbacks are outside egui. Logic
   keeps polling `audio.played_frames()` while hidden.
-- `FilmcraftApp::frames.pump` moves from `App::ui` to logic. The web runner's `WebApp::logic`
+- `EpsicutApp::frames.pump` moves from `App::ui` to logic. The web runner's `WebApp::logic`
   also pumps jobs/audio; its per-frame work must be idempotent because web calls logic per
   pass.
 - Auto-save: `Session::poll_persistence` and `session.is_dirty` move to logic; the recovery
@@ -656,18 +656,18 @@ closures.
 
 ### 5.6 `Id::new` and `Ui::id`
 
-0.37 deprecates `Id::new` and `Ui::id` (`Id::unique` / `Ui::scope_id`). FilmCraft has 403
+0.37 deprecates `Id::new` and `Ui::id` (`Id::unique` / `Ui::scope_id`). EpsiCut has 403
 `Id::new` occurrences across `crates/ui-egui/src` and tests. Under `clippy -- -D warnings`,
 deprecation is a hard failure.
 
 - `egui::Id::new(x)` -> `egui::Id::unique(x)` for every root id; same hash, same identity.
 - `Id::new(parent).with(child)` -> `Id::unique(parent).with(child)`.
-- `UiBuilder::id(x)` -> `UiBuilder::scope_id(x)`; FilmCraft uses `id_salt` and has no
+- `UiBuilder::id(x)` -> `UiBuilder::scope_id(x)`; EpsiCut uses `id_salt` and has no
   `UiBuilder::id` (verified), but `craft-ui` PR #199 performs its own conversion.
-- `Ui::id()` -> `Ui::scope_id()`; FilmCraft has no `ui.id()` call (verified).
+- `Ui::id()` -> `Ui::scope_id()`; EpsiCut has no `ui.id()` call (verified).
 - Keep `id_salt` for child UIs; do not replace every `id_salt` with a global id.
 
-Add a grep-based CI check that no `Id::new(` remains in FilmCraft or its tests.
+Add a grep-based CI check that no `Id::new(` remains in EpsiCut or its tests.
 
 ### 5.7 `Event::PasteImage`
 
@@ -677,7 +677,7 @@ Add a grep-based CI check that no `Id::new(` remains in FilmCraft or its tests.
 `Event::Paste`. Add tests alongside `ctrl_c_x_v_become_key_presses`.
 
 The native app’s `clipboard_media` hook (arboard) still supplies files/images to the Paste
-command. On wasm, either keep the existing “FilmCraft clips only” path or extend
+command. On wasm, either keep the existing “EpsiCut clips only” path or extend
 `ClipboardMedia` with the `PasteImage` bytes; that is a separate feature decision. Do not
 double-read the clipboard if the event already carries an image.
 
@@ -692,7 +692,7 @@ matches at `lib.rs:1753` and `lib.rs:2100`.
   §6.1).
 - `clipboard` opt-in in eframe/egui-winit: native feature added (§3.5).
 - `Id` deprecations (§5.6).
-- `Panel` constructors take `impl AsIdSalt`: FilmCraft does not use `egui::Panel`, but
+- `Panel` constructors take `impl AsIdSalt`: EpsiCut does not use `egui::Panel`, but
   `craft-ui` and any new panel code must use the new form.
 - `UiBuilder::scope_id`: see PR #199.
 - `ComboBox` is built from atoms and takes `IntoAtoms`; existing `selected_text`/`show_ui`
@@ -715,7 +715,7 @@ Mono, then appends Japanese craft-fonts (`add_craft_fonts`), Chinese (`cjk::inst
 (`rtl::install`). Keep that order.
 
 The explicit `default_fonts` feature preserves egui’s built-in fallback, but in 0.37 the
-monochrome emoji faces moved behind `monochrome_emoji_fonts`. Enable it explicitly. FilmCraft
+monochrome emoji faces moved behind `monochrome_emoji_fonts`. Enable it explicitly. EpsiCut
 starts from `FontDefinitions::default()` and uses `✔ ✓ ✖ ⚡ ⚠ ⚙ ♪ ☑` (20 occurrences across
 10 files); with `system_fonts` off, those symbols can otherwise become tofu or switch to a
 platform face. Add a glyph-coverage assertion for exactly these characters plus a screenshot
@@ -731,7 +731,7 @@ the matching i18n source keys and translation rows, and the mixer post-fader ins
 (`▸ ` → `> `). One `# View ▸ Reset Interface Zoom` header comment in each language file was
 updated for consistency; Rust doc comments were left unchanged.
 
-This is deliberate tofu avoidance. FilmCraft installs Inter at the front of the proportional
+This is deliberate tofu avoidance. EpsiCut installs Inter at the front of the proportional
 family and `FontDefinitions::default()` then falls back to Ubuntu-Light, egui-icons and the
 monochrome emoji faces; none of those contains U+25B8 (verified from each bundled font's
 `cmap`), and `system_fonts` stays disabled, so proportional menu-path text could show a
@@ -741,12 +741,12 @@ has it. This is a source-level decision; no visible GUI comparison has been reco
 it remains part of the visible-GUI acceptance gate below.
 
 `FontData` construction is §5.1. Keep the process-wide caches (`OnceLock`) and the single
-system scan; do not call `filmcraft_text::fonts::scan_system()` in a UI pass.
+system scan; do not call `epsicut_text::fonts::scan_system()` in a UI pass.
 
 `eframe` 0.37 adds an optional `system_fonts` feature (fontique provider, #8512) and a
 `system_font_fallback` option. **Do not enable it in the migration.** It changes startup cost
 and the fallback face chosen for a missing glyph; the current explicit CJK/RTL fallback is
-part of FilmCraft’s visual contract. Record it as an opt-in follow-up with measured startup
+part of EpsiCut’s visual contract. Record it as an opt-in follow-up with measured startup
 and glyph coverage, especially for color emoji; do not accept clamp-only as a substitute for
 texture wrap/filter semantics.
 
@@ -772,7 +772,7 @@ OS/font inventory recorded, not pixel-golden input.
 
 ### 6.2 UI language and AccessKit language
 
-FilmCraft’s `i18n::Language` is a private list (`crates/ui-egui/src/i18n/mod.rs`,
+EpsiCut’s `i18n::Language` is a private list (`crates/ui-egui/src/i18n/mod.rs`,
 `Language::ALL`; 12 languages, no Arabic/Hebrew UI). Add `Language::bcp47()` returning proper
 tags (`en`, `ja`, `es`, `pt-BR`, `uk`, `zh-CN`, `de`, `ru`, `fr`, `id`, `it`, `ko`). Call
 `ctx.set_language(Some(tag))` when the language changes and `frame.set_ui_language(Some(tag))`
@@ -780,7 +780,7 @@ in `App::ui` (fork E18) so the AccessKit root and the web hidden IME input use t
 In kittest, `Frame::set_ui_language` is a no-op; the `ctx.set_language` call is the tested
 path.
 
-Do not enable `Style::right_to_left` (fork E9) yet: FilmCraft offers no RTL interface
+Do not enable `Style::right_to_left` (fork E9) yet: EpsiCut offers no RTL interface
 language, and mirroring the custom-drawn workspace without a full RTL audit would be worse
 than leaving it LTR. Document RTL UI as a future feature gated on real translated layouts.
 
@@ -806,7 +806,7 @@ In P1, in the same stage that pins the fork, change `rtl::Lines`:
 The fork's E5/E12 path and the removal of the manual reversal must ship in the same P1
 commit set; there is no intermediate state with both active. A negative regression first
 demonstrates the double ordering (Arabic caption with the fork produces reversed words), then
-P1 removes it. Test `"كلمة أخرى"`, `"قال FilmCraft 0.6 جيد"`, Arabic-Indic digits, brackets
+P1 removes it. Test `"كلمة أخرى"`, `"قال EpsiCut 0.6 جيد"`, Arabic-Indic digits, brackets
 and an LTR paragraph containing an RTL phrase; assert the leftmost drawn glyph of the first
 visual word, not just “some Arabic glyph exists”.
 
@@ -842,7 +842,7 @@ The candidate has a confirmed gap: winit W27 exposes
 
 This migration therefore requires **E21b/P7b** before acceptance. The authoritative
 contract is the complete E21b section of `egui/docs/egui-037-migration-plan.md` plus
-`winit-review-triage.md`; these bullets are FilmCraft's adoption summary, not a weaker
+`winit-review-triage.md`; these bullets are EpsiCut's adoption summary, not a weaker
 restatement:
 
 - `IMEOutput` carries one atomic descriptor: owner/context-generation identity plus the
@@ -877,15 +877,15 @@ restatement:
   IME-owner change, per window and owner; macOS NSRange conversion remains a separate W26
   path, not a claim of a new macOS API.
 
-FilmCraft’s own custom `IMEOutput` producer is at
+EpsiCut’s own custom `IMEOutput` producer is at
 `crates/ui-egui/src/panels/graphics.rs:933-940`. It must supply the logical model text, the
 preedit, and UTF-8 byte cursor/anchor ranges from its own scalar/grapheme coordinates; it must
 not pass display-bidi text or a `None` placeholder. Its integration test must reject a
 split-UTF-8 range and verify the model range maps to the emitted byte range. Built-in
-`TextEdit` consumers in FilmCraft (caption, notes, search, metadata) inherit the producer and
+`TextEdit` consumers in EpsiCut (caption, notes, search, metadata) inherit the producer and
 need tests rather than custom adapters; the same inheritance applies to LightCraft’s built-in
 consumers. The suite inventory of custom producers is WordCraft `canvas.rs` (two),
-VectorCraft `canvas.rs`, FigCraft `shortcuts.rs`, EffectCraft `viewer_text.rs`, FilmCraft
+VectorCraft `canvas.rs`, FigCraft `shortcuts.rs`, EffectCraft `viewer_text.rs`, EpsiCut
 `graphics.rs`, DesignCraft `canvas.rs`, DeckCraft `canvas.rs` and PhotoCraft `type_tool.rs`;
 each needs its own adapter and test.
 
@@ -940,7 +940,7 @@ W15P:
   regular `wl_data_device`.
 - Egui 0.37 `get_primary`/`set_primary` routes through that path. E4 preserves password
   exclusion and does not reclaim ownership for an unchanged selection.
-- FilmCraft also uses `arboard` directly for files/images (`apps/filmcraft/src/main.rs`
+- EpsiCut also uses `arboard` directly for files/images (`apps/epsicut/src/main.rs`
   `clipboard_media`). The arboard/smithay PRIMARY path is a measured fallback only if the
   winit path cannot meet a proven requirement; it is not the planned end state and it is not
   accepted merely by documenting a GNOME limitation.
@@ -990,11 +990,11 @@ with supported capabilities recorded:
   `RequestPaintWhileHidden` for hidden composition stages. `ui.resize` and `ui.focus`
   control methods keep their behavior; `control_input_only` must still preserve close and
   viewport lifecycle metadata.
-- GPU: `FilmcraftApp::set_wgpu` receives `CreationContext::wgpu_render_state`;
+- GPU: `EpsicutApp::set_wgpu` receives `CreationContext::wgpu_render_state`;
   `TextureHandle` and `GpuState`/`uploadedBytes` remain. `egui-wgpu` fork E2/E3 add surface
   fitting and error scopes; they are relevant to large/odd windows. Do not change the
-  FilmCraft `wgpu 30.0.1` pin or the GPU compositor in the migration PR. The candidate’s own
-  lock resolves `wgpu 30.0.0`; FilmCraft’s lock is authoritative. Record the actual resolved
+  EpsiCut `wgpu 30.0.1` pin or the GPU compositor in the migration PR. The candidate’s own
+  lock resolves `wgpu 30.0.0`; EpsiCut’s lock is authoritative. Record the actual resolved
   version and prove there is one source; do not claim the candidate lock’s version.
   `perf.stats` `gpu.uploadedBytes`, transitions, `submitMs` and frame-cache counters are the
   upload/GPU observables.
@@ -1028,7 +1028,7 @@ Migration rules:
 
 ## 10. Fork and vendor patch provenance
 
-FilmCraft has no vendor directory. The suite forks carry behavior that FilmCraft either uses
+EpsiCut has no vendor directory. The suite forks carry behavior that EpsiCut either uses
 or must consciously not use. Keep the pins; do not delete unrelated fixes. The tables below
 name the aiongg research candidate for provenance only; production pins are G-PINS.
 
@@ -1037,14 +1037,14 @@ name the aiongg research candidate for provenance only; production pins are G-PI
 | Patch | Decision in this plan | Validation |
 |---|---|---|
 | E2+E3 egui-wgpu surface fit/error scopes | Keep; use for large windows and odd surfaces | Windows/Linux resize/VM; `ui.resize` to a large size; no `Wgpu` error |
-| E4 Wayland clipboard/PRIMARY | Keep; must be paired with W15P; the filmcraft#1115 problem is exactly this | Hyprland/KWin/Mutter copy/paste, PRIMARY matrix, file/image paste |
-| E5, E8, E12, E13, E14, E15, E16, E17, E20 | Keep; use them; remove FilmCraft’s manual bidi | Arabic/Hebrew captions, editing, alignment, screenshots |
+| E4 Wayland clipboard/PRIMARY | Keep; must be paired with W15P; the epsicut#1115 problem is exactly this | Hyprland/KWin/Mutter copy/paste, PRIMARY matrix, file/image paste |
+| E5, E8, E12, E13, E14, E15, E16, E17, E20 | Keep; use them; remove EpsiCut’s manual bidi | Arabic/Hebrew captions, editing, alignment, screenshots |
 | E6, E21 IME | Keep; E21 alone is incoming only; E21b is mandatory | native IME rows plus outgoing-state tests |
 | E7, E19 non-Latin shortcuts and P7 held-key pairing | Keep; adapt `handle_shortcuts` to Latin-layout chars; retain the emitted egui key identity for a held physical key across layout/modifier changes and clear it on focus loss/IME/destruction | kittest + native layouts, repeat/unidentified keys |
 | E9 RTL UI mirroring | Keep in fork but do not enable `Style::right_to_left` | no RTL UI language yet |
 | E10 web key/lang fixes | Keep; test browser IME and named keys | `smoke.mjs` + manual browser |
-| E11 vello_cpu multithreading | Not exercised by FilmCraft; no local feature change | none |
-| E1 viewport hooks | Not used by FilmCraft; keep the fork patch | no FilmCraft test |
+| E11 vello_cpu multithreading | Not exercised by EpsiCut; no local feature change | none |
+| E1 viewport hooks | Not used by EpsiCut; keep the fork patch | no EpsiCut test |
 | E18 `Frame::set_ui_language` | Use with `ctx.set_language` | language switch + AccessKit root |
 | E15 `LineBreaker`/`LayoutJob::language` | Optional; use only if document line breaking needs it | caption wrapping tests |
 | E21b/P7b outgoing IME surrounding text (P7b) | **Required new prerequisite**: the complete shared owner/support/serial contract, 4000-byte bounded payload without a full-document copy, TextEdit producer, Film graphics adapter and Wayland delivery | §7.2 tests; native Wayland trace |
@@ -1056,7 +1056,7 @@ reason and removal condition.
 ### 10.2 `aiongg/winit` `craft/0.30.13-lang` (`8b35388b`, research)
 
 Keep the whole pinned branch because E4/E19/E21/E21b require W15/W15P/W25/W26/W27,
-including the bounded W15P transfer path and the W27 owner/support lifecycle. For FilmCraft,
+including the bounded W15P transfer path and the W27 owner/support lifecycle. For EpsiCut,
 exercise at least:
 
 - W1 mixed-DPI window rect; W3/W4 Windows IME/hidden maximized; W5/W20/W21 X11 IME;
@@ -1064,7 +1064,7 @@ exercise at least:
   W15 Wayland drops/clipboard; W15P PRIMARY; W18/W19 Windows IME; W22-W27 language/IME.
 - W15P is required with E4 as described in §7.3, including per-seat lifecycle, password
   exclusion, unchanged-owner behavior and slow/canceled transfer tests.
-- W14 macOS cancelable termination is opt-in; FilmCraft does not call that platform extension,
+- W14 macOS cancelable termination is opt-in; EpsiCut does not call that platform extension,
   and its own close interception remains.
 - Do not enable W16 pinch/rotation or tablet input; no `craft-tablet` dependency exists.
 
@@ -1091,18 +1091,18 @@ planning pass. Capacity must be inspected first; the suite snapshot had less tha
 
 ```sh
 python3 /home/codex/work/maintenance/task.py run \
-  --job-id filmcraft-egui037-ci-01 --kind build \
-  --task filmcraft-egui037-migration \
-  --source /home/codex/work/CraftApps/egui037-migration-20261022/filmcraft-implementation \
-  --evidence /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/filmcraft \
+  --job-id epsicut-egui037-ci-01 --kind build \
+  --task epsicut-egui037-migration \
+  --source /home/codex/work/CraftApps/egui037-migration-20261022/epsicut-implementation \
+  --evidence /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/epsicut \
   -- cargo xtask ci
-python3 /home/codex/work/maintenance/task.py status filmcraft-egui037-ci-01 --tail-bytes 8192
-python3 /home/codex/work/maintenance/task.py finish filmcraft-egui037-ci-01 --artifact-manifest /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/filmcraft/artifacts.json
+python3 /home/codex/work/maintenance/task.py status epsicut-egui037-ci-01 --tail-bytes 8192
+python3 /home/codex/work/maintenance/task.py finish epsicut-egui037-ci-01 --artifact-manifest /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/epsicut/artifacts.json
 # after inspecting the plan and preserving evidence:
-python3 /home/codex/work/maintenance/task.py finish filmcraft-egui037-ci-01 \
-  --artifact-manifest /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/filmcraft/artifacts.json \
+python3 /home/codex/work/maintenance/task.py finish epsicut-egui037-ci-01 \
+  --artifact-manifest /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/epsicut/artifacts.json \
   --apply --owner-confirmed --checks-complete --evidence-preserved
-python3 /home/codex/work/maintenance/task.py status filmcraft-egui037-ci-01 --tail-bytes 8192
+python3 /home/codex/work/maintenance/task.py status epsicut-egui037-ci-01 --tail-bytes 8192
 ```
 
 Every job uses one unique resource task/fresh job ID/`--source`/`--evidence`; poll `status`
@@ -1116,7 +1116,7 @@ default CI:
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`,
   `cargo test --workspace`, `cargo xtask layers`, `cargo xtask assets`, `cargo xtask wasm`;
 - with and without `CRAFT_FONTS_DIR` (pinned craft-fonts `abb83316d96aa59c1cf64784289e378fe9fa5695`);
-- `FILMCRAFT_REQUIRE_ORACLES=1` when ffmpeg is available;
+- `EPSICUT_REQUIRE_ORACLES=1` when ffmpeg is available;
 - `cargo metadata --locked`, the graph checks from §3.4, and the native `clipboard` +
   `monochrome_emoji_fonts` feature assertions.
 
@@ -1127,12 +1127,12 @@ missing, fix the widget or fixture.
 **Font features do not propagate through kittest.** `egui_kittest`'s normal `[dependencies]
 egui` uses `default-features = false`; only kittest's own `[dev-dependencies]` enable
 `default_fonts` and `monochrome_emoji_fonts`, and a dependency's dev-dependencies do not
-propagate into a consumer. Every kittest/FilmCraft test root that needs the bundled faces must
+propagate into a consumer. Every kittest/EpsiCut test root that needs the bundled faces must
 enable those egui features explicitly or install controlled fonts, and each actual graph must
 be inspected. The production feature policy in §3.5 does not reach the harness by itself.
 
 Windows uses a uniquely owned clone and the VM run/status/finish workflow, with the clone’s
-`Build-DesignCraft.ps1` equivalent for FilmCraft or the repository’s documented build helper.
+`Build-DesignCraft.ps1` equivalent for EpsiCut or the repository’s documented build helper.
 The baseline VM is not adopted or reused across tasks.
 
 ### 11.2 UI, lifecycle and workflow tests
@@ -1200,7 +1200,7 @@ New/extended assertions:
 ### 11.3 Visual comparisons and tolerances
 
 Do not add committed screenshots unless they are needed; if added, they are original
-FilmCraft captures and need `.attribution` sidecars and `ATTRIBUTION.md` rows
+EpsiCut captures and need `.attribution` sidecars and `ATTRIBUTION.md` rows
 (`cargo xtask assets`). Prefer writing review PNGs to the durable evidence directory.
 
 For before/after review:
@@ -1222,21 +1222,21 @@ Native Linux (proposed, through the managed adapter; no raw `cargo run` outside 
 
 ```sh
 python3 /home/codex/work/maintenance/task.py run \
-  --job-id filmcraft-egui037-linux-ui-01 --kind build \
-  --task filmcraft-egui037-migration \
-  --source /home/codex/work/CraftApps/egui037-migration-20261022/filmcraft-implementation \
-  --evidence /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/filmcraft \
-  -- cargo run --release -p filmcraft -- --control 9876
-python3 /home/codex/work/maintenance/task.py status filmcraft-egui037-linux-ui-01 --tail-bytes 8192
+  --job-id epsicut-egui037-linux-ui-01 --kind build \
+  --task epsicut-egui037-migration \
+  --source /home/codex/work/CraftApps/egui037-migration-20261022/epsicut-implementation \
+  --evidence /home/codex/work/ssd2/task-evidence/egui037-migration-20261022/epsicut \
+  -- cargo run --release -p epsicut -- --control 9876
+python3 /home/codex/work/maintenance/task.py status epsicut-egui037-linux-ui-01 --tail-bytes 8192
 # after the UI workflow, evidence capture and review:
-python3 /home/codex/work/maintenance/task.py finish filmcraft-egui037-linux-ui-01 \
+python3 /home/codex/work/maintenance/task.py finish epsicut-egui037-linux-ui-01 \
   --apply --owner-confirmed --checks-complete --evidence-preserved
-python3 /home/codex/work/maintenance/task.py status filmcraft-egui037-linux-ui-01 --tail-bytes 8192
+python3 /home/codex/work/maintenance/task.py status epsicut-egui037-linux-ui-01 --tail-bytes 8192
 ```
 
 Drive `ui.inspect`, `ui.screenshot`, `ui.resize`, dock actions, clipboard/PRIMARY, and review
 every PNG. Repeat under X11 and Wayland (and Hyprland for E4/W15P). Native Windows through a
-uniquely owned clone: build the task checkout, run `filmcraft-ui-egui` UI tests, launch with
+uniquely owned clone: build the task checkout, run `epsicut-ui-egui` UI tests, launch with
 `--control`, capture screenshots, exercise IME and DX12/software graphics modes. macOS: real
 hardware for Cmd shortcuts, titlebar drag, Japanese/Korean IME and header drag; if no Mac is
 available, record macOS as unresolved, not passed.
@@ -1251,11 +1251,11 @@ cargo xtask web --serve 8765 &
 SERVER=$!
 trap 'kill "$SERVER" 2>/dev/null' EXIT
 ffmpeg -f lavfi -i testsrc2=size=640x360:rate=30 -f lavfi -i sine -t 3 -c:v libx264 -pix_fmt yuv420p -c:a aac target/web/dist/web-test.mp4
-node apps/filmcraft-web/tests/smoke.mjs --url http://127.0.0.1:8765/ --media web-test.mp4 --out target/web/smoke
+node apps/epsicut-web/tests/smoke.mjs --url http://127.0.0.1:8765/ --media web-test.mp4 --out target/web/smoke
 ```
 
 Run WebGPU and `?webgl`; inspect `report.json` and steps `01-demo` … `05-modes`; check
-`filmcraft.info()` for backend/compositor. A wasm compile is not runtime evidence; headless
+`epsicut.info()` for backend/compositor. A wasm compile is not runtime evidence; headless
 browser tests do not prove native focus/IME/file pickers.
 
 ### 11.5 Environment provisioning gates
@@ -1281,12 +1281,12 @@ a current runtime pass, or a platform gate as satisfied from source inspection a
 Record before changing production code, on the exact baseline SHA and lockfile, as managed
 `task.py run` jobs (fresh job ID, exact `--source`/`--evidence`, `status`, then attested
 `finish --apply`). Submit each payload as
-`task.py run --job-id <unique> --kind build --task filmcraft-egui037-migration --source
+`task.py run --job-id <unique> --kind build --task epsicut-egui037-migration --source
 <checkout> --evidence <evidence> -- <payload>`; the commands below are payloads, not a
 raw-command exception:
 
 - `cargo xtask bench` with `--sections timeline,playback,scrub`, `--label
-  filmcraft-egui036-baseline`; GPU and `--cpu` runs. The timeline harness currently defaults
+  epsicut-egui036-baseline`; GPU and `--cpu` runs. The timeline harness currently defaults
   to 120 frames per view, 8 warmups (the `--repeat` value is a **run count**, not a sample
   count) and emits only p50/p95, so extend `crates/ui-egui/examples/bench/sections.rs` to
   accept the frame/warmup counts and emit p99 with exact sample counts **before** using it as
@@ -1327,7 +1327,7 @@ that an upstream regression is unavoidable.
 
 ### 12.3 Predefined thresholds and noise policy
 
-These are the shared suite minimums; FilmCraft may tighten them, never silently loosen them.
+These are the shared suite minimums; EpsiCut may tighten them, never silently loosen them.
 The stock-0.37 equivalent control and the first baseline report are required before any
 regression claim; thresholds and goldens are never auto-widened or auto-blessed to make a run
 pass.
@@ -1341,7 +1341,7 @@ pass.
   explanation.
 - **Playback CPU** (`bench-playback` CPU ms/frame, worker/source columns): ≤ +3% median;
   shown/dropped may vary with load and is not a gate alone.
-- **Peak RSS:** FilmCraft gate is ≤ +5% for the same scenario after subtracting the measured
+- **Peak RSS:** EpsiCut gate is ≤ +5% for the same scenario after subtracting the measured
   noise floor; investigate any repeatable increase above the floor. Report absolute MB.
 - **Idle:** no extra repaint requests and no extra CPU when nothing is playing; a hidden window
   keeps auto-save/playback semantics without busy-looping.
@@ -1408,19 +1408,19 @@ uses the preserved baseline executable/source and a separate managed allocation.
 - `.github/workflows/ci.yml` runs `cargo xtask ci` with pinned `CRAFT_FONTS_REF`; add the pin
   checks from §3.4 and a `cargo metadata --locked` step.
 - Keep `freebsd.yml`’s skip-tests policy and `windows-arm64.yml` as-is; do not weaken them.
-- `cargo xtask wasm` must still check `filmcraft-ui-egui` and `filmcraft-web`; `egui_kittest`
+- `cargo xtask wasm` must still check `epsicut-ui-egui` and `epsicut-web`; `egui_kittest`
   is a dev dependency and remains native-only.
 - The web crate’s `wasm-bindgen` exact pin (`=0.2.129`) must match the installed CLI. The
-  candidate’s own lock uses `wasm-bindgen 0.2.126` and `web-sys 0.3.103`; FilmCraft currently
+  candidate’s own lock uses `wasm-bindgen 0.2.126` and `web-sys 0.3.103`; EpsiCut currently
   pins `web-sys 0.3.106` and `wasm-bindgen 0.2.129`. The `0.2`/`0.3` ranges are compatible,
-  but the final FilmCraft lock is authoritative: record the resolved versions and run
+  but the final EpsiCut lock is authoritative: record the resolved versions and run
   `wasm-bindgen --version` before `cargo xtask web`.
 - `rfd 0.17`, `arboard 3.6.1`, `wgpu 30.0.1`, `accesskit 0.25`/`0.24` transitive and `winit
   0.30.13` compatibility were checked from manifests; a fresh `cargo metadata --locked` and a
   clean lockfile resolution are still required.
-- The candidate’s own lock resolves `wgpu 30.0.0`; FilmCraft pins 30.0.1. Record the actual
-  resolved candidate/FilmCraft version in the evidence and ensure one source; do not claim the
-  candidate lock is FilmCraft’s.
+- The candidate’s own lock resolves `wgpu 30.0.0`; EpsiCut pins 30.0.1. Record the actual
+  resolved candidate/EpsiCut version in the evidence and ensure one source; do not claim the
+  candidate lock is EpsiCut’s.
 - New 0.37 dependencies include `wl-clipboard-rs`, `tree_magic_mini`, `petgraph`, `nom`,
   `send_wrapper`, `unicode-properties`, `vello_cpu 0.2`, `glifo 0.3`, `kittest 0.5` and updated
   `accesskit*`/`phf`. Review their licences (all expected MIT/Apache-2.0/BSD/ISC); no GPL/LGPL
@@ -1442,11 +1442,11 @@ not a passing result.
    The exact SHAs, feature sets and provenance must be recorded before P1.
 2. **G-CL2F — shared capture helper.** `craft-libs` must publish the CL-2 helper, DesignCraft
    and GridCraft adapters must be reviewed against it, and CL-2F must freeze the API before
-   FilmCraft pins the revision. A branch head or path dependency is not acceptable.
+   EpsiCut pins the revision. A branch head or path dependency is not acceptable.
 3. **G-CRAFT-LIBS — shared baseline and port.** The final published `craft-libs` revision must
    build on the merged PR #199 base `3832c47ef68a0e6214f2c1e85f3526b6adcb686e` with the
    protected-group docking fix and lazy printing preserved; the PR-199 hunks
-   (`8614e4a`/README `1764bca`) are historical provenance. `5c874d51` is the old FilmCraft
+   (`8614e4a`/README `1764bca`) are historical provenance. `5c874d51` is the old EpsiCut
    manifest pin; `4919088` is historical GitHub main. `craft-docpath` stays at `82a24b0`
    unless a concrete cross-type reason appears.
 4. **G-IME — native IME and E21b.** E21b/P7b must exist in the pinned fork with the complete
@@ -1454,7 +1454,7 @@ not a passing result.
    and explicitly sent, committed W27 disable/enable transitions with cache clear,
    authoritative completed-pass `None`, current-epoch serial-mismatch edits applied once with
    outgoing state deferred, and a 4000-byte payload extracted without a full-document copy.
-   The FilmCraft graphics adapter must supply logical model/preedit/UTF-8 bytes, and Windows
+   The EpsiCut graphics adapter must supply logical model/preedit/UTF-8 bytes, and Windows
    Japanese/Korean, X11 Vietnamese, Wayland text-input-v3 and macOS rows must run on real
    environments. No headless test is a substitute. macOS without hardware is explicitly
    unresolved.
@@ -1557,7 +1557,7 @@ This table is an index; the body sections above are authoritative.
 - IME gap: `/home/codex/work/ssd2/task-evidence/egui037-migration-20261022/ime-surrounding-gap.md`,
   `.../winit-review-triage.md` for the W15P/W27/E21b serial and owner/support corrections, and
   egui plan §10.6 for pinned font fixtures.
-- Shared baseline audit: `/home/codex/work/ssd2/task-evidence/egui037-migration-20261022/filmcraft-shared-baseline-audit.md`.
+- Shared baseline audit: `/home/codex/work/ssd2/task-evidence/egui037-migration-20261022/epsicut-shared-baseline-audit.md`.
 - Suite rollout: `craft-libs/docs/egui-037-suite-rollout.md` and
   `craft-libs/docs/egui-037-migration-plan.md` (CL-2/CL-2F, §7.8, §10.6).
 - Fork provenance: `aiongg/egui` `craft/0.37` `PATCHES.md` (E1-E21) and `aiongg/winit`
@@ -1565,7 +1565,7 @@ This table is an index; the body sections above are authoritative.
   `/home/codex/work/CraftApps/egui037-migration-20261022/{egui,winit}`.
 - Shared migration: `storytold/craft-libs#199` (port hunks `8614e4a`, README `1764bca`;
   stale heads `b68de8c`/`ec8840a` are not mergeable trees), current main `4919088`, old
-  FilmCraft pin `5c874d51`, language work `storytold/craft-libs#198`.
+  EpsiCut pin `5c874d51`, language work `storytold/craft-libs#198`.
 - Local evidence: `/home/codex/work/ssd2/task-evidence/craft-fork-plan-20261020/PLAN.md`,
   `/home/codex/work/ssd2/task-evidence/craft-fork-ai-lines-20261022/SURVEY.md`,
   `/home/codex/work/ssd2/task-evidence/craft-fork-egui037-20261021/RESULTS.md`,
@@ -1590,7 +1590,7 @@ The complete static delta review and exact old/new object identities are retaine
 ## Final source review repair — 2026-10-24
 
 The reviewed cumulative source identity and two findings are preserved in the external
-`final-landing/filmcraft-final-review.md/json` evidence. Same-owner application caret/selection
+`final-landing/epsicut-final-review.md/json` evidence. Same-owner application caret/selection
 moves (pointer, keyboard, Select All and explicit gfxEdit offsets) and another field taking
 focus now invalidate only a known active/terminal-pending graphics composition before its late
 replacement can mutate the moved selection. Stable owner/generation identity is preserved;

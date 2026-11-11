@@ -19,7 +19,7 @@ mod prefs;
 mod textures;
 mod window;
 
-impl FilmcraftApp {
+impl EpsicutApp {
     /// Build the app around one shared `FrameServer`, falling back to the default language on an unparsable preference, loading workspaces from the prefs
     /// directory and seeding IME epoch/sequence identity.
     pub fn new(mut session: Session) -> Self {
@@ -197,7 +197,7 @@ impl FilmcraftApp {
     }
 }
 
-impl FilmcraftApp {
+impl EpsicutApp {
     /// Install the theme once, then keep fonts ready; a saved language without its system face
     /// falls back to English as before.
     fn logic_theme(&mut self, ctx: &egui::Context) {
@@ -285,7 +285,7 @@ impl FilmcraftApp {
     fn logic_session_events(&mut self) {
         for ev in self.session.drain_events() {
             match ev {
-                filmcraft_engine::Event::OpenSequence(_) => {
+                epsicut_engine::Event::OpenSequence(_) => {
                     // A sequence switch (including opening/reverting/recovering a project, which
                     // emits this event for the newly active sequence) is a new IME owner context.
                     self.restart_ime_target();
@@ -294,7 +294,7 @@ impl FilmcraftApp {
                     self.ui.dock.restore_timeline();
                     let _ = self.apply_dock(craft_ui::docking::Action::Activate { panel: PanelKind::Timeline });
                 }
-                filmcraft_engine::Event::OpenSource(_) => {
+                epsicut_engine::Event::OpenSource(_) => {
                     // a closed Source panel reopens, and another panel's maximize would hide it
                     if self.ui.keys.maximized.is_some_and(|p| p != PanelKind::Source) {
                         self.ui.keys.maximized = None;
@@ -302,9 +302,9 @@ impl FilmcraftApp {
                     // the clip just opened there is what Space and J/K/L act on next (#3669)
                     self.show_panel(PanelKind::Source);
                 }
-                filmcraft_engine::Event::RevealInProject(item) => self.reveal_in_project(item),
-                filmcraft_engine::Event::Toast { message, .. } => self.status(message),
-                filmcraft_engine::Event::ProjectChanged { .. } => {}
+                epsicut_engine::Event::RevealInProject(item) => self.reveal_in_project(item),
+                epsicut_engine::Event::Toast { message, .. } => self.status(message),
+                epsicut_engine::Event::ProjectChanged { .. } => {}
             }
         }
     }
@@ -432,7 +432,7 @@ impl FilmcraftApp {
     }
 }
 
-impl eframe::App for FilmcraftApp {
+impl eframe::App for EpsicutApp {
     /// Snapshot this callback's fresh surface geometry, optionally synthesize macOS ctrl-click
     /// and agent input, and offer at most one queued synthetic step. A step already preserved by
     /// hidden logic callbacks is not appended twice; a real UI pass clears it.
@@ -530,9 +530,9 @@ impl eframe::App for FilmcraftApp {
 #[cfg(test)]
 mod lifecycle_synthetic_tests {
     use egui::{Event, Modifiers, PointerButton, pos2};
-    use filmcraft_engine::Session;
+    use epsicut_engine::Session;
 
-    use super::FilmcraftApp;
+    use super::EpsicutApp;
 
     /// Extract the pointer-moved positions from a raw event batch, for synthetic-input tests.
     fn pointer_events(events: &[Event]) -> Vec<egui::Pos2> {
@@ -551,7 +551,7 @@ mod lifecycle_synthetic_tests {
     #[test]
     fn one_synthetic_step_survives_hidden_logic_callbacks() {
         let ctx = egui::Context::default();
-        let mut app = FilmcraftApp::new(Session::default());
+        let mut app = EpsicutApp::new(Session::default());
         app.synthetic = vec![
             Event::PointerMoved(pos2(10.0, 10.0)),
             Event::PointerMoved(pos2(20.0, 20.0)),
@@ -587,7 +587,7 @@ mod lifecycle_synthetic_tests {
     #[test]
     fn hidden_callbacks_do_not_duplicate_a_step_preserved_in_raw_input() {
         let ctx = egui::Context::default();
-        let mut app = FilmcraftApp::new(Session::default());
+        let mut app = EpsicutApp::new(Session::default());
         app.synthetic =
             vec![Event::Text("once".into()), Event::Key { key: egui::Key::F35, physical_key: None, pressed: false, repeat: false, modifiers: Modifiers::NONE }];
         let mut first = egui::RawInput::default();

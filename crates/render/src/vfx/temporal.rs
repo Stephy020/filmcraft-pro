@@ -11,7 +11,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use filmcraft_project::{EffectInstance, TrackMethod};
+use epsicut_project::{EffectInstance, TrackMethod};
 use rayon::prelude::*;
 
 use super::{Affine, FxCtx, FxEnv, Image, Vec2, affine_warp, bv, chv, fv, luma, offv, over};
@@ -112,7 +112,7 @@ pub(crate) fn combine_echoes(layers: &[(Image, f32)], op: u32) -> Image {
 // ------------------------------------------------------------------ analysis helpers
 
 fn gray_of(img: &Image) -> Gray {
-    let px = img.px.par_chunks(4).map(|p| filmcraft_color::linear_to_srgb(luma([p[0], p[1], p[2]]).clamp(0.0, 1.0))).collect();
+    let px = img.px.par_chunks(4).map(|p| epsicut_color::linear_to_srgb(luma([p[0], p[1], p[2]]).clamp(0.0, 1.0))).collect();
     Gray::new(img.w, img.h, px)
 }
 
@@ -316,7 +316,7 @@ pub fn stabilizer_path(env: &dyn FxEnv, now: f64, method: TrackMethod, detailed:
             let region = [Vec2::new(m, m), Vec2::new(w as f64 - m, m), Vec2::new(w as f64 - m, h as f64 - m), Vec2::new(m, h as f64 - m)];
             track_step(a, b, &region, method).map(|s| s.transform).unwrap_or(Affine::IDENTITY)
         },
-        filmcraft_media::cancel::cancelled,
+        epsicut_media::cancel::cancelled,
     )?;
     let path = Arc::new(StabilizerPath { w, h, steps, fps });
     if let Ok(mut c) = path_cache().lock() {

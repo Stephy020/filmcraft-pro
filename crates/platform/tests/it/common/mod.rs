@@ -5,9 +5,9 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use filmcraft_codecs::{DecodedFrame, VideoDecoder};
-use filmcraft_frame::PixelData;
-use filmcraft_isobmff::SampleEntry;
+use epsicut_codecs::{DecodedFrame, VideoDecoder};
+use epsicut_frame::PixelData;
+use epsicut_isobmff::SampleEntry;
 
 /// NVENC sessions are a limited resource on consumer GPUs, and the encoder counters are
 /// process-wide: one NVENC test at a time across every module of the binary.
@@ -79,13 +79,13 @@ pub const FIXTURES: &[(&str, &[&str])] = &[
 ];
 
 pub fn dir() -> PathBuf {
-    filmcraft_testkit::fixtures_dir("platform")
+    epsicut_testkit::fixtures_dir("platform")
 }
 
 /// Generate `name` with `ffmpeg -y -v error <args> <out>` (cached).
 pub fn fixture(ff: &Path, name: &str, args: &[&str]) -> Option<PathBuf> {
     let out = dir().join(name);
-    filmcraft_testkit::fixtures::generate(&out, |tmp| {
+    epsicut_testkit::fixtures::generate(&out, |tmp| {
         let st = Command::new(ff).args(["-y", "-v", "error"]).args(args).arg(tmp).stdin(Stdio::null()).status();
         match st {
             Ok(s) if s.success() => true,
@@ -112,8 +112,8 @@ pub struct Stream {
 
 pub fn read_stream(path: &Path) -> Stream {
     let bytes = std::fs::read(path).unwrap();
-    let file = filmcraft_isobmff::open(bytes.clone()).unwrap();
-    let t = file.track_of_kind(filmcraft_isobmff::TrackKind::Video).unwrap();
+    let file = epsicut_isobmff::open(bytes.clone()).unwrap();
+    let t = file.track_of_kind(epsicut_isobmff::TrackKind::Video).unwrap();
     let track = &file.tracks[t];
     let samples = (0..track.samples.len()).map(|i| (file.read_sample(&bytes, t, i).unwrap(), track.samples[i].pts)).collect();
     Stream { entry: track.entries[0].clone(), samples, sync: track.samples.iter().map(|s| s.is_sync).collect() }

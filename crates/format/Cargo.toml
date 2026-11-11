@@ -1,6 +1,6 @@
 [package]
-name = "filmcraft-format"
-description = "FilmCraft .fcproj files: schema versions + migrations, atomic saves, auto-save naming and rotation"
+name = "epsicut-format"
+description = "EpsiCut .fcproj files: schema versions + migrations, atomic saves, auto-save naming and rotation"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,8 +10,8 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-filmcraft-project = { workspace = true }
-filmcraft-media = { workspace = true }
+epsicut-project = { workspace = true }
+epsicut-media = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -22,4 +22,4 @@ chrono = { workspace = true }
 tempfile = "3.27"
 
 [dev-dependencies]
-filmcraft-time = { workspace = true }
+epsicut-time = { workspace = true }

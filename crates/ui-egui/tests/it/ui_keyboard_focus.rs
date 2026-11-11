@@ -4,11 +4,11 @@ use std::sync::Arc;
 
 use egui::{Event, Id, Key, Modifiers, vec2};
 use egui_kittest::Harness;
-use filmcraft_engine::Session;
-use filmcraft_ui_egui::{FilmcraftApp, dock::PanelKind, state::Tool};
+use epsicut_engine::Session;
+use epsicut_ui_egui::{EpsicutApp, dock::PanelKind, state::Tool};
 use serde_json::json;
 
-fn key(h: &mut Harness<'_, FilmcraftApp>, key: Key, modifiers: Modifiers) {
+fn key(h: &mut Harness<'_, EpsicutApp>, key: Key, modifiers: Modifiers) {
     for pressed in [true, false] {
         h.event(Event::Key { key, physical_key: None, pressed, repeat: false, modifiers });
         h.step();
@@ -23,7 +23,7 @@ fn tab_traversal_and_space_select_only_the_focused_tool_with_visible_focus() {
     session.execute("file.openDemoProject", json!({})).unwrap();
     let project = session.project.clone();
     let playheads = session.state.playheads.clone();
-    let app = FilmcraftApp::new(session);
+    let app = EpsicutApp::new(session);
     let mut h = Harness::builder().with_size(vec2(1200.0, 800.0)).build_eframe(move |_| app);
     h.run_steps(4);
     h.state_mut().ui.dock =
@@ -66,7 +66,7 @@ fn dock_tab_traversal_and_enter_change_the_visible_panel_without_editing() {
     session.execute("file.openDemoProject", json!({})).unwrap();
     let project = session.project.clone();
     let playheads = session.state.playheads.clone();
-    let app = FilmcraftApp::new(session);
+    let app = EpsicutApp::new(session);
     let mut h = Harness::builder().with_size(vec2(1200.0, 800.0)).build_eframe(move |_| app);
     h.run_steps(4);
     h.state_mut().ui.show_header = false;
@@ -76,8 +76,8 @@ fn dock_tab_traversal_and_enter_change_the_visible_panel_without_editing() {
         floating: vec![],
     };
     h.run_steps(3);
-    let first = craft_ui::docking::DockArea::<PanelKind>::hit_id(filmcraft_ui_egui::dock_area_id(), &craft_ui::docking::Hit::Tab(PanelKind::Project));
-    let second = craft_ui::docking::DockArea::<PanelKind>::hit_id(filmcraft_ui_egui::dock_area_id(), &craft_ui::docking::Hit::Tab(PanelKind::Effects));
+    let first = craft_ui::docking::DockArea::<PanelKind>::hit_id(epsicut_ui_egui::dock_area_id(), &craft_ui::docking::Hit::Tab(PanelKind::Project));
+    let second = craft_ui::docking::DockArea::<PanelKind>::hit_id(epsicut_ui_egui::dock_area_id(), &craft_ui::docking::Hit::Tab(PanelKind::Effects));
     for _ in 0..128 {
         key(&mut h, Key::Tab, Modifiers::NONE);
         if h.ctx.memory(|m| m.focused()) == Some(second) {
