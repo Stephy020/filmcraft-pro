@@ -823,30 +823,97 @@ fn crop_plane<T: Copy + Default>(src: &[T], w: usize, h: usize, n: usize, r: Reg
 }
 
 /// A `w`×`h` plane of `n`-element pixels turned clockwise by `q` (1–3) quarter turns.
-fn rotate_plane<T: Copy + Default + Send + Sync>(src: &[T], w: usize, h: usize, n: usize, q: u8) -> Vec<T> {
-    let mut out = vec![T::default(); w * h * n];
-    if w == 0 || h == 0 || src.len() < w * h * n {
+/// Rows and columns of a rotation tile: the source samples a tile reads lie in a block this
+/// size, which stays in the first-level cache (a quarter turn reads a source column per output
+/// row, a cache miss per sample when done a whole row at a time).
+const ROTATE_TILE: usize = 64;
+
+/// A sample type whose plane buffers come from the frame pool where it keeps them: a turned
+/// picture is as large as the decoded one, and a fresh allocation that size is paged in by the
+/// system on every frame (most of the cost of turning a UHD picture).
+trait Sample: Copy + Default + Send + Sync {
+    /// An empty buffer with room for `len` samples.
+    fn buffer(len: usize) -> Vec<Self>;
+}
+
+impl Sample for u8 {
+    fn buffer(len: usize) -> Vec<Self> {
+        pool::take_u8(len)
+    }
+}
+
+impl Sample for u16 {
+    fn buffer(len: usize) -> Vec<Self> {
+        pool::take_u16(len)
+    }
+}
+
+impl Sample for f32 {
+    fn buffer(len: usize) -> Vec<Self> {
+        Vec::with_capacity(len)
+    }
+}
+
+fn rotate_plane<T: Sample>(src: &[T], w: usize, h: usize, n: usize, q: u8) -> Vec<T> {
+    let Some(len) = w.checked_mul(h).and_then(|a| a.checked_mul(n)) else { return Vec::new() };
+    let mut out = T::buffer(len);
+    out.resize(len, T::default());
+    if w == 0 || h == 0 || n == 0 || src.len() < len {
         return out;
     }
     // output width: h for a quarter / three-quarter turn
     let ow = if q % 2 == 1 { h } else { w };
-    out.par_chunks_mut(ow * n).enumerate().for_each(|(oy, row)| {
-        for ox in 0..ow {
-            // the source pixel shown at (ox, oy)
-            let (x, y) = match q {
-                1 => (oy, h - 1 - ox),
-                2 => (w - 1 - ox, h - 1 - oy),
-                _ => (w - 1 - oy, ox),
-            };
-            let s = (y * w + x) * n;
-            row[ox * n..ox * n + n].copy_from_slice(&src[s..s + n]);
+    if q == 2 {
+        // a half turn: every output row is a source row backwards, pixel by pixel
+        out.par_chunks_mut(ow * n * ROTATE_TILE).enumerate().for_each(|(band, rows)| {
+            for (dy, row) in rows.chunks_exact_mut(w * n).enumerate() {
+                let y = h - 1 - (band * ROTATE_TILE + dy).min(h - 1);
+                let Some(line) = src.get(y * w * n..(y + 1) * w * n) else { continue };
+                if n == 1 {
+                    row.iter_mut().zip(line.iter().rev()).for_each(|(o, v)| *o = *v);
+                } else {
+                    row.chunks_exact_mut(n).zip(line.chunks_exact(n).rev()).for_each(|(o, v)| o.copy_from_slice(v));
+                }
+            }
+        });
+        return out;
+    }
+    // A quarter turn: the pixel at (ox, oy) is the source's (oy, h - 1 - ox) clockwise and
+    // (w - 1 - oy, ox) the other way, so along an output row the source moves one row up or down
+    // in one column. Tiles keep those reads in a block of source rows the cache holds.
+    let clockwise = q == 1;
+    out.par_chunks_mut(ow * n * ROTATE_TILE).enumerate().for_each(|(band, rows)| {
+        let oy0 = band * ROTATE_TILE;
+        for ox0 in (0..ow).step_by(ROTATE_TILE) {
+            let ox1 = (ox0 + ROTATE_TILE).min(ow);
+            for (dy, row) in rows.chunks_exact_mut(ow * n).enumerate() {
+                // source column of this output row (in range: the output has `w` rows)
+                let x = if clockwise { oy0 + dy } else { w - 1 - (oy0 + dy).min(w - 1) };
+                let Some(tile) = row.get_mut(ox0 * n..ox1 * n) else { continue };
+                if n == 1 {
+                    // one sample per pixel (the planes of decoded video): a plain load and store
+                    for (k, o) in tile.iter_mut().enumerate() {
+                        let y = if clockwise { h - 1 - (ox0 + k) } else { ox0 + k };
+                        if let Some(v) = src.get(y * w + x) {
+                            *o = *v;
+                        }
+                    }
+                } else {
+                    for (k, o) in tile.chunks_exact_mut(n).enumerate() {
+                        let y = if clockwise { h - 1 - (ox0 + k) } else { ox0 + k };
+                        let s = (y * w + x) * n;
+                        if let Some(v) = src.get(s..s + n) {
+                            o.copy_from_slice(v);
+                        }
+                    }
+                }
+            }
         }
     });
     out
 }
 
-/// The two chroma planes of a `w`×`h` picture turned by `q` quarter turns, and their new format.
-fn rotate_chroma<T: Copy + Default + Send + Sync>(planes: &[Arc<Vec<T>>; 3], chroma: Chroma, w: usize, h: usize, q: u8) -> ([Vec<T>; 2], Chroma) {
+fn rotate_chroma<T: Sample>(planes: &[Arc<Vec<T>>; 3], chroma: Chroma, w: usize, h: usize, q: u8) -> ([Vec<T>; 2], Chroma) {
     let (sx, sy) = chroma.shifts();
     let (cw, ch) = (w.div_ceil(1 << sx), h.div_ceil(1 << sy));
     if chroma == Chroma::C422 && q % 2 == 1 {

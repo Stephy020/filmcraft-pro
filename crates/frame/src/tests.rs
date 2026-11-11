@@ -551,3 +551,56 @@ fn a_yuv8_picture_with_short_planes_converts_without_panicking() {
     assert!(row(3)[16..].iter().all(|v| *v == 0.0), "the rest of that row is transparent: {:?}", row(3));
     assert!((4..8).all(|y| row(y).iter().all(|v| *v == 0.0)), "rows without luma are transparent");
 }
+
+/// Timing of the display-rotation turn on a UHD 4:2:0 picture (portrait phone video is stored
+/// landscape and turned on every decoded frame). No machine-dependent assertion: run alone with
+/// `cargo test --release -p filmcraft-frame rotation_benchmark -- --ignored --nocapture`.
+#[test]
+#[ignore = "benchmark"]
+fn rotation_benchmark() {
+    let (w, h) = (3840usize, 2160usize);
+    let luma: Vec<u8> = (0..w * h).map(|i| (i * 31 % 251) as u8).collect();
+    let c: Vec<u8> = (0..w * h / 4).map(|i| (i * 17 % 241) as u8).collect();
+    let f = VideoFrame {
+        data: PixelData::Yuv8 { planes: [Arc::new(luma), Arc::new(c.clone()), Arc::new(c)], chroma: Chroma::C420, alpha: None },
+        color: ColorInfo::REC709,
+        ..VideoFrame::rgba8(w as u32, h as u32, Vec::new())
+    };
+    {
+        let PixelData::Yuv8 { planes, .. } = &f.data else { panic!() };
+        let t0 = std::time::Instant::now();
+        for _ in 0..20 {
+            for p in planes {
+                let mut o = pool::take_u8(p.len());
+                o.extend_from_slice(p);
+                pool::recycle(Arc::new(VideoFrame {
+                    data: PixelData::Yuv8 { planes: [Arc::new(o), Arc::new(Vec::new()), Arc::new(Vec::new())], chroma: Chroma::C420, alpha: None },
+                    ..VideoFrame::rgba8(1, 1, Vec::new())
+                }));
+            }
+        }
+        println!("plain copy: {:.2} ms per picture", t0.elapsed().as_secs_f64() * 50.0);
+        let t0 = std::time::Instant::now();
+        for _ in 0..20 {
+            std::hint::black_box(rotate_plane(&planes[0], w, h, 1, 1));
+        }
+        println!("luma only, fresh buffers: {:.2} ms", t0.elapsed().as_secs_f64() * 50.0);
+        let one = rayon::ThreadPoolBuilder::new().num_threads(1).build().unwrap();
+        for q in [1u8, 2, 3] {
+            let t0 = std::time::Instant::now();
+            for _ in 0..20 {
+                pool::recycle(Arc::new(one.install(|| f.rotated(q))));
+            }
+            println!("turn {q} on one thread: {:.2} ms per picture", t0.elapsed().as_secs_f64() * 50.0);
+        }
+    }
+    for q in [1u8, 2, 3] {
+        let _ = f.rotated(q);
+        let t0 = std::time::Instant::now();
+        for _ in 0..20 {
+            // as the decoder cache does with a picture playback has passed
+            pool::recycle(Arc::new(std::hint::black_box(f.rotated(q))));
+        }
+        println!("turn {q}: {:.2} ms per picture", t0.elapsed().as_secs_f64() * 50.0);
+    }
+}

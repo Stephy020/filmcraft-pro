@@ -45,6 +45,13 @@ pub trait VideoDecoder: Send {
     /// shortcuts that only change pictures nothing references, which come out flagged
     /// [`DecodedFrame::draft`]. Decoders without such a mode ignore it.
     fn set_draft(&mut self, _on: bool) {}
+    /// How many times smaller than the stream's pictures this decoder's draft pictures are on
+    /// each axis (1: the same size). A hardware decoder reads its draft pictures back at half
+    /// size, and whoever applies stream coordinates to a draft picture (the container's clean
+    /// aperture) divides them by this.
+    fn draft_divisor(&self) -> usize {
+        1
+    }
     /// Made with fewer worker threads than a decoder for playback gets, because it was made for
     /// background work ([`filmcraft_media::cancel::with_background`]). A request for a monitor
     /// replaces such a decoder.

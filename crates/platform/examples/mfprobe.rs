@@ -1,5 +1,5 @@
 //! Diagnostics for the Windows backend: why does Media Foundation take or decline a stream, and
-//! where does a decode spend its time? `mfprobe [--time] <file.mp4>...` (`--time` decodes every
+//! where does a decode spend its time? `mfprobe [--time] [--draft] <file.mp4>...` (`--time` decodes every
 //! sample and prints the GPU decode, GPU to CPU readback and plane conversion costs per picture).
 #[cfg(target_os = "windows")]
 fn main() {
@@ -32,6 +32,8 @@ fn main() {
             }
         };
         println!("{path}: hardware ok ({} via {})", d.name(), d.mft_name());
+        // `--draft`: pictures read back at half size, as playback at 1/2 resolution asks for them
+        d.set_draft(std::env::args().any(|a| a == "--draft"));
         if !time {
             continue;
         }

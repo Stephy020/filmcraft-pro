@@ -19,6 +19,7 @@ use crate::{FrameRequest, MediaError, MediaInfo, MediaKind, MediaSource, Result,
 pub mod dng;
 pub mod exr;
 pub mod hdr;
+pub mod lazy;
 pub mod psd;
 mod ycbcr_tiff;
 
@@ -114,30 +115,34 @@ impl StillSource {
     }
 
     pub fn from_rgba(name: &str, w: u32, h: u32, rgba: Vec<u8>, has_alpha: bool, file_size: u64) -> Self {
-        let codec = name.rsplit('.').next().unwrap_or("image").to_ascii_uppercase();
-        let info = MediaInfo {
-            name: name.to_string(),
-            kind: MediaKind::Still,
-            duration: DEFAULT_STILL_DURATION,
-            video: Some(VideoStreamInfo {
-                width: w,
-                height: h,
-                frame_rate: FrameRate::FPS_29_97,
-                par: (1, 1),
-                codec,
-                pixel_format: if has_alpha { "RGBA 8-bit".into() } else { "RGB 8-bit".into() },
-                color: filmcraft_color::ColorInfo::SRGB_FULL,
-                has_alpha,
-                bitrate: None,
-                hdr: None,
-                color_assumed: None,
-            }),
-            audio_streams: Vec::new(),
-            container: "Image".into(),
-            start_timecode: None,
-            file_size: Some(file_size),
-        };
-        Self { info, frame: Arc::new(VideoFrame::rgba8(w, h, rgba)) }
+        Self { info: still_info(name, w, h, has_alpha, file_size), frame: Arc::new(VideoFrame::rgba8(w, h, rgba)) }
+    }
+}
+
+/// What an 8-bit RGB(A) still of `w` x `h` pixels reports about itself.
+fn still_info(name: &str, w: u32, h: u32, has_alpha: bool, file_size: u64) -> MediaInfo {
+    let codec = name.rsplit('.').next().unwrap_or("image").to_ascii_uppercase();
+    MediaInfo {
+        name: name.to_string(),
+        kind: MediaKind::Still,
+        duration: DEFAULT_STILL_DURATION,
+        video: Some(VideoStreamInfo {
+            width: w,
+            height: h,
+            frame_rate: FrameRate::FPS_29_97,
+            par: (1, 1),
+            codec,
+            pixel_format: if has_alpha { "RGBA 8-bit".into() } else { "RGB 8-bit".into() },
+            color: filmcraft_color::ColorInfo::SRGB_FULL,
+            has_alpha,
+            bitrate: None,
+            hdr: None,
+            color_assumed: None,
+        }),
+        audio_streams: Vec::new(),
+        container: "Image".into(),
+        start_timecode: None,
+        file_size: Some(file_size),
     }
 }
 

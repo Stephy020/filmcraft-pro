@@ -266,6 +266,10 @@ pub fn open_bytes(name: &str, bytes: Arc<[u8]>, extra: &[Opener]) -> Result<Shar
         return Ok(Arc::new(r?));
     }
     if still::sniff(name, &bytes) {
+        // a large picture is decoded when it is first shown, off the importing thread
+        if let Some(lazy) = still::lazy::open(name, &bytes) {
+            return Ok(Arc::new(lazy));
+        }
         return Ok(Arc::new(still::StillSource::decode(name, &bytes)?));
     }
     Err(MediaError::Unsupported(format!("{name}: unrecognised format")))

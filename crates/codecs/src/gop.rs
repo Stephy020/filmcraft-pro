@@ -612,20 +612,34 @@ impl GopCache {
 
     /// Colour signalled by the container wins over the bitstream's (YUV frames only); the
     /// container's clean aperture and then its display rotation are applied.
-    fn finish(&self, mut f: VideoFrame) -> VideoFrame {
+    ///
+    /// `divisor` is how many times smaller than the stream's pictures `f` is on each axis (a
+    /// hardware decoder's draft picture, [`VideoDecoder::draft_divisor`]): the clean aperture is
+    /// in stream coordinates.
+    fn finish(&self, mut f: VideoFrame, divisor: usize) -> VideoFrame {
         if let Some(c) = self.explicit_color
             && !matches!(f.data, filmcraft_frame::PixelData::Rgba8(_) | filmcraft_frame::PixelData::RgbaF32(_))
         {
             f.color = c;
         }
         if let Some(r) = self.crop {
+            let d = divisor.max(1);
+            let r = if d > 1 { Region { x: r.x / d, y: r.y / d, w: (r.w / d).max(1), h: (r.h / d).max(1) } } else { r };
             f = f.cropped(r);
         }
-        if self.rotation != 0 { f.rotated(self.rotation) } else { f }
+        if self.rotation == 0 {
+            return f;
+        }
+        let turned = f.rotated(self.rotation);
+        // The picture as decoded is not shown: its planes serve the next decoded picture instead
+        // of going back to the allocator (a UHD picture is 12 MB that the system pages in again).
+        filmcraft_frame::pool::recycle(Arc::new(f));
+        turned
     }
 
     fn store(&self, st: &mut State, pts: i64, f: VideoFrame, draft: bool) {
-        self.store_finished(st, pts, self.finish(f), draft);
+        let divisor = if draft { st.decoder.as_ref().map_or(1, |d| d.draft_divisor()) } else { 1 };
+        self.store_finished(st, pts, self.finish(f, divisor), draft);
     }
 
     /// The small-frame reserve may use the configured cache budget, but may never enlarge it.
@@ -862,7 +876,7 @@ impl GopCache {
             .max_by_key(|p| p.pts)
             .map(|p| p.frame)
             .ok_or_else(|| CodecError::Decode("frame not produced".into()))?;
-        Ok(Arc::new(self.finish(f)))
+        Ok(Arc::new(self.finish(f, 1)))
     }
 
     /// Decode with `d` (positioned at `next`) until the picture with `want_pts` (sample `i`) comes out.
@@ -931,7 +945,8 @@ impl GopCache {
         // crop and rotate before taking the lock: that work runs on rayon (see `isolated`)
         let res = res.map(|out| {
             count_frames(&out);
-            out.into_iter().map(|d| (d.pts, self.finish(d.frame), d.draft)).collect::<Vec<_>>()
+            let divisor = dec.draft_divisor();
+            out.into_iter().map(|d| (d.pts, self.finish(d.frame, if d.draft { divisor } else { 1 }), d.draft)).collect::<Vec<_>>()
         });
         let mut st = self.shared.state.lock().unwrap_or_else(PoisonError::into_inner);
         if st.spare.len() < 16 {

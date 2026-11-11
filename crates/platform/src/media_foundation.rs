@@ -137,6 +137,8 @@ pub struct MfDecoder {
     /// Test hook: fail every decode once this many samples were fed.
     fail_after: Option<u64>,
     fed: u64,
+    /// Draft mode ([`VideoDecoder::set_draft`]): pictures are read back at half size.
+    draft: bool,
     name: &'static str,
     timings: Timings,
 }
@@ -172,6 +174,7 @@ impl MfDecoder {
             drained: false,
             fail_after: None,
             fed: 0,
+            draft: false,
             timings: Timings::default(),
         })
     }
@@ -225,19 +228,23 @@ impl MfDecoder {
                     if !self.size_checked {
                         self.check_size()?;
                     }
-                    let geometry = self.geometry;
+                    let (geometry, half) = (self.geometry, self.draft);
                     let (t0, mut convert) = (Instant::now(), Duration::ZERO);
                     let frame = self.readback.read(&self.gpu, &sample, self.format, |b| {
                         let c0 = Instant::now();
-                        let f = biplanar::to_frame(b, &geometry);
+                        // The GPU decodes the whole picture either way; a draft picture is read
+                        // back at half size, a quarter of the bytes to convert, turn and upload.
+                        let f = if half { biplanar::to_frame_half(b, &geometry) } else { biplanar::to_frame(b, &geometry) };
                         convert = c0.elapsed();
                         f
                     })?;
+                    // (a picture too small to halve came out whole: it is exact)
+                    let draft = half && (frame.width, frame.height) != (geometry.crop.2, geometry.crop.3);
                     self.timings.frames += 1;
                     self.timings.convert += convert;
                     self.timings.readback += t0.elapsed().saturating_sub(convert);
                     let pts = self.take_pts(t);
-                    out.push(DecodedFrame { pts, frame, draft: false });
+                    out.push(DecodedFrame { pts, frame, draft });
                 }
             }
         }
@@ -358,6 +365,14 @@ impl VideoDecoder for MfDecoder {
 
     fn is_disposable(&self, sample: &[u8]) -> bool {
         self.info.is_disposable(sample)
+    }
+
+    fn set_draft(&mut self, on: bool) {
+        self.draft = on;
+    }
+
+    fn draft_divisor(&self) -> usize {
+        2
     }
 }
 

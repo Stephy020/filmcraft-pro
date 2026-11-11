@@ -258,8 +258,19 @@ impl VideoDecoder for HybridDecoder {
 
     fn set_draft(&mut self, on: bool) {
         self.draft = on;
+        if let Some(hw) = self.hw.as_mut() {
+            hw.set_draft(on);
+        }
         if let Some(sw) = self.sw.as_mut() {
             sw.set_draft(on);
+        }
+    }
+
+    fn draft_divisor(&self) -> usize {
+        match (&self.hw, &self.sw) {
+            (Some(hw), _) => hw.draft_divisor(),
+            (None, Some(sw)) => sw.draft_divisor(),
+            (None, None) => 1,
         }
     }
 }
